@@ -2,22 +2,23 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.matsim</groupId>
-	<artifactId>matsim-example-project</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<groupId>com.github.matsim-scenarios</groupId>
+	<artifactId>matsim-metropole-ruhr</artifactId>
+	<version>1.0-SNAPSHOT</version>
 
-	<name>MATSim example project</name>
-	<description>MATSim example project</description>
+	<name>MATSim Metropole Ruhr project</name>
+	<description>MATSim Metropole Ruhr project</description>
 
 	<properties>
 		<!-- release -->
 		<!-- <matsim.version>12.0</matsim.version> -->
 
-		<!-- smapshot release -->
+		<!-- snapshot release -->
 		<!--<matsim.version>0.13.0-SNAPSHOT</matsim.version>-->
 
 		<!-- weekly release -->
-		<matsim.version>12.0-2019w48-SNAPSHOT</matsim.version>
+		<matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>
+		
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>11</maven.compiler.source>
@@ -82,32 +83,7 @@
 		<!--some contribs:-->
 		<dependency>
 			<groupId>org.matsim.contrib</groupId>
-			<artifactId>minibus</artifactId>
-			<version>${matsim.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.matsim.contrib</groupId>
 			<artifactId>otfvis</artifactId>
-			<version>${matsim.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.matsim.contrib</groupId>
-			<artifactId>roadpricing</artifactId>
-			<version>${matsim.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.matsim.contrib</groupId>
-			<artifactId>taxi</artifactId>
-			<version>${matsim.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.matsim.contrib</groupId>
-			<artifactId>av</artifactId>
-			<version>${matsim.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.matsim.contrib</groupId>
-			<artifactId>freight</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
 		<dependency>
