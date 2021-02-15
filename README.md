@@ -9,7 +9,7 @@
 This repository provides a MATSim transport model for the metropolitan area Ruhr (Metropole Ruhr) in Germany, developed by the [Transport Systems Planning and Transport Telematics group](https://www.vsp.tu-berlin.de) of [Technische Universität Berlin](http://www.tu-berlin.de) and the [Regionalverband Ruhr](https://www.rvr.ruhr).
 
 <a rel="TU Berlin" href="https://www.vsp.tu-berlin.de"><img src="logos/TU_Logo.png" width="15%" height="15%"/></a>
-<a rel="RVR" href="https://www.rvr.ruhr"><img src="logos/Logo_RVR_Pos_CMYK.png" width="15%" height="15%"/></a>
+<a rel="RVR" href="https://www.rvr.ruhr"><img src="logos/Logo_RVR_Pos_CMYK.png" width="30%" height="30%"/></a>
 
 ### Licenses
 
@@ -71,8 +71,14 @@ This will update your repository to the newest version.
 (Requires either cloning or downloading the repository.)
 
 ##### ... using a runnable jar file (only available for releases)
-1. There should be a file directly in the `matsim-metrople-ruhr` directory with name approximately as `matsim-metrople-ruhr-1.0-jar-with-dependencies.jar`.
-1. Double-click on that file (in a file system browser).  A simple GUI should open.
+1. You can build an executable jar-file by executing one of the following commands in the top directory. 
+This will download all necessary dependencies (it might take a while the first time it is run) and dump the jar into the top directory.
+   1. `./mvnw clean package -DskipTests=true`    
+   1. or on Windows: `mvnw.cmd clean package -DskipTests=true`
+1. Double-click on that .jar file (in a file system browser). Alternatively, try opening it with the following command:``
+java -jar [FILENAME].jar
+``
+
 1. In the GUI, click on the "Choose" button for configuration file.  Navigate to one of the `scenario` directories and load one of the configuration files.
 1. Increase memory in the GUI.
 1. Press the "Start MATSim" button.  This should run MATSim.  Note that MATSim accepts URLs as filenames in its config, so while the config files are part of the git repo, running them will pull additional material from our server.
