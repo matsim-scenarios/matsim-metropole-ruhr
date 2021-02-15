@@ -44,6 +44,22 @@
 			<id>ojo-snapshots</id>
 			<url>https://oss.jfrog.org/libs-snapshot</url>
 		</repository>	
+		
+		<!-- Temporarily needed for the osm reader -->
+        <repository>
+            <id>topobyte</id>
+            <url>https://mvn.topobyte.de</url>
+        </repository>
+        <repository>
+            <id>slimjars</id>
+            <url>https://mvn.slimjars.com</url>
+        </repository>
+        
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+        
 	</repositories>
 
 	<dependencies>
@@ -91,7 +107,29 @@
 			<artifactId>bicycle</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
-		<!--Dependencies from where stated above to here are added as a service; they can be removed if you don't need them-->
+		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>accessibility</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
+		
+		<dependency>
+            <groupId>com.github.matsim-org</groupId>
+            <artifactId>GTFS2MATSim</artifactId>
+            <version>11.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>4.1.1</version>
+        </dependency>
 
 	</dependencies>
 
