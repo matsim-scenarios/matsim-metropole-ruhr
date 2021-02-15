@@ -9,7 +9,7 @@
 This repository provides a MATSim transport model for the metropolitan area Ruhr (Metropole Ruhr) in Germany, developed by the [Transport Systems Planning and Transport Telematics group](https://www.vsp.tu-berlin.de) of [Technische Universität Berlin](http://www.tu-berlin.de) and the [Regionalverband Ruhr](https://www.rvr.ruhr).
 
 <a rel="TU Berlin" href="https://www.vsp.tu-berlin.de"><img src="logos/TU_Logo.png" width="15%" height="15%"/></a>
-<a rel="RVR" href="https://www.rvr.ruhr"><img src="logos/Logo_RVR_Pos_CMYK.png" width="15%" height="15%"/></a>
+<a rel="RVR" href="https://www.rvr.ruhr"><img src="logos/Logo_RVR_Pos_CMYK.png" width="30%" height="30%"/></a>
 
 ### Licenses
 
