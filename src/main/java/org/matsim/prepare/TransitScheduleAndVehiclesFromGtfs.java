@@ -35,7 +35,6 @@ import org.matsim.pt.transitSchedule.api.TransitRouteStop;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.pt.utils.CreatePseudoNetwork;
-import org.matsim.pt.utils.CreateVehiclesForSchedule;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.Vehicles;
@@ -151,16 +150,51 @@ public class TransitScheduleAndVehiclesFromGtfs {
     
     private static void createTransitVehiclesForSchedule(final TransitSchedule schedule, final Vehicles vehicles, final String idPrefix) {
 		VehiclesFactory vehFactotry = vehicles.getFactory();
-		VehicleType vehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-defaultTransitVehicleType", VehicleType.class));
-		vehicleType.getCapacity().setSeats( 500 );
-		vehicleType.getCapacity().setStandingRoom( 0 );
-		vehicleType.setPcuEquivalents(0.);
-		vehicles.addVehicleType(vehicleType);
+		
+		VehicleType trainVehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-train", VehicleType.class));
+		trainVehicleType.getCapacity().setSeats( 500 );
+		trainVehicleType.getCapacity().setStandingRoom( 0 );
+		trainVehicleType.setPcuEquivalents(0.);
+		vehicles.addVehicleType(trainVehicleType);
+		
+		VehicleType subwayVehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-subway", VehicleType.class));
+		subwayVehicleType.getCapacity().setSeats( 500 );
+		subwayVehicleType.getCapacity().setStandingRoom( 0 );
+		subwayVehicleType.setPcuEquivalents(0.);
+		vehicles.addVehicleType(subwayVehicleType);
+		
+		VehicleType tramVehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-tram", VehicleType.class));
+		tramVehicleType.getCapacity().setSeats( 200 );
+		tramVehicleType.getCapacity().setStandingRoom( 0 );
+		tramVehicleType.setPcuEquivalents(0.);
+		vehicles.addVehicleType(tramVehicleType);
+		
+		VehicleType busVehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-bus", VehicleType.class));
+		busVehicleType.getCapacity().setSeats( 100 );
+		busVehicleType.getCapacity().setStandingRoom( 0 );
+		busVehicleType.setPcuEquivalents(0.);
+		vehicles.addVehicleType(busVehicleType);
 
 		long vehId = 0;
 		for (TransitLine line : schedule.getTransitLines().values()) {
+
 			for (TransitRoute route : line.getRoutes().values()) {
+				
+				VehicleType vehicleType;
+				if (route.getTransportMode().equals("rail")) {
+					vehicleType = trainVehicleType;
+				} else if (route.getTransportMode().equals("bus")) {
+					vehicleType = busVehicleType;
+				} else if (route.getTransportMode().equals("tram")) {
+					vehicleType = tramVehicleType;
+				} else if (route.getTransportMode().equals("subway")) {
+					vehicleType = subwayVehicleType;
+				} else {
+					throw new RuntimeException(route.getTransportMode());
+				}
+				
 				for (Departure departure : route.getDepartures().values()) {
+					
 					Vehicle veh = vehFactotry.createVehicle(Id.create("pt_" + idPrefix + Long.toString(vehId++), Vehicle.class), vehicleType);
 					vehicles.addVehicle(veh);
 					departure.setVehicleId(veh.getId());
