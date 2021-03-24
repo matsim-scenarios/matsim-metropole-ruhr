@@ -66,7 +66,7 @@ public class TransitScheduleAndVehiclesFromGtfs {
         new CreatePseudoNetwork(scenario.getTransitSchedule(), scenario.getNetwork(), "pt_" + prefix + "_").createNetwork();
 
         //Create simple transit vehicles with a pcu of 0
-        createTransitVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getVehicles(), prefix);
+        createTransitVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getTransitVehicles(), prefix);
 //        
 //        new CreateVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getTransitVehicles()).run();
 //        scenario.getTransitVehicles().getVehicleTypes().forEach((id, type) -> type.setPcuEquivalents(0));
