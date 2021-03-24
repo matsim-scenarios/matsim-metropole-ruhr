@@ -57,7 +57,7 @@ public class CreateSupply {
 	private static final String gtfsData2Prefix = "nwl";
 
 	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
-	private static final Path matsimInputDir = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/input");
+	private static final Path matsimInputDir = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/input/");
 
 	// the following paths point to the sharedSvn
 	private static final Path longTermCountsRoot = Paths.get("projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
@@ -161,6 +161,7 @@ public class CreateSupply {
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
 		var longTermCounts = new LongTermCountsCreator.Builder()
+				.setLoggingFolder(outputDir.resolve("").toString())
 				.withNetwork(network)
 				.withRootDir(sharedSvn.resolve(longTermCountsRoot).toString())
 				.withIdMapping(sharedSvn.resolve(longTermCountsIdMapping).toString())
@@ -170,6 +171,7 @@ public class CreateSupply {
 				.run();
 
 		var shortTermCounts = new ShortTermCountsCreator.Builder()
+				.setLoggingFolder(outputDir.resolve("").toString())
 				.withNetwork(network)
 				.withRootDir(sharedSvn.resolve(shortTermCountsRoot).toString())
 				.withIdMapping(sharedSvn.resolve(shortTermCountsIdMapping).toString())

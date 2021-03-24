@@ -123,7 +123,7 @@ public class LongTermCountsCreator {
 			readNodeIDsOfCountingStationsAndGetLinkIDs();
 		}
 
-		String description = "--Nemo long period count data-- start date: " + this.firstDayOfAnalysis.toString() + " end date:" + this.lastDayOfAnalysis.toString();
+		String description = "--Long period count data-- start date: " + this.firstDayOfAnalysis.toString() + " end date:" + this.lastDayOfAnalysis.toString();
 		SimpleDateFormat format = new SimpleDateFormat("YY_MM_dd_HHmmss");
 		String now = format.format(Calendar.getInstance().getTime());
 		description += "\n created: " + now;
@@ -723,7 +723,7 @@ public class LongTermCountsCreator {
 	}
 
 	public static abstract class AbstractBuilder<T> {
-		String loggingFolder = "./counts_creation_logging";
+		String loggingFolder = "./";
 		Long[] stationIdsToOmit = new Long[0];
 		LocalDate firstDayOfAnalysis;
 		LocalDate lastDayOfAnalysis;

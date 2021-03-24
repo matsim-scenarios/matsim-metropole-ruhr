@@ -107,7 +107,7 @@ public class ShortTermCountsCreator extends LongTermCountsCreator {
 			readNodeIDsOfCountingStationsAndGetLinkIDs();
 		}
 
-		String description = "--Nemo short period count data--";
+		String description = "--Short period count data--";
 		SimpleDateFormat format = new SimpleDateFormat("YY_MM_dd_HHmmss");
 		String now = format.format(Calendar.getInstance().getTime());
 		description += "\n created: " + now;
