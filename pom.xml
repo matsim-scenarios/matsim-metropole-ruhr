@@ -14,10 +14,10 @@
 		<!-- <matsim.version>12.0</matsim.version> -->
 
 		<!-- snapshot release -->
-		<!--<matsim.version>0.13.0-SNAPSHOT</matsim.version>-->
+		<matsim.version>13.0-SNAPSHOT</matsim.version>
 
 		<!-- weekly release -->
-		<matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>
+		<!-- <matsim.version>13.0-2020w51-SNAPSHOT</matsim.version> -->
 		
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -71,6 +71,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>application</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
+
+		<dependency>
 			<!-- Include the JUnit testing library.  Not transitive. -->
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -112,12 +118,6 @@
 			<artifactId>accessibility</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
-		
-		<dependency>
-            <groupId>com.github.matsim-org</groupId>
-            <artifactId>GTFS2MATSim</artifactId>
-            <version>11.1</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
