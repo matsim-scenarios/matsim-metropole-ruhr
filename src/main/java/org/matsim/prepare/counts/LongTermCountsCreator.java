@@ -21,6 +21,29 @@
  */
 package org.matsim.prepare.counts;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Id;
@@ -37,21 +60,14 @@ import org.matsim.counts.Count;
 import org.matsim.counts.Counts;
 import org.matsim.counts.Volume;
 
-import java.io.*;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.logging.Formatter;
-import java.util.logging.*;
-import java.util.stream.Collectors;
-
 /**
  * @author tschlenther
  *
  */
 public class LongTermCountsCreator {
 
-	public static final Logger log = Logger.getLogger(LongTermCountsCreator.class.getName());
+	private static final Logger log = Logger.getLogger(LongTermCountsCreator.class);
+
 	private static final boolean USE_DATA_WITH_LESS_THAN_9_VEHICLE_CLASSES = true;
 	final List<String> allNeededColumnHeaders = new ArrayList<>();
 	final Network network;
@@ -133,7 +149,7 @@ public class LongTermCountsCreator {
 				}
 			}
 		} else {
-			log.severe("the given root directory of input count data could not be accessed... aborting");
+			log.warn("the given root directory of input count data could not be accessed... aborting");
 			throw new RuntimeException("Could not access root directory of count data");
 		}
 	}
@@ -160,7 +176,6 @@ public class LongTermCountsCreator {
 		if (!outPutDir.exists()) {
 			outPutDir.mkdirs();
 		}
-		initializeLogger();
 	}
 
 	protected Map<String, Counts<Link>> convert(String countsDescription) {
@@ -189,7 +204,7 @@ public class LongTermCountsCreator {
 				}
 			}
 		} else {
-			log.severe("something is wrong with the input directory .... please look here: " + rootDirOfYear.getAbsolutePath());
+			log.warn("something is wrong with the input directory .... please look here: " + rootDirOfYear.getAbsolutePath());
 			throw new RuntimeException("Didn't find expected data in root directory of counts");
 		}
 	}
@@ -237,9 +252,9 @@ public class LongTermCountsCreator {
 
 					int nrOfVehicleTypes = Integer.parseInt(headerThree.substring(4, 6));
 					if (nrOfVehicleTypes < 9) {
-						log.warning("data of count " + countID + "" + countName + " is not differentiating Pkw from at least one other class");
+						log.warn("data of count " + countID + "" + countName + " is not differentiating Pkw from at least one other class");
 						if (!USE_DATA_WITH_LESS_THAN_9_VEHICLE_CLASSES) {
-							log.warning("skipping data set of station " + countID + " because accurancy is not high enough");
+							log.warn("skipping data set of station " + countID + " because accurancy is not high enough");
 						}
 					}
 					int nrOfVehicleGroups = Integer.parseInt(headerThree.substring(1, 3));    // either 1 => all vehicles in one class or 2 => distinction of heavy traffic
@@ -352,7 +367,7 @@ public class LongTermCountsCreator {
 				} catch (FileNotFoundException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-					log.severe("could not access " + countFile.getAbsolutePath() + "\n the corresponding data is not taken into account");
+					log.warn("could not access " + countFile.getAbsolutePath() + "\n the corresponding data is not taken into account");
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -360,7 +375,7 @@ public class LongTermCountsCreator {
 
 			}
 		} else {
-			log.severe("the following directory is empty or cannot be accessed. Thus, it is skipped. Path = " + monthDir.getAbsolutePath());
+			log.warn("the following directory is empty or cannot be accessed. Thus, it is skipped. Path = " + monthDir.getAbsolutePath());
 			throw new RuntimeException("Could not access directory: " + monthDir.getAbsolutePath());
 		}
 	}
@@ -388,18 +403,18 @@ public class LongTermCountsCreator {
 			}
 
 			if (data == null) {
-				log.severe("can not access the basthourlycountdata... the countNrString was " + countNrString);
+				log.warn("can not access the basthourlycountdata... the countNrString was " + countNrString);
 			}
 
 			if (linkIDDirectionOne == null && !this.notLocatedCountingStations.contains(stationID + "_R1")) {
 				String problem = "direction 1 of the counting station " + stationID + " was not localised in the given csv file";
-				log.severe(problem);
+				log.warn(problem);
 				this.problemsPerCountingStation.put(stationID + "_R1", problem);
 				this.notLocatedCountingStations.add(stationID + "_R1");
 			}
 			if (linkIDDirectionTwo == null && !this.notLocatedCountingStations.contains(stationID + "_R2")) {
 				String problem = "direction 2 of the counting station " + stationID + " was not localised in the given csv file";
-				log.severe(problem);
+				log.warn(problem);
 				this.problemsPerCountingStation.put(stationID + "_R2", problem);
 				this.notLocatedCountingStations.add(stationID + "_R2");
 			}
@@ -420,7 +435,7 @@ public class LongTermCountsCreator {
 
 					if (valueDirOne == null) {
 						String problem = "station " + stationID + " has a non-valid entry for hour " + i + " in direction one. Please check this. The value in the count file is set to -1.";
-						log.severe(problem + " Error occured at creation nr " + cnt);
+						log.warn(problem + " Error occured at creation nr " + cnt);
 						if (this.problemsPerCountingStation.containsKey(stationID)) {
 							problem = this.problemsPerCountingStation.get(stationID) + problem;
 						}
@@ -429,7 +444,7 @@ public class LongTermCountsCreator {
 					}
 					if (valueDirTwo == null) {
 						String problem = "station " + stationID + " has a non-valid entry for hour " + i + " in direction two. Please check this. The value in the count file is set to -1.";
-						log.severe(problem + " Error occured at creation nr " + cnt);
+						log.warn(problem + " Error occured at creation nr " + cnt);
 						if (this.problemsPerCountingStation.containsKey(stationID)) {
 							problem = this.problemsPerCountingStation.get(stationID) + problem;
 						}
@@ -468,16 +483,16 @@ public class LongTermCountsCreator {
 				if (!header) {
 					Id<Link> countLinkID = null;
 					if (row.length >= 5) {
-						log.severe("station " + row[0] + " is commented like this in the map matching csv file: " + row[4]);
-						log.severe("it is assumed not to be mapmatched properly and thus gets ignored while data conversion...");
+						log.warn("station " + row[0] + " is commented like this in the map matching csv file: " + row[4]);
+						log.warn("it is assumed not to be mapmatched properly and thus gets ignored while data conversion...");
 						notMapMatchedStations.add(row[0]);
 					} else {
 						boolean missingNodes = false;
 						Node fromNode = network.getNodes().get(Id.createNodeId(Long.parseLong(row[1])));
 						if (fromNode == null) {
 							String problem = "could not find fromNode " + row[1] + " of station " + row[0];
-							log.severe(problem);
-							log.severe("this means something went wrong in network creation");
+							log.warn(problem);
+							log.warn("this means something went wrong in network creation");
 							problemsPerCountingStation.put(row[0], problem);
 							linkIDsOfCounts.put(row[0], Id.createLinkId("noFromNode_" + row[0]));
 							header = false;
@@ -488,8 +503,8 @@ public class LongTermCountsCreator {
 						Node toNode = network.getNodes().get(toNodeID);
 						if (toNode == null) {
 							String problem = "could not find toNode " + row[2] + " of station " + row[0];
-							log.severe(problem);
-							log.severe("this means something went wrong in network creation");
+							log.warn(problem);
+							log.warn("this means something went wrong in network creation");
 							problemsPerCountingStation.put(row[0], problem);
 							linkIDsOfCounts.put(row[0], Id.createLinkId("noToNode_" + row[0]));
 							header = false;
@@ -510,7 +525,7 @@ public class LongTermCountsCreator {
 							countLinkID = linkFinder.getFirstLinkOnTheWayFromNodeToNode(fromNode, toNode);
 							if (countLinkID == null) {
 								problem = "COULD FIND NO PATH LEADING FROM NODE " + fromNode.getId() + " TO NODE " + toNodeID;
-								log.severe(problem);
+								log.warn(problem);
 								countLinkID = Id.createLinkId("pathCouldNotBeCreated_" + row[0]);
 								problemsPerCountingStation.put(row[0], problem);
 								notLocatedCountingStations.add(row[0]);
@@ -556,7 +571,7 @@ public class LongTermCountsCreator {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			log.severe("currently str = " + str);
+			log.warn("currently str = " + str);
 		}
 
 		log.info("number of problems that occured while creating matsim counts: " + this.problemsPerCountingStation.size());
@@ -611,43 +626,6 @@ public class LongTermCountsCreator {
 		log.info("...closing " + this.getClass().getName() + "...");
 	}
 
-	protected void initializeLogger() {
-		SimpleDateFormat format = new SimpleDateFormat("YY_MM_dd_HHmmss");
-		FileHandler fh = null;
-		ConsoleHandler ch = null;
-		try {
-			fh = new FileHandler(outputPath + "Log_"
-					+ format.format(Calendar.getInstance().getTime()) + ".log");
-			ch = new ConsoleHandler();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		Formatter formatter = new Formatter() {
-
-			@Override
-			public String format(LogRecord record) {
-				SimpleDateFormat logTime = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
-				Calendar cal = new GregorianCalendar();
-				cal.setTimeInMillis(record.getMillis());
-				return (record.getLevel() + " "
-						+ logTime.format(cal.getTime())
-						+ " || "
-						+ record.getSourceClassName().substring(
-						record.getSourceClassName().lastIndexOf(".") + 1
-				)
-						+ "."
-						+ record.getSourceMethodName()
-						+ "() : "
-						+ record.getMessage() + "\n");
-			}
-		};
-		log.setUseParentHandlers(false);
-		fh.setFormatter(formatter);
-		ch.setFormatter(formatter);
-		log.addHandler(fh);
-		log.addHandler(ch);
-	}
-
 	protected String fixEncoding(String string) {
 		string = string.replaceAll("ä", "ae");
 		string = string.replaceAll("Ä", "Ae");
@@ -672,7 +650,7 @@ public class LongTermCountsCreator {
 				}
 
 			} catch (NumberFormatException nfe) {
-				log.severe("could'nt read traffic volumes. error message: \n" + nfe.getMessage());
+				log.warn("could'nt read traffic volumes. error message: \n" + nfe.getMessage());
 			}
 			trafficVolume += valueOfLane;
 		}

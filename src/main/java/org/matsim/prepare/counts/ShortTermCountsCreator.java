@@ -22,6 +22,7 @@
 package org.matsim.prepare.counts;
 
 
+import org.apache.log4j.Logger;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -55,6 +56,8 @@ import static java.nio.file.FileVisitResult.TERMINATE;
  *
  */
 public class ShortTermCountsCreator extends LongTermCountsCreator {
+	
+	private static final Logger log = Logger.getLogger(ShortTermCountsCreator.class);
 
 	protected ShortTermCountsCreator(Set<String> columnCombination,
 									 Network network,
@@ -141,7 +144,7 @@ public class ShortTermCountsCreator extends LongTermCountsCreator {
 				}
 			}
 		} else {
-			log.severe("something is wrong with the year directory .... please look here: " + rootDirOfYear.getAbsolutePath());
+			log.warn("something is wrong with the year directory .... please look here: " + rootDirOfYear.getAbsolutePath());
 			throw new RuntimeException("the year direction has an error. loog at folder: " + rootDirOfYear.getAbsolutePath());
 		}
 
@@ -163,7 +166,7 @@ public class ShortTermCountsCreator extends LongTermCountsCreator {
 				e.printStackTrace();
 			}
 		} else {
-			log.severe("something is wrong with the count directory .... please look here: " + countDir.getAbsolutePath());
+			log.warn("something is wrong with the count directory .... please look here: " + countDir.getAbsolutePath());
 			throw new RuntimeException("Error while searching in the count directory. Check out: " + countDir.getAbsolutePath());
 		}
 

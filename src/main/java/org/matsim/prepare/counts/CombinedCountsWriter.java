@@ -1,18 +1,14 @@
 package org.matsim.prepare.counts;
 
-import org.matsim.api.core.v01.network.Link;
-import org.matsim.counts.Counts;
-import org.matsim.counts.CountsWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CombinedCountsWriter<T> {
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.counts.Counts;
+import org.matsim.counts.CountsWriter;
 
-	private static final Logger logger = LoggerFactory.getLogger(CombinedCountsWriter.class);
+public class CombinedCountsWriter<T> {
 
 	private List<Counts<T>> countsList = new ArrayList<>();
 
