@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.NetworkWriter;
@@ -12,9 +13,13 @@ import org.matsim.contrib.accessibility.utils.MergeNetworks;
 import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.osm.networkReader.LinkProperties;
 import org.matsim.contrib.osm.networkReader.OsmBicycleReader;
+import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.network.io.MatsimNetworkReader;
+import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
@@ -23,8 +28,10 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
+import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.matsim.pt.transitSchedule.api.TransitScheduleWriter;
 import org.matsim.vehicles.MatsimVehicleWriter;
+import org.matsim.vehicles.Vehicles;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -37,13 +44,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PrepareNetworkAndPt {
+public class CreateSupply {
 
 	// the following paths point to the publicSvn
 	private static final Path osmData = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/osm/nordrhein-westfalen-2021-02-15.osm.pbf");
 	private static final Path ruhrShape = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
-	private static final Path gtfsData = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/gtfs/2020_01_13_google_transit_verbundweit_inkl_spnv.zip");
-	private static final Path bikeHighways = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
+	
+	private static final Path gtfsData1 = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/gtfs/2021_02_03_google_transit_verbundweit_inkl_spnv.zip");	
+	private static final Path gtfsData2 = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/gtfs/gtfs-nwl-20210215.zip");
+	private static final String gtfsDataDate = "2021-02-04";
+	private static final String gtfsData1Prefix = "vrr";
+	private static final String gtfsData2Prefix = "nwl";
+
+	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
 	private static final Path matsimInputDir = Paths.get("matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/input");
 
 	// the following paths point to the sharedSvn
@@ -54,7 +67,7 @@ public class PrepareNetworkAndPt {
 
 	// we use UTM-32 as coord system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
-	private static final Logger logger = Logger.getLogger(PrepareNetworkAndPt.class);
+	private static final Logger logger = Logger.getLogger(CreateSupply.class);
 
 	public static void main(String[] args) {
 
@@ -68,7 +81,7 @@ public class PrepareNetworkAndPt {
 			sharedSvn = args[1];
 		}
 		
-		new PrepareNetworkAndPt().run(Paths.get(publicSvn), Paths.get(sharedSvn));
+		new CreateSupply().run(Paths.get(publicSvn), Paths.get(sharedSvn));
 	}
 
 	private void run(Path publicSvn, Path sharedSvn) {
@@ -77,6 +90,13 @@ public class PrepareNetworkAndPt {
 
 		checkInputFilesArePresent(publicSvn, sharedSvn);
 		var outputDir = publicSvn.resolve(matsimInputDir);
+		
+		OutputDirectoryLogging.catchLogEntries();
+		try {
+			OutputDirectoryLogging.initLoggingWithOutputDirectory(outputDir.resolve("").toString());
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 
 		var geometries = ShapeFileReader.getAllFeatures(publicSvn.resolve(ruhrShape).toString()).stream()
 				.map(feature -> (Geometry) feature.getDefaultGeometry())
@@ -103,20 +123,40 @@ public class PrepareNetworkAndPt {
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
-		var gtfsScenario = new CreatePtScheduleAndVehiclesFromGtfs().run(publicSvn.resolve(gtfsData).toString(), transformation);
+		var gtfsScenario1 = new TransitScheduleAndVehiclesFromGtfs().run(publicSvn.resolve(gtfsData1).toString(), gtfsDataDate, transformation, gtfsData1Prefix);
+		var gtfsScenario2 = new TransitScheduleAndVehiclesFromGtfs().run(publicSvn.resolve(gtfsData2).toString(), gtfsDataDate, transformation, gtfsData2Prefix);
 
-		new MatsimVehicleWriter(gtfsScenario.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles.xml.gz").toString());
-		new TransitScheduleWriter(gtfsScenario.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule.xml.gz").toString());
-		MergeNetworks.merge(network, "", gtfsScenario.getNetwork());
+		new MatsimVehicleWriter(gtfsScenario1.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData1Prefix + ".xml.gz").toString());
+		new MatsimVehicleWriter(gtfsScenario2.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData2Prefix + ".xml.gz").toString());
+		new TransitScheduleWriter(gtfsScenario1.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule-only-" + gtfsData1Prefix + ".xml.gz").toString());
+		new TransitScheduleWriter(gtfsScenario2.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule-only-" + gtfsData2Prefix + ".xml.gz").toString());
 
-		new NetworkWriter(network).write(publicSvn.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
+		Config config = ConfigUtils.createConfig();
+		config.transit().setUseTransit(true);
+		Scenario scenarioBase = ScenarioUtils.loadScenario(config);
+		TransitSchedule baseTransitSchedule = scenarioBase.getTransitSchedule();
+		Vehicles baseTransitVehicles = scenarioBase.getTransitVehicles();
+		
+		MergeTransitFiles.mergeVehicles(baseTransitVehicles, gtfsScenario1.getTransitVehicles());
+		MergeTransitFiles.mergeVehicles(baseTransitVehicles, gtfsScenario2.getTransitVehicles());
+
+		MergeTransitFiles.mergeSchedule(baseTransitSchedule, gtfsData1Prefix, gtfsScenario1.getTransitSchedule());
+		MergeTransitFiles.mergeSchedule(baseTransitSchedule, gtfsData2Prefix, gtfsScenario2.getTransitSchedule());
+
+		new MatsimVehicleWriter(baseTransitVehicles).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles.xml.gz").toString());
+		new TransitScheduleWriter(baseTransitSchedule).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule.xml.gz").toString());
+		
+		MergeNetworks.merge(network, "", gtfsScenario1.getNetwork());
+		MergeNetworks.merge(network, "", gtfsScenario2.getNetwork());
+
+		new NetworkWriter(network).write(publicSvn.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyCarPt.xml.gz")).toString());
 
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
 		var bikeNetwork = NetworkUtils.createNetwork();
-		new MatsimNetworkReader(bikeNetwork).readFile(publicSvn.resolve(bikeHighways).toString());
+		new MatsimNetworkReader(bikeNetwork).readFile(publicSvn.resolve(bikeOnlyInfrastructureNetworkFile).toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(bikeNetwork);
-		new NetworkWriter(network).write(publicSvn.resolve(outputDir.resolve("metropole-ruhr-v1.0-with-bicycle-infrastructure.network.xml.gz")).toString());
+		new NetworkWriter(network).write(publicSvn.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
@@ -189,10 +229,10 @@ public class PrepareNetworkAndPt {
 			throw new RuntimeException(publicSvn.resolve(osmData).toString() + " does not exist!");
 		if (Files.notExists(publicSvn.resolve(ruhrShape)))
 			throw new RuntimeException(publicSvn.resolve(ruhrShape).toString() + " does not exist!");
-		if (Files.notExists(publicSvn.resolve(gtfsData)))
-			throw new RuntimeException(publicSvn.resolve(gtfsData).toString() + " does not exist!");
-		if (Files.notExists(publicSvn.resolve(bikeHighways)))
-			throw new RuntimeException(publicSvn.resolve(bikeHighways).toString() + " does not exist!");
+		if (Files.notExists(publicSvn.resolve(gtfsData1)))
+			throw new RuntimeException(publicSvn.resolve(gtfsData1).toString() + " does not exist!");
+		if (Files.notExists(publicSvn.resolve(bikeOnlyInfrastructureNetworkFile)))
+			throw new RuntimeException(publicSvn.resolve(bikeOnlyInfrastructureNetworkFile).toString() + " does not exist!");
 		if (Files.notExists(sharedSvn.resolve(longTermCountsRoot)))
 			throw new RuntimeException(publicSvn.resolve(longTermCountsRoot).toString() + " does not exist!");
 		if (Files.notExists(sharedSvn.resolve(longTermCountsIdMapping)))

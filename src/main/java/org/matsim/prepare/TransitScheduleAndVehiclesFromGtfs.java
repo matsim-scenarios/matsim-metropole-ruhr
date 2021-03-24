@@ -28,12 +28,18 @@ import org.matsim.contrib.gtfs.GtfsConverter;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
+import org.matsim.pt.transitSchedule.api.Departure;
 import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitRouteStop;
+import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.pt.utils.CreatePseudoNetwork;
 import org.matsim.pt.utils.CreateVehiclesForSchedule;
+import org.matsim.vehicles.Vehicle;
+import org.matsim.vehicles.VehicleType;
+import org.matsim.vehicles.Vehicles;
+import org.matsim.vehicles.VehiclesFactory;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -43,13 +49,13 @@ import java.util.List;
  * @author ikaddoura
  */
 
-public class CreatePtScheduleAndVehiclesFromGtfs {
+public class TransitScheduleAndVehiclesFromGtfs {
 
-    private static final Logger log = Logger.getLogger(CreatePtScheduleAndVehiclesFromGtfs.class);
+    private static final Logger log = Logger.getLogger(TransitScheduleAndVehiclesFromGtfs.class);
 
-    public Scenario run(String gtfsZipFile, CoordinateTransformation ct) {
+    public Scenario run(String gtfsZipFile, String dateAsString, CoordinateTransformation ct, String prefix) {
 
-        final LocalDate date = LocalDate.parse("2020-01-14");
+        final LocalDate date = LocalDate.parse(dateAsString);
 
         log.info("GTFS zip file: " + gtfsZipFile);
 
@@ -57,11 +63,13 @@ public class CreatePtScheduleAndVehiclesFromGtfs {
         Scenario scenario = createScenarioFromGtfsFile(gtfsZipFile, date, ct);
 
         //Create a network around the schedule
-        new CreatePseudoNetwork(scenario.getTransitSchedule(), scenario.getNetwork(), "pt_").createNetwork();
+        new CreatePseudoNetwork(scenario.getTransitSchedule(), scenario.getNetwork(), "pt_" + prefix + "_").createNetwork();
 
         //Create simple transit vehicles with a pcu of 0
-        new CreateVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getTransitVehicles()).run();
-        scenario.getTransitVehicles().getVehicleTypes().forEach((id, type) -> type.setPcuEquivalents(0));
+        createTransitVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getVehicles(), prefix);
+//        
+//        new CreateVehiclesForSchedule(scenario.getTransitSchedule(), scenario.getTransitVehicles()).run();
+//        scenario.getTransitVehicles().getVehicleTypes().forEach((id, type) -> type.setPcuEquivalents(0));
 
         // correct network
         scenario.getNetwork().getLinks().values().stream()
@@ -140,5 +148,30 @@ public class CreatePtScheduleAndVehiclesFromGtfs {
     private boolean hasImplausibleLength(Link link) {
         return !(link.getLength() > 0) || !(link.getLength() < Double.POSITIVE_INFINITY);
     }
+    
+    private static void createTransitVehiclesForSchedule(final TransitSchedule schedule, final Vehicles vehicles, final String idPrefix) {
+		VehiclesFactory vehFactotry = vehicles.getFactory();
+		VehicleType vehicleType = vehFactotry.createVehicleType(Id.create(idPrefix + "-defaultTransitVehicleType", VehicleType.class));
+		vehicleType.getCapacity().setSeats( 500 );
+		vehicleType.getCapacity().setStandingRoom( 0 );
+		vehicleType.setPcuEquivalents(0.);
+		vehicles.addVehicleType(vehicleType);
+
+		long vehId = 0;
+		for (TransitLine line : schedule.getTransitLines().values()) {
+			for (TransitRoute route : line.getRoutes().values()) {
+				for (Departure departure : route.getDepartures().values()) {
+					Vehicle veh = vehFactotry.createVehicle(Id.create("pt_" + idPrefix + Long.toString(vehId++), Vehicle.class), vehicleType);
+					vehicles.addVehicle(veh);
+					departure.setVehicleId(veh.getId());
+				}
+				
+				for (TransitRouteStop stop : route.getStops()) {
+					// make sure transit vehicles follow the schedule!
+					stop.setAwaitDepartureTime(true);
+				}
+			}
+		}
+	}
 }
 
