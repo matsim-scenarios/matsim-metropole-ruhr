@@ -161,7 +161,7 @@ public class CreateSupply {
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
 		var longTermCounts = new LongTermCountsCreator.Builder()
-				.setLoggingFolder(outputDir.resolve("").toString())
+				.setLoggingFolder(outputDir.toString() + "/")
 				.withNetwork(network)
 				.withRootDir(sharedSvn.resolve(longTermCountsRoot).toString())
 				.withIdMapping(sharedSvn.resolve(longTermCountsIdMapping).toString())
@@ -171,7 +171,7 @@ public class CreateSupply {
 				.run();
 
 		var shortTermCounts = new ShortTermCountsCreator.Builder()
-				.setLoggingFolder(outputDir.resolve("").toString())
+				.setLoggingFolder(outputDir.toString() + "/")
 				.withNetwork(network)
 				.withRootDir(sharedSvn.resolve(shortTermCountsRoot).toString())
 				.withIdMapping(sharedSvn.resolve(shortTermCountsIdMapping).toString())
