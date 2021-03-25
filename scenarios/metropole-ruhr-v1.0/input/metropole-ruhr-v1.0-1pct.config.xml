@@ -7,8 +7,8 @@
 	<module name="controler">
 		<param name="lastIteration" value="0"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v1.0-25pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-25pct/"/>
+		<param name="runId" value="metropole-ruhr-v1.0-1pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-1pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="FastAStarLandmarks"/>
@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-25pct.plans.xml.gz"/>
+			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
@@ -48,12 +48,12 @@
 	</module>
 	<module name="qsim">
 		<param name="endTime" value="36:00:00"/>
-		<param name="flowCapacityFactor" value="0.25"/>
+		<param name="flowCapacityFactor" value="0.02"/>
 		<param name="linkDynamics" value="PassingQ"/>
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.25"/>
+		<param name="storageCapacityFactor" value="0.02"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>

@@ -51,7 +51,7 @@ public class RunMetropoleRuhrScenario {
 		}
 		
 		if (args.length == 0) {
-			args = new String[] {"./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-25pct.config.xml"};
+			args = new String[] {"./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.config.xml"};
 		}
 
 		Config config = loadConfig(args);

@@ -1,5 +1,15 @@
 package org.matsim.prepare;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.log4j.Logger;
@@ -33,31 +43,22 @@ import org.matsim.pt.transitSchedule.api.TransitScheduleWriter;
 import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicles;
 
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 public class CreateSupply {
 
-	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/osm/nordrhein-westfalen-2021-02-15.osm.pbf");
-	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
+	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/nordrhein-westfalen-2021-02-15.osm.pbf");
+	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
 	
-	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/gtfs/2021_02_03_google_transit_verbundweit_inkl_spnv.zip");	
-	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/gtfs/gtfs-nwl-20210215.zip");
+	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/2021_02_03_google_transit_verbundweit_inkl_spnv.zip");	
+	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
 	private static final String gtfsDataDate = "2021-02-04";
 	private static final String gtfsData1Prefix = "vrr";
 	private static final String gtfsData2Prefix = "nwl";
 
-	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
-	private static final Path matsimInputDir = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0-25pct/input/");
-
+	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
+	
+	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/");
+	
+	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/");
 	private static final Path longTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
@@ -72,7 +73,7 @@ public class CreateSupply {
 		String rootDirectory = null;
 		
 		if (args.length <= 0) {
-			logger.info("Please set the root directory.");
+			logger.warn("Please set the root directory.");
 		} else {
 			rootDirectory = args[0];
 		}
@@ -84,8 +85,8 @@ public class CreateSupply {
 
 		// ----------------------------------------- Preparation ---------------------------------------
 
-		checkInputFilesArePresent(rootDirectory);
-		var outputDir = rootDirectory.resolve(matsimInputDir);
+		var outputDir = rootDirectory.resolve(outputDirPublic);
+		var outputDirForCounts = rootDirectory.resolve(outputDirCounts);
 		
 		OutputDirectoryLogging.catchLogEntries();
 		try {
@@ -157,7 +158,7 @@ public class CreateSupply {
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
 		var longTermCounts = new LongTermCountsCreator.Builder()
-				.setLoggingFolder(outputDir.toString() + "/")
+				.setLoggingFolder(outputDirForCounts.toString() + "/")
 				.withNetwork(network)
 				.withRootDir(rootDirectory.resolve(longTermCountsRoot).toString())
 				.withIdMapping(rootDirectory.resolve(longTermCountsIdMapping).toString())
@@ -167,7 +168,7 @@ public class CreateSupply {
 				.run();
 
 		var shortTermCounts = new ShortTermCountsCreator.Builder()
-				.setLoggingFolder(outputDir.toString() + "/")
+				.setLoggingFolder(outputDirForCounts.toString() + "/")
 				.withNetwork(network)
 				.withRootDir(rootDirectory.resolve(shortTermCountsRoot).toString())
 				.withIdMapping(rootDirectory.resolve(shortTermCountsIdMapping).toString())
@@ -176,7 +177,7 @@ public class CreateSupply {
 				.build()
 				.run();
 
-		CombinedCountsWriter.writeCounts(outputDir.resolve("metropole-ruhr-v1.0.counts.xml.gz"),
+		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v1.0.counts.xml.gz"),
 				longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
 	}
 
@@ -219,26 +220,6 @@ public class CreateSupply {
 			throw new RuntimeException(e);
 		}
 		return result;
-	}
-
-	private void checkInputFilesArePresent(Path rootDirectory) {
-
-		if (Files.notExists(rootDirectory.resolve(osmData)))
-			throw new RuntimeException(rootDirectory.resolve(osmData).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(ruhrShape)))
-			throw new RuntimeException(rootDirectory.resolve(ruhrShape).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(gtfsData1)))
-			throw new RuntimeException(rootDirectory.resolve(gtfsData1).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(bikeOnlyInfrastructureNetworkFile)))
-			throw new RuntimeException(rootDirectory.resolve(bikeOnlyInfrastructureNetworkFile).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(longTermCountsRoot)))
-			throw new RuntimeException(rootDirectory.resolve(longTermCountsRoot).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(longTermCountsIdMapping)))
-			throw new RuntimeException(rootDirectory.resolve(longTermCountsIdMapping).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(shortTermCountsRoot)))
-			throw new RuntimeException(rootDirectory.resolve(shortTermCountsRoot).toString() + " does not exist!");
-		if (Files.notExists(rootDirectory.resolve(shortTermCountsIdMapping)))
-			throw new RuntimeException(rootDirectory.resolve(shortTermCountsIdMapping).toString() + " does not exist!");
 	}
 
 }
