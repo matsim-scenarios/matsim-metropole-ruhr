@@ -95,6 +95,7 @@ java -jar [FILENAME].jar
 ### More information
 
 For more information about MATSim, see here: https://www.matsim.org/.
+For more information about traffic simulation and traffic data at the Regionalverband Ruhr, see here: https://www.rvr.ruhr/themen/mobilitaet/informationssystem-ruhrmobil/
 
 ### Acknowledgements
 
