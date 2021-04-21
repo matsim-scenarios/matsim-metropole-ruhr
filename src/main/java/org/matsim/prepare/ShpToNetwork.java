@@ -59,6 +59,7 @@ public class ShpToNetwork {
                     String fromId = feature.getAttribute("fid") + "_0";
 					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
                     coordString2nodeId.put(coordFromString, n1.getId());
+                    network.addNode(n1);
                 } else {
                 	n1 = network.getNodes().get(coordString2nodeId.get(coordFromString));
                 }
@@ -67,13 +68,12 @@ public class ShpToNetwork {
                     String toId = feature.getAttribute("fid") + "_1";
                     n2 = NetworkUtils.createNode(Id.createNodeId(toId), coordTo );
                     coordString2nodeId.put(coordToString, n2.getId());
+                    network.addNode(n2);
                 } else {
                 	n2 = network.getNodes().get(coordString2nodeId.get(coordToString));
                 }
                 
                 Link l = NetworkUtils.createLink(Id.createLinkId(""+n1.toString()+n2.toString()), n1, n2, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n2.getCoord()), 0, 0, 0);
-                network.addNode(n1);
-                network.addNode(n2);
                 network.addLink(l);
 
             } catch (NullPointerException e) {
