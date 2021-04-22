@@ -31,13 +31,14 @@ import org.matsim.core.utils.gis.ShapeFileReader;
 import org.opengis.feature.simple.SimpleFeature;
 
 public class ShpToNetwork {
+
 	private static final Logger logger = Logger.getLogger(ShpToNetwork.class);
-	
+    private static final String inputShapeNetwork = "/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
+    private static final String matSimOutputNetwork ="/Users/ihab/Documents/workspace/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.xml.gz";
+
     public static void main (String[] args) {
     	
     	Map<String,Id<Node>> coordString2nodeId = new HashMap<>();
-
-        String inputShapeNetwork = "/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
         Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(inputShapeNetwork);
         Config config = ConfigUtils.createConfig();
         Scenario scenario = ScenarioUtils.createScenario(config);
@@ -50,11 +51,10 @@ public class ShpToNetwork {
                 Coordinate[] coordinates = multiLineString.getCoordinates();
                 Coord coordFrom = new Coord(coordinates[0].getX(), coordinates[0].getY());
                 String coordFromString = coordFrom.getX() + "-" + coordFrom.getY();
-                
                 Coord coordTo = new Coord(coordinates[coordinates.length-1].getX(), coordinates[coordinates.length-1].getY());
                 String coordToString = coordTo.getX() + "-" + coordTo.getY();
-   
-                Node n1 = null;
+
+                Node n1;
                 if (coordString2nodeId.get(coordFromString) == null) {
                     String fromId = feature.getAttribute("fid") + "_0";
 					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
@@ -63,7 +63,7 @@ public class ShpToNetwork {
                 } else {
                 	n1 = network.getNodes().get(coordString2nodeId.get(coordFromString));
                 }
-                Node n2 = null;
+                Node n2;
                 if (coordString2nodeId.get(coordToString) == null) {
                     String toId = feature.getAttribute("fid") + "_1";
                     n2 = NetworkUtils.createNode(Id.createNodeId(toId), coordTo );
@@ -72,75 +72,47 @@ public class ShpToNetwork {
                 } else {
                 	n2 = network.getNodes().get(coordString2nodeId.get(coordToString));
                 }
-                
-                Link l = NetworkUtils.createLink(Id.createLinkId(""+n1.toString()+n2.toString()), n1, n2, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n2.getCoord()), 0, 0, 0);
+
+                double length = (double) feature.getAttribute("st_length_");
+                Link l = createLinkWithAttributes(network.getFactory(), n1, n2, feature.getAttribute("fid"), length);
                 network.addLink(l);
+                Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
+                network.addLink(lReversed);
 
             } catch (NullPointerException e) {
             	logger.warn("skipping feature " + feature.getID() ); // TODO
-//                throw new RuntimeException(e.toString());
             }
         }
 
-//        SearchableNetwork searchableNetwork = (SearchableNetwork) network;
         QuadTree<Node> quadTree = new QuadTree<>(0.0,0.0, 10000000, 1000000000);
         for (Node n: network.getNodes().values()) {
             quadTree.put(n.getCoord().getX(), n.getCoord().getY(), n);
         }
 
-
         for (Node n: network.getNodes().values()) {
             Collection<Node> nodes = new ArrayList<>();
             if (n.getInLinks().isEmpty()) {
-//                QuadTree.Rect bounds = new QuadTree.Rect(n.getCoord().getX()+10,n.getCoord().getY()+10,n.getCoord().getX()+100,+n.getCoord().getY()+100);
                 nodes.add(n);
                 Collection<Node> connections = new ArrayList<>();
-                //connections.addAll(quadTree.getRectangle(bounds, nodes));
                 connections.addAll(quadTree.getRing(n.getCoord().getX(),n.getCoord().getY(),0.1,10));
                 for (Node n1: connections) {
-
                     Link l = NetworkUtils.createLink(Id.createLinkId("2"+n.getId()+Math.random()), n, n1, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n.getCoord()), 0, 0, 0);
                     network.addLink(l);
+                    Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
+                    network.addLink(lReversed);
                 }
-
                 nodes.clear();
             }
         }
 
-
         NetworkWriter writer = new NetworkWriter(network);
-        writer.write("/Users/ihab/Documents/workspace/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.xml.gz");
+        writer.write(matSimOutputNetwork);
     }
 
-//    private static void connectNodeToNetwork(Network network, Node node) {
-//        // search for possible connections
-//        Collection<Node> nodes = getNearestNodes(network, node);
-//        nodes.stream()
-//                .sorted((node1, node2) -> {
-//                    Double dist1 = NetworkUtils.getEuclideanDistance(node1.getCoord(), node.getCoord());
-//                    Double dist2 = NetworkUtils.getEuclideanDistance(node2.getCoord(), node.getCoord());
-//                    return dist1.compareTo(dist2);
-//                })
-//                .limit(1)
-//                .forEach(nearNode -> {
-//                    network.addLink(createLinkWithAttributes(network.getFactory(), node, nearNode));
-//                    network.addLink(createLinkWithAttributes(network.getFactory(), nearNode, node));
-//                });
-//    }
 
-//    private static Collection<Node> getNearestNodes(Network network, Node node) {
-//
-//        final double distance = 100; // search nodes in a 100m radius
-//        Collection<Node> nodes = NetworkUtils.getNearestNodes(network, node.getCoord(), distance);
-//        // to avoid being nearest node to be the same as the node
-//
-//        return nodes;
-//    }
-
-    private static Link createLinkWithAttributes(NetworkFactory factory, Node fromNode, Node toNode) {
-
+    private static Link createLinkWithAttributes(NetworkFactory factory, Node fromNode, Node toNode, Object id, double length) {
         Link result = factory.createLink(
-                Id.createLinkId("bike-highway_" + UUID.randomUUID().toString()),
+                Id.createLinkId(id.toString()),
                 fromNode, toNode
         );
         result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
@@ -148,8 +120,12 @@ public class ShpToNetwork {
         result.setFreespeed(8.3); // 30km/h
         result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0); // bikes can reach their max velocity on bike highways
         result.setNumberOfLanes(1);
-        result.setLength(NetworkUtils.getEuclideanDistance(fromNode.getCoord(), toNode.getCoord()));
+        result.setLength(length);
         return result;
     }
 
+
+    private static Link copyWithUUIDAndReverseDirection(NetworkFactory factory, Link link) {
+        return createLinkWithAttributes(factory, link.getToNode(), link.getFromNode(), link.getId()+"_reversed", link.getLength());
+    }
 }
