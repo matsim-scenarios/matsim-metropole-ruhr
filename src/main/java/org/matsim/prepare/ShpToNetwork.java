@@ -35,6 +35,7 @@ import org.opengis.feature.simple.SimpleFeature;
 public class ShpToNetwork {
 
 	private static final Logger logger = Logger.getLogger(ShpToNetwork.class);
+	private final double maxSearchRadius = 2.;
 
     public static void main (String[] args) {
     	
@@ -46,7 +47,7 @@ public class ShpToNetwork {
 			rootDirectory = args[0];
 		}
 		
-	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
+	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz_test/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
 		Network network = new ShpToNetwork().run(Paths.get(inputShapeNetwork));
 		
 		NetworkWriter writer = new NetworkWriter(network);
@@ -56,6 +57,7 @@ public class ShpToNetwork {
     }
     	
     public Network run(Path inputShapeNetwork) {
+    	int helpLinkCounter = 0;
     	String idPrefix = "bike_" + FilenameUtils.removeExtension(inputShapeNetwork.getFileName().toString()) + "_";
 
     	Map<String,Id<Node>> coordString2nodeId = new HashMap<>();
@@ -69,35 +71,64 @@ public class ShpToNetwork {
             try {
                 MultiLineString multiLineString = (MultiLineString) geometry;
                 Coordinate[] coordinates = multiLineString.getCoordinates();
-                Coord coordFrom = new Coord(coordinates[0].getX(), coordinates[0].getY());
-                String coordFromString = coordFrom.getX() + "-" + coordFrom.getY();
-                Coord coordTo = new Coord(coordinates[coordinates.length-1].getX(), coordinates[coordinates.length-1].getY());
-                String coordToString = coordTo.getX() + "-" + coordTo.getY();
+                
+                // coord0 -----> coord1 -----> coord2 (length = 3)
 
-                Node n1;
-                if (coordString2nodeId.get(coordFromString) == null) {
-                    String fromId = idPrefix + feature.getAttribute("fid") + "_0";
-					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
-                    coordString2nodeId.put(coordFromString, n1.getId());
-                    network.addNode(n1);
-                } else {
-                	n1 = network.getNodes().get(coordString2nodeId.get(coordFromString));
-                }
-                Node n2;
-                if (coordString2nodeId.get(coordToString) == null) {
-                    String toId = idPrefix + feature.getAttribute("fid") + "_1";
-                    n2 = NetworkUtils.createNode(Id.createNodeId(toId), coordTo );
-                    coordString2nodeId.put(coordToString, n2.getId());
-                    network.addNode(n2);
-                } else {
-                	n2 = network.getNodes().get(coordString2nodeId.get(coordToString));
-                }
+                int coordCounter = 0;
+                for (Coordinate coordinate : coordinates) {
+                	
+                	Coord coordFrom = new Coord(coordinate.getX(), coordinate.getY());
+                    String coordFromString = coordFrom.getX() + "-" + coordFrom.getY();
+                    
+                    Node n1;
+                    if (coordString2nodeId.get(coordFromString) == null) {
+                        String fromId = idPrefix + feature.getAttribute("fid") + "_" + coordCounter + "_n1";
+    					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
+                        coordString2nodeId.put(coordFromString, n1.getId());
+                        
+                        // tag first multiLine node
+                        if (coordCounter == 0) {
+                            n1.getAttributes().putAttribute("multiLineStartOrEnd", true);
+                        } else {
+                        	n1.getAttributes().putAttribute("multiLineStartOrEnd", false);
+                        }
+                        
+                        network.addNode(n1);
+                     
+                    } else {
+                    	n1 = network.getNodes().get(coordString2nodeId.get(coordFromString));
+                    }
+                                            
+                    if (coordCounter < coordinates.length - 1) {
+                    	Coord coordTo = new Coord(coordinates[coordCounter + 1].getX(), coordinates[coordCounter + 1].getY());
+                        String coordToString = coordTo.getX() + "-" + coordTo.getY();
 
-                double length = (double) feature.getAttribute("st_length_");
-                Link l = createLinkWithAttributes(network.getFactory(), n1, n2, idPrefix + feature.getAttribute("fid"), length);
-                network.addLink(l);
-                Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
-                network.addLink(lReversed);
+                        Node n2;
+                        if (coordString2nodeId.get(coordToString) == null) {
+                            String toId = idPrefix + feature.getAttribute("fid") + "_" + coordCounter + "_n2";
+                            n2 = NetworkUtils.createNode(Id.createNodeId(toId), coordTo );
+                            coordString2nodeId.put(coordToString, n2.getId());
+                            network.addNode(n2);
+                            if (coordCounter == coordinates.length - 2) {
+                            	// n2 is the last coordinate of this multiLine
+                                n2.getAttributes().putAttribute("multiLineStartOrEnd", true);
+                            } else {
+                            	n2.getAttributes().putAttribute("multiLineStartOrEnd", false);
+                            }
+                        } else {
+                        	n2 = network.getNodes().get(coordString2nodeId.get(coordToString));
+                        }
+                        
+                        // now create the link to n2
+                        double length = NetworkUtils.getEuclideanDistance(n1.getCoord(), n2.getCoord());
+                        Link l = createLinkWithAttributes(network.getFactory(), n1, n2, idPrefix + feature.getAttribute("fid") + "_" + coordCounter, length);
+                        network.addLink(l);
+                        Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
+                        network.addLink(lReversed);
+                    }
+                 	
+                	coordCounter++;
+                }
 
             } catch (NullPointerException e) {
             	logger.warn("skipping feature " + feature.getID() ); // TODO
@@ -106,23 +137,28 @@ public class ShpToNetwork {
 
         QuadTree<Node> quadTree = new QuadTree<>(0.0,0.0, 10000000, 1000000000);
         for (Node n: network.getNodes().values()) {
-            quadTree.put(n.getCoord().getX(), n.getCoord().getY(), n);
+        	boolean isMultiLineStartOrEnd = (boolean) n.getAttributes().getAttribute("multiLineStartOrEnd");
+        	if (isMultiLineStartOrEnd == true) {
+                quadTree.put(n.getCoord().getX(), n.getCoord().getY(), n);
+        	}
         }
 
         for (Node n: network.getNodes().values()) {
-            Collection<Node> nodes = new ArrayList<>();
-            if (n.getInLinks().isEmpty()) {
+        	boolean isMultiLineStartOrEnd = (boolean) n.getAttributes().getAttribute("multiLineStartOrEnd");
+        	if (isMultiLineStartOrEnd == true) {
+        		Collection<Node> nodes = new ArrayList<>();
                 nodes.add(n);
                 Collection<Node> connections = new ArrayList<>();
-                connections.addAll(quadTree.getRing(n.getCoord().getX(),n.getCoord().getY(),0.1,10));
+                connections.addAll(quadTree.getRing(n.getCoord().getX(),n.getCoord().getY(),0.1,maxSearchRadius));
                 for (Node n1: connections) {
-                    Link l = NetworkUtils.createLink(Id.createLinkId("2"+n.getId()+Math.random()), n, n1, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n.getCoord()), 0, 0, 0);
+                    Link l = NetworkUtils.createLink(Id.createLinkId(idPrefix + "connector_" + helpLinkCounter), n, n1, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n.getCoord()), 0, 0, 0);
                     network.addLink(l);
+                    helpLinkCounter++;
                     Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
                     network.addLink(lReversed);
                 }
                 nodes.clear();
-            }
+        	}
         }
 
 		return network;
