@@ -1,13 +1,15 @@
 package org.matsim.prepare;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.UUID;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -33,13 +35,31 @@ import org.opengis.feature.simple.SimpleFeature;
 public class ShpToNetwork {
 
 	private static final Logger logger = Logger.getLogger(ShpToNetwork.class);
-    private static final String inputShapeNetwork = "/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
-    private static final String matSimOutputNetwork ="/Users/ihab/Documents/workspace/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.xml.gz";
 
     public static void main (String[] args) {
     	
+    	String rootDirectory = null;
+		
+		if (args.length <= 0) {
+			logger.warn("Please set the root directory.");
+		} else {
+			rootDirectory = args[0];
+		}
+		
+	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
+		Network network = new ShpToNetwork().run(Paths.get(inputShapeNetwork));
+		
+		NetworkWriter writer = new NetworkWriter(network);
+		
+	    final String matSimOutputNetwork ="public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.xml.gz";
+	    writer.write(rootDirectory + matSimOutputNetwork);
+    }
+    	
+    public Network run(Path inputShapeNetwork) {
+    	String idPrefix = "bike_" + FilenameUtils.removeExtension(inputShapeNetwork.getFileName().toString()) + "_";
+
     	Map<String,Id<Node>> coordString2nodeId = new HashMap<>();
-        Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(inputShapeNetwork);
+        Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(inputShapeNetwork.toString());
         Config config = ConfigUtils.createConfig();
         Scenario scenario = ScenarioUtils.createScenario(config);
         Network network = scenario.getNetwork();
@@ -56,7 +76,7 @@ public class ShpToNetwork {
 
                 Node n1;
                 if (coordString2nodeId.get(coordFromString) == null) {
-                    String fromId = feature.getAttribute("fid") + "_0";
+                    String fromId = idPrefix + feature.getAttribute("fid") + "_0";
 					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
                     coordString2nodeId.put(coordFromString, n1.getId());
                     network.addNode(n1);
@@ -65,7 +85,7 @@ public class ShpToNetwork {
                 }
                 Node n2;
                 if (coordString2nodeId.get(coordToString) == null) {
-                    String toId = feature.getAttribute("fid") + "_1";
+                    String toId = idPrefix + feature.getAttribute("fid") + "_1";
                     n2 = NetworkUtils.createNode(Id.createNodeId(toId), coordTo );
                     coordString2nodeId.put(coordToString, n2.getId());
                     network.addNode(n2);
@@ -74,7 +94,7 @@ public class ShpToNetwork {
                 }
 
                 double length = (double) feature.getAttribute("st_length_");
-                Link l = createLinkWithAttributes(network.getFactory(), n1, n2, feature.getAttribute("fid"), length);
+                Link l = createLinkWithAttributes(network.getFactory(), n1, n2, idPrefix + feature.getAttribute("fid"), length);
                 network.addLink(l);
                 Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
                 network.addLink(lReversed);
@@ -105,10 +125,8 @@ public class ShpToNetwork {
             }
         }
 
-        NetworkWriter writer = new NetworkWriter(network);
-        writer.write(matSimOutputNetwork);
-    }
-
+		return network;
+	}
 
     private static Link createLinkWithAttributes(NetworkFactory factory, Node fromNode, Node toNode, Object id, double length) {
         Link result = factory.createLink(
@@ -116,14 +134,13 @@ public class ShpToNetwork {
                 fromNode, toNode
         );
         result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
-        result.setCapacity(10000); // set to pretty much unlimited
-        result.setFreespeed(8.3); // 30km/h
-        result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0); // bikes can reach their max velocity on bike highways
+        result.setCapacity(800);
+        result.setFreespeed(5.55); // 20km/h
+        result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0); 
         result.setNumberOfLanes(1);
         result.setLength(length);
         return result;
     }
-
 
     private static Link copyWithUUIDAndReverseDirection(NetworkFactory factory, Link link) {
         return createLinkWithAttributes(factory, link.getToNode(), link.getFromNode(), link.getId()+"_reversed", link.getLength());

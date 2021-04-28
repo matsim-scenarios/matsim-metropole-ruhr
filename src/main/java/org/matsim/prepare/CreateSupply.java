@@ -26,9 +26,7 @@ import org.matsim.contrib.osm.networkReader.OsmBicycleReader;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
-import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
@@ -54,7 +52,11 @@ public class CreateSupply {
 	private static final String gtfsData1Prefix = "vrr";
 	private static final String gtfsData2Prefix = "nwl";
 
-	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
+    private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
+    private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
+    private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_RRWN/2021-03-05_radwegeverbindungen_VM_RRWN.shp");
+
+//	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
 	
 	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/");
 	
@@ -150,9 +152,13 @@ public class CreateSupply {
 
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
-		var bikeNetwork = NetworkUtils.createNetwork();
-		new MatsimNetworkReader(bikeNetwork).readFile(rootDirectory.resolve(bikeOnlyInfrastructureNetworkFile).toString());
-		new BikeNetworkMerger(network).mergeBikeHighways(bikeNetwork);
+//		var bikeNetwork = NetworkUtils.createNetwork();
+//		new MatsimNetworkReader(bikeNetwork).readFile(rootDirectory.resolve(bikeOnlyInfrastructureNetworkFile).toString());
+		
+		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1)));
+		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2)));
+		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3)));
+
 		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
