@@ -18,6 +18,7 @@ import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.contrib.accessibility.utils.MergeNetworks;
 import org.matsim.contrib.bicycle.BicycleUtils;
@@ -52,9 +53,9 @@ public class CreateSupply {
 	private static final String gtfsData1Prefix = "vrr";
 	private static final String gtfsData2Prefix = "nwl";
 
-    private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
-    private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
-    private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_RRWN/2021-03-05_radwegeverbindungen_VM_RRWN.shp");
+    private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
+    private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
+    private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_RRWN/2021-03-05_radwegeverbindungen_VM_RRWN.shp");
 
 //	private static final Path bikeOnlyInfrastructureNetworkFile = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/emscherweg-and-rsv.xml");
 	
@@ -155,9 +156,17 @@ public class CreateSupply {
 //		var bikeNetwork = NetworkUtils.createNetwork();
 //		new MatsimNetworkReader(bikeNetwork).readFile(rootDirectory.resolve(bikeOnlyInfrastructureNetworkFile).toString());
 		
-		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1)));
-		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2)));
-		new BikeNetworkMerger(network).mergeBikeHighways(new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3)));
+		Network network1 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1));
+		new NetworkWriter(network1).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork1.xml.gz")).toString());
+		new BikeNetworkMerger(network).mergeBikeHighways(network1);
+		
+		Network network2 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2));
+		new NetworkWriter(network2).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork2.xml.gz")).toString());
+		new BikeNetworkMerger(network).mergeBikeHighways(network2);
+		
+		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
+		new NetworkWriter(network3).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz")).toString());
+		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
 		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
 
@@ -192,7 +201,14 @@ public class CreateSupply {
 		if (level <= LinkProperties.LEVEL_SECONDARY) return true;
 
 		// within shape include all other streets bigger than tracks
-		return level <= LinkProperties.LEVEL_LIVING_STREET && geometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)));
+		if (level <= LinkProperties.LEVEL_LIVING_STREET && geometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)))) {
+			return true;
+		}
+		
+		// TODO: cycleWay
+		// TODO: track + designated bicycle
+		
+		return false;
 	}
 
 	private void onLinkCreated(Link link) {

@@ -47,7 +47,7 @@ public class ShpToNetwork {
 			rootDirectory = args[0];
 		}
 		
-	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz_test/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
+	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
 		Network network = new ShpToNetwork().run(Paths.get(inputShapeNetwork));
 		
 		NetworkWriter writer = new NetworkWriter(network);
@@ -151,7 +151,7 @@ public class ShpToNetwork {
                 Collection<Node> connections = new ArrayList<>();
                 connections.addAll(quadTree.getRing(n.getCoord().getX(),n.getCoord().getY(),0.1,maxSearchRadius));
                 for (Node n1: connections) {
-                    Link l = NetworkUtils.createLink(Id.createLinkId(idPrefix + "connector_" + helpLinkCounter), n, n1, network, NetworkUtils.getEuclideanDistance(n1.getCoord(), n.getCoord()), 0, 0, 0);
+                    Link l = createLinkWithAttributes(network.getFactory(), n, n1, idPrefix + "connector_" + helpLinkCounter, NetworkUtils.getEuclideanDistance(n1.getCoord(), n.getCoord()));
                     network.addLink(l);
                     helpLinkCounter++;
                     Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);

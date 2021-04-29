@@ -17,8 +17,9 @@ import java.util.stream.Collectors;
 
 class BikeNetworkMerger {
 
-	private static final double MAX_LINK_LENGTH = 200;
-	private static final String ID_PREFIX = "bike-highway_";
+	private static final double MAX_LINK_LENGTH = 1000.;
+	private static final double searchRadius = 10; // search nodes within this radius
+	private static final String ID_PREFIX = "bike_";
 	private static Logger logger = LoggerFactory.getLogger(BikeNetworkMerger.class);
 	private final Network originalNetwork;
 	private final List<Link> brokenUpLinksToAdd = new ArrayList<>();
@@ -28,24 +29,19 @@ class BikeNetworkMerger {
 		this.originalNetwork = originalNetwork;
 	}
 
-	Network mergeBikeHighways(Network bikeHighways) {
+	Network mergeBikeHighways(Network bikeNetwork) {
 
-		// break up links into parts < 200m
-		this.breakLinksIntoSmallerPieces(bikeHighways);
-		this.copyNodesIntoNetwork(bikeHighways);
+		// break up links into parts < max link length
+		this.breakLinksIntoSmallerPieces(bikeNetwork);
+		this.copyNodesIntoNetwork(bikeNetwork);
 
-		bikeHighways.getLinks().values().forEach(link -> {
-
-			// copy link and give it some id
-			Link newLink = copyWithUUID(originalNetwork.getFactory(), link);
-			Link newReverseLink = copyWithUUIDAndReverseDirection(originalNetwork.getFactory(), link);
-
-			connectNodeToNetwork(originalNetwork, bikeHighways.getNodes(), newLink.getFromNode());
-			connectNodeToNetwork(originalNetwork, bikeHighways.getNodes(), newLink.getToNode());
-
-			// add new links to original network
-			originalNetwork.addLink(newLink);
-			originalNetwork.addLink(newReverseLink);
+		bikeNetwork.getLinks().values().forEach(link -> {
+			// add link copy to original network
+			originalNetwork.addLink(copyLink(originalNetwork.getFactory(), link));
+		});
+		
+		bikeNetwork.getNodes().values().forEach(node -> {
+			connectNodeToNetwork(originalNetwork, bikeNetwork.getNodes(), node);
 		});
 
 		return originalNetwork;
@@ -58,7 +54,7 @@ class BikeNetworkMerger {
 		this.brokenUpLinksToAdd.forEach(bikeHighways::addLink);
 	}
 
-	private void breakUpLinkIntoSmallerPieces(Network bikeHighways, Link link) {
+	private void breakUpLinkIntoSmallerPieces(Network bikeNetwork, Link link) {
 
 		double length = NetworkUtils.getEuclideanDistance(link.getFromNode().getCoord(), link.getToNode().getCoord());
 
@@ -67,7 +63,7 @@ class BikeNetworkMerger {
 			longLinksToRemove.add(link);
 			Node fromNode = link.getFromNode();
 			Node toNode = link.getToNode();
-			double numberOfParts = Math.ceil(length / 200);
+			double numberOfParts = Math.ceil(length / (int) MAX_LINK_LENGTH);
 			double partLength = length / numberOfParts;
 			double lengthFraction = partLength / length;
 			double deltaX = toNode.getCoord().getX() - fromNode.getCoord().getX();
@@ -84,17 +80,14 @@ class BikeNetworkMerger {
 						currentNode.getCoord().getX() + deltaX * lengthFraction,
 						currentNode.getCoord().getY() + deltaY * lengthFraction
 				);
-				Node newNode = bikeHighways.getFactory().createNode(
+				Node newNode = bikeNetwork.getFactory().createNode(
 						Id.createNodeId(ID_PREFIX + UUID.randomUUID().toString()), newCoord
 				);
-				bikeHighways.addNode(newNode);
+				bikeNetwork.addNode(newNode);
 				logger.info("added node with id: " + newNode.getId().toString());
 
 				// connect current and new node with a link and add it to the network
-				Link newLink = bikeHighways.getFactory().createLink(
-						Id.createLinkId(ID_PREFIX + UUID.randomUUID().toString()),
-						currentNode, newNode
-				);
+				Link newLink = createLinkWithAttributes(bikeNetwork.getFactory(), currentNode, newNode);
 				brokenUpLinksToAdd.add(newLink);
 
 				// wrap up for next iteration
@@ -103,10 +96,8 @@ class BikeNetworkMerger {
 			}
 
 			// last link to be inserted must be connected to currentNode and toNode
-			Link lastLink = bikeHighways.getFactory().createLink(
-					Id.createLinkId(ID_PREFIX + UUID.randomUUID().toString()),
-					currentNode, toNode
-			);
+			Link lastLink = createLinkWithAttributes(bikeNetwork.getFactory(), currentNode, toNode);
+			
 			brokenUpLinksToAdd.add(lastLink);
 		}
 	}
@@ -115,24 +106,32 @@ class BikeNetworkMerger {
 		fromNetwork.getNodes().values().forEach(originalNetwork::addNode);
 	}
 
-	private Link copyWithUUID(NetworkFactory factory, Link link) {
-		return createLinkWithAttributes(factory, link.getFromNode(), link.getToNode());
-	}
-
-	private Link copyWithUUIDAndReverseDirection(NetworkFactory factory, Link link) {
-		return createLinkWithAttributes(factory, link.getToNode(), link.getFromNode());
+	private Link copyLink(NetworkFactory factory, Link link) {
+		Link result = factory.createLink(
+				Id.createLinkId(link.getId()),
+				link.getFromNode(), link.getToNode()
+		);
+		result.setAllowedModes(link.getAllowedModes());
+		result.setCapacity(link.getCapacity()); 
+		result.setFreespeed(link.getFreespeed());
+		result.setNumberOfLanes(link.getNumberOfLanes());
+		result.setLength(link.getLength());
+		for (String attribute : link.getAttributes().getAsMap().keySet()) {
+			result.getAttributes().putAttribute(attribute, link.getAttributes().getAttribute(attribute));
+		}		
+		return result;		
 	}
 
 	private Link createLinkWithAttributes(NetworkFactory factory, Node fromNode, Node toNode) {
 
 		Link result = factory.createLink(
-				Id.createLinkId("bike-highway_" + UUID.randomUUID().toString()),
+				Id.createLinkId(ID_PREFIX + UUID.randomUUID().toString()),
 				fromNode, toNode
 		);
 		result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
-		result.setCapacity(10000); // set to pretty much unlimited
-		result.setFreespeed(8.3); // 30km/h
-		result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0); // bikes can reach their max velocity on bike highways
+		result.setCapacity(800); 
+		result.setFreespeed(5.55);
+		result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
 		result.setNumberOfLanes(1);
 		result.setLength(NetworkUtils.getEuclideanDistance(fromNode.getCoord(), toNode.getCoord()));
 		return result;
@@ -157,9 +156,7 @@ class BikeNetworkMerger {
 	}
 
 	private Collection<Node> getNearestNodes(Network network, Node node) {
-
-		final double distance = 100; // search nodes in a 100m radius
-		return NetworkUtils.getNearestNodes(network, node.getCoord(), distance).stream()
+		return NetworkUtils.getNearestNodes(network, node.getCoord(), searchRadius).stream()
 				.filter(n -> !n.getId().toString().startsWith("pt")).collect(Collectors.toList());
 	}
 }
