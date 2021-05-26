@@ -14,7 +14,7 @@
 		<!-- <matsim.version>13.0</matsim.version>  -->
 
 		<!-- snapshot release -->
-		<matsim.version>13.0-SNAPSHOT</matsim.version>
+		<matsim.version>14.0-SNAPSHOT</matsim.version>
 
 		<!-- weekly release -->
 		<!-- <matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>  -->
@@ -34,10 +34,10 @@
 			<!-- <url>http://download.osgeo.org/webdav/geotools</url> -->
 			<url>https://repo.osgeo.org/repository/release/</url>
 		</repository>
+		<!-- Repository for MATSim releases (MATSim is not on Maven central) -->
 		<repository>
-			<!-- Repository for MATSim releases (MATSim is not on Maven central) -->
 			<id>matsim</id>
-			<url>https://dl.bintray.com/matsim/matsim</url>
+			<url>https://repo.matsim.org/repository/matsim</url>
 		</repository>
  		<repository>
 			<!-- For MATSim snapshots: -->
