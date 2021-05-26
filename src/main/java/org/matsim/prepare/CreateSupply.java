@@ -24,6 +24,7 @@ import org.matsim.contrib.accessibility.utils.MergeNetworks;
 import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.osm.networkReader.LinkProperties;
 import org.matsim.contrib.osm.networkReader.OsmBicycleReader;
+import org.matsim.contrib.osm.networkReader.OsmTags;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.OutputDirectoryLogging;
@@ -107,9 +108,10 @@ public class CreateSupply {
 				.collect(Collectors.toSet());
 
 		// ----------------------------------------- Create Network ----------------------------------------------------
-
+		
 		var network = new OsmBicycleReader.Builder()
 				.setCoordinateTransformation(transformation)
+				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level for service roads to 10 to exclude them
 				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, geometries))
 				.setPreserveNodeWithId(nodeIdsToKeep::contains)
 				.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
@@ -205,8 +207,10 @@ public class CreateSupply {
 			return true;
 		}
 		
-		// TODO: cycleWay
-		// TODO: track + designated bicycle
+		// within shape include all cycleways and all tracks (the designated bicycle tag is ignored)
+		if (level <= 9 && geometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)))) {
+			return true;
+		}
 		
 		return false;
 	}
