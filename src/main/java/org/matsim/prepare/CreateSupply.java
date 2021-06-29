@@ -20,6 +20,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.contrib.accessibility.utils.MergeNetworks;
 import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.osm.networkReader.LinkProperties;
@@ -32,6 +33,7 @@ import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
+import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.core.utils.gis.ShapeFileReader;
 import org.matsim.prepare.counts.CombinedCountsWriter;
@@ -47,6 +49,7 @@ public class CreateSupply {
 
 	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/nordrhein-westfalen-2021-02-15.osm.pbf");
 	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
+	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
 	
 	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/2021_02_03_google_transit_verbundweit_inkl_spnv.zip");	
 	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
@@ -74,10 +77,10 @@ public class CreateSupply {
 
 	public static void main(String[] args) {
 
-		String rootDirectory = null;
+		String rootDirectory;
 		
 		if (args.length <= 0) {
-			logger.warn("Please set the root directory.");
+			throw new IllegalArgumentException("Please set root directory");
 		} else {
 			rootDirectory = args[0];
 		}
@@ -170,12 +173,22 @@ public class CreateSupply {
 		new NetworkWriter(network3).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz")).toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
+		//-------------------------- add height information to network -------------------------------------------------
+
+		//TODO get correct transformation
+		var elevationReader = new ElevationReader(List.of(rootDirectory.resolve(heightData).toString()), new IdentityTransformation());
+
+		for (Node node : network.getNodes().values()) {
+			var elevation = elevationReader.getElevationAt(node.getCoord());
+			node.setCoord(new Coord(node.getCoord().getX(), node.getCoord().getY(), elevation));
+		}
+
 		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
 		var longTermCounts = new LongTermCountsCreator.Builder()
-				.setLoggingFolder(outputDirForCounts.toString() + "/")
+				.setLoggingFolder(outputDirForCounts + "/")
 				.withNetwork(network)
 				.withRootDir(rootDirectory.resolve(longTermCountsRoot).toString())
 				.withIdMapping(rootDirectory.resolve(longTermCountsIdMapping).toString())
@@ -185,7 +198,7 @@ public class CreateSupply {
 				.run();
 
 		var shortTermCounts = new ShortTermCountsCreator.Builder()
-				.setLoggingFolder(outputDirForCounts.toString() + "/")
+				.setLoggingFolder(outputDirForCounts + "/")
 				.withNetwork(network)
 				.withRootDir(rootDirectory.resolve(shortTermCountsRoot).toString())
 				.withIdMapping(rootDirectory.resolve(shortTermCountsIdMapping).toString())
@@ -208,11 +221,7 @@ public class CreateSupply {
 		}
 		
 		// within shape include all cycleways and all tracks (the designated bicycle tag is ignored)
-		if (level <= 9 && geometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)))) {
-			return true;
-		}
-		
-		return false;
+		return level <= 9 && geometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)));
 	}
 
 	private void onLinkCreated(Link link) {
