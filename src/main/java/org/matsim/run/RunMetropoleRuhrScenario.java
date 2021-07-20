@@ -22,15 +22,19 @@ package org.matsim.run;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.Sets;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
 import org.matsim.core.controler.AbstractModule;
@@ -81,23 +85,22 @@ public class RunMetropoleRuhrScenario {
 
 		for (long ii = 600; ii <= 97200; ii += 600) {
 
-			for (String act : List.of("home",
-					"restaurant",
-					"other",
-					"visit",
-					"errands",
-					"educ_higher",
-					"educ_secondary")) {
-				config.planCalcScore().addActivityParams(new ActivityParams(act + "_" + ii + ".0").setTypicalDuration(ii));
+			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
+					"educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
+				config.planCalcScore()
+						.addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams(act + "_" + ii + ".0").setTypicalDuration(ii));
 			}
 
-			config.planCalcScore().addActivityParams(new ActivityParams("work_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("work_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("business_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("business_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("leisure_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("leisure_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(9. * 3600.).setClosingTime(27. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("shopping_" + ii + ".0").setTypicalDuration(ii)
+
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_daily_" + ii + ".0").setTypicalDuration(ii)
+					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_other_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
 		}
 
@@ -110,6 +113,16 @@ public class RunMetropoleRuhrScenario {
 	}
 
 	public static Controler loadControler(Scenario scenario) {
+
+		// TODO: bike network is not well connected to road network
+		for (Link link : scenario.getNetwork().getLinks().values()) {
+
+			Set<String> modes = Sets.newHashSet(link.getAllowedModes());
+			modes.add("bike");
+
+			link.setAllowedModes(modes);
+		}
+
 
 		Controler controler = new Controler(scenario);
 		if (!controler.getConfig().transit().isUsingTransitInMobsim())
