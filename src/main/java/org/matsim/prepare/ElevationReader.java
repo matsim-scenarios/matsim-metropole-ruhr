@@ -41,7 +41,8 @@ public class ElevationReader {
             }
         }
 
-        throw new RuntimeException("Could not find height for coord: " + coord);
+        // if there is no height data we default to 0 height.
+        return 0;
     }
 
     private static class ElevationMap {
