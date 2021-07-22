@@ -19,60 +19,48 @@
 
 package org.matsim.run;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
+import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
+import com.google.common.collect.Sets;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.application.MATSimApplication;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.scenario.ScenarioUtils;
+import picocli.CommandLine;
 
-import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
+import java.util.List;
+import java.util.Set;
 
-public class RunMetropoleRuhrScenario {
+@CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
+public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
-	public static void main(String[] args) {
-		
-		for (String arg : args) {
-			log.info( arg );
-		}
-		
-		if (args.length == 0) {
-			args = new String[] {"./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.config.xml"};
-		}
-
-		Config config = loadConfig(args);
-		Scenario scenario = loadScenario(config);
-		Controler controler = loadControler(scenario);
-		controler.run();
-		
-		log.info("Simulation completed.");
+	public RunMetropoleRuhrScenario() {
+		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.config.xml");
 	}
 
-	public static Config loadConfig(String[] args, ConfigGroup... modules) {
+	public static void main(String[] args) {
+		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
+	}
+
+	@Override
+	protected Config prepareConfig(Config config) {
 
 		OutputDirectoryLogging.catchLogEntries();
 
-		BicycleConfigGroup bikeConfigGroup = new BicycleConfigGroup();
+		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-		List<ConfigGroup> moduleList = new ArrayList<>(Arrays.asList(modules));
-		moduleList.add(bikeConfigGroup);
-
-		Config config = ConfigUtils.loadConfig(args, moduleList.toArray(ConfigGroup[]::new));
 
 		config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
@@ -81,44 +69,53 @@ public class RunMetropoleRuhrScenario {
 
 		for (long ii = 600; ii <= 97200; ii += 600) {
 
-			for (String act : List.of("home",
-					"restaurant",
-					"other",
-					"visit",
-					"errands",
-					"educ_higher",
-					"educ_secondary")) {
-				config.planCalcScore().addActivityParams(new ActivityParams(act + "_" + ii + ".0").setTypicalDuration(ii));
+			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
+					"educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
+				config.planCalcScore()
+						.addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams(act + "_" + ii + ".0").setTypicalDuration(ii));
 			}
 
-			config.planCalcScore().addActivityParams(new ActivityParams("work_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("work_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("business_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("business_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("leisure_" + ii + ".0").setTypicalDuration(ii)
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("leisure_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(9. * 3600.).setClosingTime(27. * 3600.));
-			config.planCalcScore().addActivityParams(new ActivityParams("shopping_" + ii + ".0").setTypicalDuration(ii)
+
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_daily_" + ii + ".0").setTypicalDuration(ii)
+					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
+			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_other_" + ii + ".0").setTypicalDuration(ii)
 					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
 		}
 
 		return config;
 	}
 
-	public static Scenario loadScenario(Config config) {
+	@Override
+	protected void prepareScenario(Scenario scenario) {
 
-		return ScenarioUtils.loadScenario(config);
+
+		// TODO: bike network is not well connected to road network
+		for (Link link : scenario.getNetwork().getLinks().values()) {
+
+			Set<String> modes = Sets.newHashSet(link.getAllowedModes());
+			modes.add("bike");
+
+			link.setAllowedModes(modes);
+		}
+
 	}
 
-	public static Controler loadControler(Scenario scenario) {
+	@Override
+	protected void prepareControler(Controler controler) {
 
-		Controler controler = new Controler(scenario);
 		if (!controler.getConfig().transit().isUsingTransitInMobsim())
 			throw new RuntimeException("Public transit will be teleported and not simulated in the mobsim! "
 					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
 					+ "Should only be used for testing or car-focused studies with fixed modal split.");
 
 		controler.addOverridingModule(new SwissRailRaptorModule());
-		
+
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
@@ -129,6 +126,5 @@ public class RunMetropoleRuhrScenario {
 		});
 
 		Bicycles.addAsOverridingModule(controler);
-		return controler;
 	}
 }

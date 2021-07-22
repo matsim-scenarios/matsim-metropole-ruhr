@@ -2,6 +2,9 @@ package org.matsim.prepare;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.application.analysis.CheckPopulation;
+import org.matsim.application.prepare.population.DownSamplePopulation;
+import org.matsim.application.prepare.population.GenerateShortDistanceTrips;
 import org.matsim.application.prepare.population.RemoveRoutesFromPlans;
 import org.matsim.application.prepare.population.TrajectoryToPlans;
 
@@ -24,6 +27,8 @@ public class CreateDemand {
 	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
 	private static final Path inputFolder = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/");
 
+	private static final String OUTPUT = "shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-25pct.plans.xml.gz";
+
 	public static void main(String[] args) {
 
 		Path rootFolder;
@@ -35,23 +40,41 @@ public class CreateDemand {
 		} else {
 			throw new IllegalArgumentException("Only one argument is allowed.");
 		}
-		
+
 		String[] argsForRemoveRoutesFromPlans = new String[] {
 				"--plans=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz"),
 				"--keep-selected=true",
 				"--output=" + rootFolder.resolve("/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
 				};
-        new CommandLine(new RemoveRoutesFromPlans()).execute(argsForRemoveRoutesFromPlans);
+        new RemoveRoutesFromPlans().execute(argsForRemoveRoutesFromPlans);
 
-		String[] argsForTrajectoryToPlans = new String[] {
-				"--name=metropole-ruhr-v1.0",
+		new TrajectoryToPlans().execute(
+				"--name=prepare",
 				"--sample-size=0.25",
-				"--samples=0.01",
 				"--population=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
 				"--attributes=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz"),
 				"--output=" + rootFolder.resolve("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/")
-				};
-        new CommandLine(new TrajectoryToPlans()).execute(argsForTrajectoryToPlans);
+		);
+
+		new GenerateShortDistanceTrips().execute(
+				"--population="  + rootFolder.resolve("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz"),
+				"--input-crs=EPSG:25832",
+				"--shp=" + rootFolder.resolve("/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp"),
+				"--shp-crs=EPSG:25832",
+				"--num-trips=TODO",
+				"--output=" + rootFolder.resolve(OUTPUT)
+		);
+
+		new DownSamplePopulation().execute(rootFolder.resolve(OUTPUT).toString(),
+				"--sample-size==0.25",
+				"--samples", "0.1", "0.01"
+		);
+
+		new CheckPopulation().execute(rootFolder.resolve(OUTPUT).toString(),
+				"--input-crs=EPSG:25832",
+				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
+				"--shp-crs=EPSG:25832"
+		);
 
 
         //------------------- add elevation to population -------------------------------------------

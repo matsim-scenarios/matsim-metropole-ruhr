@@ -11,7 +11,7 @@
 		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-25pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
-		<param name="routingAlgorithmType" value="FastAStarLandmarks"/>
+		<param name="routingAlgorithmType" value="SpeedyALT"/>
 	</module>
 	<module name="global">
 		<param name="coordinateSystem" value="EPSG:25832"/>
@@ -70,13 +70,13 @@
 			<param name="disableAfterIteration" value="400"/>
 		</parameterset>
 		<parameterset type="strategysettings" >
-			<param name="strategyName" value="SubtourModeChoice" />
+			<param name="strategyName" value="ChangeSingleTripMode" />
 			<param name="weight" value="0.05" />
 			<param name="disableAfterIteration" value="400" />
 		</parameterset>
 		<!-- increase the amount of mode choice in the beginning -->
 		<parameterset type="strategysettings" >
-			<param name="strategyName" value="SubtourModeChoice" />
+			<param name="strategyName" value="ChangeSingleTripMode" />
 			<param name="weight" value="0.05" />
 			<param name="disableAfterIteration" value="200" />
 		</parameterset>
@@ -88,6 +88,9 @@
 	</module>
 	<module name="subtourModeChoice" >
 		<param name="chainBasedModes" value="car,bike" />
+		<param name="modes" value="car,pt,bike,walk" />
+	</module>
+	<module name="changeMode">
 		<param name="modes" value="car,pt,bike,walk" />
 	</module>
 	<module name="transitRouter" >
