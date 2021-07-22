@@ -37,9 +37,9 @@ public class CreateDemand {
 		}
 		
 		String[] argsForRemoveRoutesFromPlans = new String[] {
-				"--plans=/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz",
+				"--plans=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz"),
 				"--keep-selected=true",
-				"--output=/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
+				"--output=" + rootFolder.resolve("/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
 				};
         new CommandLine(new RemoveRoutesFromPlans()).execute(argsForRemoveRoutesFromPlans);
 
@@ -47,17 +47,17 @@ public class CreateDemand {
 				"--name=metropole-ruhr-v1.0",
 				"--sample-size=0.25",
 				"--samples=0.01",
-				"--population=/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
-				"--attributes=/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz",
-				"--output=/Users/ihab/Documents/workspace/shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/"
+				"--population=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
+				"--attributes=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz"),
+				"--output=" + rootFolder.resolve("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/")
 				};
         new CommandLine(new TrajectoryToPlans()).execute(argsForTrajectoryToPlans);
 
 
         //------------------- add elevation to population -------------------------------------------
 
-        //TODO add correct transformation
-        var elevationReader = new ElevationReader(List.of(heightData.toString()), new IdentityTransformation());
+        // Everything is supposed to be in UTM-32 at this point
+        var elevationReader = new ElevationReader(List.of(rootFolder.resolve(heightData).toString()), new IdentityTransformation());
         var scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
         var out = new StreamingPopulationWriter();
 		var in = new StreamingPopulationReader(scenario);
@@ -73,7 +73,7 @@ public class CreateDemand {
 		// open the output population
 		out.startStreaming(rootFolder.resolve(inputFolder).resolve("metropole-ruhr-v1.0-population-with-z.xml.gz").toString());
 		// read the population, add elevation to each person and write each person to output population
-		in.readFile(rootFolder.resolve(inputFolder).resolve("metropole-ruhr-v1.0-population.xml.gz").toString());
+		in.readFile(rootFolder.resolve(inputFolder).resolve("metropole-ruhr-v1.0-25pct.plans.xml.gz").toString());
 		// finish the output population after the reader is finished
 		out.closeStreaming();
 	}
