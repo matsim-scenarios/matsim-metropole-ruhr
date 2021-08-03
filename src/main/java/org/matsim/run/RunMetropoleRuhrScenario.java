@@ -26,6 +26,7 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.MATSimApplication;
+import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
@@ -35,6 +36,7 @@ import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.router.AnalysisMainModeIdentifier;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -58,8 +60,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		OutputDirectoryLogging.catchLogEntries();
 
-		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
-		bikeConfigGroup.setBicycleMode(TransportMode.bike);
+		//BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
+		//bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
 
 		config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
@@ -122,9 +124,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			public void install() {
 				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
 				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
+
+				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
+
+				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
 			}
 		});
 
-		Bicycles.addAsOverridingModule(controler);
+		//Bicycles.addAsOverridingModule(controler);
 	}
 }

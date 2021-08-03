@@ -1,22 +1,14 @@
 package org.matsim.prepare;
 
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.analysis.CheckPopulation;
-import org.matsim.application.prepare.population.DownSamplePopulation;
-import org.matsim.application.prepare.population.GenerateShortDistanceTrips;
-import org.matsim.application.prepare.population.RemoveRoutesFromPlans;
-import org.matsim.application.prepare.population.TrajectoryToPlans;
-
+import org.matsim.application.prepare.population.*;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.population.algorithms.PersonAlgorithm;
-import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.population.io.StreamingPopulationReader;
 import org.matsim.core.population.io.StreamingPopulationWriter;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
-import picocli.CommandLine;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,65 +16,63 @@ import java.util.List;
 
 public class CreateDemand {
 
-	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
-	private static final Path inputFolder = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/");
+	private static final Path rootFolder = Paths.get("../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
+	private static final Path heightData = rootFolder.resolve("./original-data/2021-05-29_RVR_Grid_10m.tif");
 
-	private static final String OUTPUT = "shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-25pct.plans.xml.gz";
+	private static final Path outputFolder = Paths.get("../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input");
+	private static final String OUTPUT = outputFolder.resolve("metropole-ruhr-v1.1-25pct.plans.xml.gz").toString();
 
 	public static void main(String[] args) {
 
-		Path rootFolder;
-
-		if (args.length == 0) {
-			rootFolder = Paths.get("/Users/ihab/Documents/workspace/");
-		} else if (args.length == 1) {
-			rootFolder = Paths.get(args[0]);
-		} else {
-			throw new IllegalArgumentException("Only one argument is allowed.");
-		}
-
-		String[] argsForRemoveRoutesFromPlans = new String[] {
-				"--plans=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz"),
+		String[] argsForRemoveRoutesFromPlans = new String[]{
+				"--plans=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz",
 				"--keep-selected=true",
-				"--output=" + rootFolder.resolve("/Users/ihab/Documents/workspace/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
-				};
-        new RemoveRoutesFromPlans().execute(argsForRemoveRoutesFromPlans);
+				"--output=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
+		};
+
+		new RemoveRoutesFromPlans().execute(argsForRemoveRoutesFromPlans);
+
+		new CloseTrajectories().execute(
+				"../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
+				"--output=" + OUTPUT,
+				"--min-duration=0",
+				"--act-duration=" + 30 * 60
+		);
 
 		new TrajectoryToPlans().execute(
 				"--name=prepare",
 				"--sample-size=0.25",
-				"--population=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz"),
-				"--attributes=" + rootFolder.resolve("shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz"),
-				"--output=" + rootFolder.resolve("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/")
+				"--population=" + OUTPUT,
+				"--attributes=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz",
+				"--output=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/"
 		);
 
 		new GenerateShortDistanceTrips().execute(
-				"--population="  + rootFolder.resolve("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz"),
+				"--population=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
 				"--input-crs=EPSG:25832",
-				"--shp=" + rootFolder.resolve("/shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp"),
+				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832",
-				"--num-trips=TODO",
-				"--output=" + rootFolder.resolve(OUTPUT)
+				"--num-trips=65581",
+				"--output=" + OUTPUT
 		);
 
-		new DownSamplePopulation().execute(rootFolder.resolve(OUTPUT).toString(),
-				"--sample-size==0.25",
+		new DownSamplePopulation().execute(OUTPUT,
+				"--sample-size=0.25",
 				"--samples", "0.1", "0.01"
 		);
 
-		new CheckPopulation().execute(rootFolder.resolve(OUTPUT).toString(),
+		new CheckPopulation().execute(OUTPUT,
 				"--input-crs=EPSG:25832",
 				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832"
 		);
 
+		//------------------- add elevation to population -------------------------------------------
 
-        //------------------- add elevation to population -------------------------------------------
-
-        // Everything is supposed to be in UTM-32 at this point
-        var elevationReader = new ElevationReader(List.of(rootFolder.resolve(heightData).toString()), new IdentityTransformation());
-        var scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
-        var out = new StreamingPopulationWriter();
+		// Everything is supposed to be in UTM-32 at this point
+		var elevationReader = new ElevationReader(List.of(heightData.toString()), new IdentityTransformation());
+		var scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
+		var out = new StreamingPopulationWriter();
 		var in = new StreamingPopulationReader(scenario);
 		in.addAlgorithm(person -> person.getPlans().stream()
 				.flatMap(plan -> TripStructureUtils.getActivities(plan, TripStructureUtils.StageActivityHandling.ExcludeStageActivities).stream())
@@ -94,10 +84,13 @@ public class CreateDemand {
 		in.addAlgorithm(out);
 
 		// open the output population
-		out.startStreaming(rootFolder.resolve(inputFolder).resolve("metropole-ruhr-v1.0-population-with-z.xml.gz").toString());
+		out.startStreaming(outputFolder.resolve("metropole-ruhr-v1.1-population-with-z.xml.gz").toString());
 		// read the population, add elevation to each person and write each person to output population
-		in.readFile(rootFolder.resolve(inputFolder).resolve("metropole-ruhr-v1.0-25pct.plans.xml.gz").toString());
+		in.readFile(OUTPUT);
 		// finish the output population after the reader is finished
 		out.closeStreaming();
+
+
 	}
+
 }
