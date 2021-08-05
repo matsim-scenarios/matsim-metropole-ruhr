@@ -132,11 +132,6 @@ public class CreateSupply {
 				.build()
 				.read(rootDirectory.resolve(osmData));
 
-		var cleaner = new MultimodalNetworkCleaner(network);
-		cleaner.run(Set.of(TransportMode.car));
-		cleaner.run(Set.of(TransportMode.ride));
-		cleaner.run(Set.of(TransportMode.bike));
-
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
 		var gtfsScenario1 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData1).toString(), gtfsDataDate1, transformation, gtfsData1Prefix);
@@ -186,6 +181,11 @@ public class CreateSupply {
 		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
 		new NetworkWriter(network3).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz")).toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
+
+		var cleaner = new MultimodalNetworkCleaner(network);
+		cleaner.run(Set.of(TransportMode.car));
+		cleaner.run(Set.of(TransportMode.ride));
+		cleaner.run(Set.of(TransportMode.bike));
 
 		//-------------------------- add height information to network -------------------------------------------------
 

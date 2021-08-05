@@ -11,7 +11,7 @@
 		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-1pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
-		<param name="routingAlgorithmType" value="FastAStarLandmarks"/>
+		<param name="routingAlgorithmType" value="SpeedyALT"/>
 	</module>
 	<module name="global">
 		<param name="coordinateSystem" value="EPSG:25832"/>
@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.plans.xml.gz"/>
+			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-1pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
