@@ -127,6 +127,7 @@ public class CreateSupply {
 		var network = new OsmBicycleReader.Builder()
 				.setCoordinateTransformation(transformation)
 				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level for service roads to 10 to exclude them
+				.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // to improve the performance: set hierarchy level for tracks to 10 to exclude them
 				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
 				.setPreserveNodeWithId(nodeIdsToKeep::contains)
 				.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
