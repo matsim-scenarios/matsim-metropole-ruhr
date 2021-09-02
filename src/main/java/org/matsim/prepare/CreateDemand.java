@@ -58,7 +58,7 @@ public class CreateDemand {
 
 		new DownSamplePopulation().execute(OUTPUT,
 				"--sample-size=0.25",
-				"--samples", "0.1", "0.01"
+				"--samples", "0.1", "0.01","0.001"
 		);
 
 		new CheckPopulation().execute(OUTPUT,
