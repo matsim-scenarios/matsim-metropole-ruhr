@@ -67,11 +67,16 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		//BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		//bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-
 		config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
+
+		config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
+		config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
+
+		config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
+		config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
 
 		for (long ii = 600; ii <= 97200; ii += 600) {
 

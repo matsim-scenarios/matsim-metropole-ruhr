@@ -53,18 +53,7 @@ public class CreateDemand {
 				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832",
 				"--num-trips=65581",
-				"--output=" + OUTPUT
-		);
-
-		new DownSamplePopulation().execute(OUTPUT,
-				"--sample-size=0.25",
-				"--samples", "0.1", "0.01","0.001"
-		);
-
-		new CheckPopulation().execute(OUTPUT,
-				"--input-crs=EPSG:25832",
-				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
-				"--shp-crs=EPSG:25832"
+				"--output=" + OUTPUT.replace("25pct", "tmp")
 		);
 
 		//------------------- add elevation to population -------------------------------------------
@@ -84,11 +73,24 @@ public class CreateDemand {
 		in.addAlgorithm(out);
 
 		// open the output population
-		out.startStreaming(outputFolder.resolve("metropole-ruhr-v1.1-population-with-z.xml.gz").toString());
+		out.startStreaming(OUTPUT);
 		// read the population, add elevation to each person and write each person to output population
-		in.readFile(OUTPUT);
+		in.readFile(OUTPUT.replace("25pct", "tmp"));
 		// finish the output population after the reader is finished
 		out.closeStreaming();
+
+		//----------------------
+
+		new DownSamplePopulation().execute(OUTPUT,
+				"--sample-size=0.25",
+				"--samples", "0.1", "0.01","0.001"
+		);
+
+		new CheckPopulation().execute(OUTPUT,
+				"--input-crs=EPSG:25832",
+				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
+				"--shp-crs=EPSG:25832"
+		);
 
 
 	}
