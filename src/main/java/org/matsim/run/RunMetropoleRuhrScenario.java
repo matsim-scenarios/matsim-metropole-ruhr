@@ -75,8 +75,10 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
 		config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 
-		config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
-		config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+		if (sample.isSet()) {
+			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
+			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+		}
 
 		for (long ii = 600; ii <= 97200; ii += 600) {
 
