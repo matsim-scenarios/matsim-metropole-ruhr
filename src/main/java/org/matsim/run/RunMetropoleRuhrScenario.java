@@ -27,6 +27,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
+import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
@@ -46,6 +47,9 @@ import java.util.Set;
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
+
+	@CommandLine.Mixin
+	private final SampleOptions sample = new SampleOptions(25, 10, 1);
 
 	public RunMetropoleRuhrScenario() {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.config.xml");
@@ -96,15 +100,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@Override
 	protected void prepareScenario(Scenario scenario) {
 
-
-		// TODO: bike network is not well connected to road network
-		for (Link link : scenario.getNetwork().getLinks().values()) {
-
-			Set<String> modes = Sets.newHashSet(link.getAllowedModes());
-			modes.add("bike");
-
-			link.setAllowedModes(modes);
-		}
+		// Nothing to do yet
 
 	}
 
