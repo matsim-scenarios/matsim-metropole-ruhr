@@ -46,6 +46,10 @@ import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicles;
 
 public class CreateSupply {
+	
+	public enum NetworkResolution {Low, Medium, High}
+	
+	private static final NetworkResolution networkResolution = NetworkResolution.High;
 
 	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/nordrhein-westfalen-2021-02-15.osm.pbf");
 	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
@@ -124,15 +128,31 @@ public class CreateSupply {
 
 		// ----------------------------------------- Create Network ----------------------------------------------------
 		
-		var network = new OsmBicycleReader.Builder()
+		var networkBuilder = new OsmBicycleReader.Builder()
 				.setCoordinateTransformation(transformation)
-				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level for service roads to 10 to exclude them
-				.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // to improve the performance: set hierarchy level for tracks to 10 to exclude them
 				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
 				.setPreserveNodeWithId(nodeIdsToKeep::contains)
 				.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
+				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level for service roads to 10 to exclude them
+		
+		if (networkResolution == NetworkResolution.Low) {
+			// exclude tracks and cycleways
+			networkBuilder
+			.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level to 10 to exclude them
+			.addOverridingLinkProperties(OsmTags.CYCLEWAY, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
+		} else if (networkResolution == NetworkResolution.Medium) {
+			// exclude tracks
+			networkBuilder.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
+		} else if (networkResolution == NetworkResolution.High) {
+			// nothing to exclude
+		} else {
+			throw new RuntimeException("Unknown network resolution. Aborting...");
+		}
+		
+		var network = networkBuilder
 				.build()
 				.read(rootDirectory.resolve(osmData));
+	
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
@@ -168,7 +188,7 @@ public class CreateSupply {
 		MergeNetworks.merge(network, "", gtfsScenario2.getNetwork());
 		MergeNetworks.merge(network, "", gtfsScenario3.getNetwork());
 
-		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyCarPt.xml.gz")).toString());
+		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-only-OSM-and-PT_resolution" + networkResolution + ".xml.gz")).toString());
 
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
@@ -199,7 +219,7 @@ public class CreateSupply {
 			node.setCoord(new Coord(node.getCoord().getX(), node.getCoord().getY(), elevation));
 		}
 
-		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network.xml.gz")).toString());
+		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network_resolution" + networkResolution + ".xml.gz")).toString());
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
