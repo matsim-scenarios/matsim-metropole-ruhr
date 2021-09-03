@@ -30,7 +30,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Package
-        run:  mvn -B package --file pom.xml -Dmatsim.preferLocalDtds=true -Dmaven.javadoc.skip -e
+        run:  mvn -B package --file pom.xml -DskipTests -Dmatsim.preferLocalDtds=true -Dmaven.javadoc.skip -e
 
     env:
       MAVEN_OPTS: -Xmx6G
