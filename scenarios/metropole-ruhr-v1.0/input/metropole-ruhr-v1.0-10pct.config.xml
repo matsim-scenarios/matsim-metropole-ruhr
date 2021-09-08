@@ -5,10 +5,10 @@
 		<param name="mutationRange" value="7200.0" />
 	</module>
 	<module name="controler">
-		<param name="lastIteration" value="0"/>
+		<param name="lastIteration" value="500"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
 		<param name="runId" value="metropole-ruhr-v1.0-1pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-1pct/"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-10pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -20,7 +20,7 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network.xml.gz"/>
+			   value="../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
@@ -48,37 +48,35 @@
 	</module>
 	<module name="qsim">
 		<param name="endTime" value="36:00:00"/>
-		<param name="flowCapacityFactor" value="0.02"/>
 		<param name="linkDynamics" value="PassingQ"/>
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.02"/>
+		<param name="storageCapacityFactor" value="0.1" />
+		<param name="flowCapacityFactor" value="0.1"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>
 		<param name="insertingWaitingVehiclesBeforeDrivingVehicles" value="true"/>
 	</module>
 	<module name="strategy">
+		<param name="fractionOfIterationsToDisableInnovation" value="0.9"/>
+
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="ChangeExpBeta"/>
 			<param name="weight" value="0.85"/>
 		</parameterset>
 		<parameterset type="strategysettings">
+			<param name="disableAfterIteration" value="420"/>
 			<param name="strategyName" value="ReRoute"/>
-			<param name="weight" value="0.05"/>
-			<param name="disableAfterIteration" value="400"/>
+			<param name="subpopulation" value="person"/>
+			<param name="weight" value="0.10"/>
 		</parameterset>
-		<parameterset type="strategysettings" >
-			<param name="strategyName" value="SubtourModeChoice" />
-			<param name="weight" value="0.05" />
-			<param name="disableAfterIteration" value="400" />
-		</parameterset>
-		<!-- increase the amount of mode choice in the beginning -->
-		<parameterset type="strategysettings" >
-			<param name="strategyName" value="SubtourModeChoice" />
-			<param name="weight" value="0.05" />
-			<param name="disableAfterIteration" value="200" />
+		<!-- Fade out subtour mode choice strategy between 0.80 - 0.9  -->
+		<parameterset type="strategysettings">
+			<param name="strategyName" value="ChangeSingleTripMode"/>
+			<param name="subpopulation" value="person"/>
+			<param name="weight" value="0.10"/>
 		</parameterset>
 		<parameterset type="strategysettings" >
 			<param name="strategyName" value="TimeAllocationMutator" />

@@ -20,11 +20,10 @@
 package org.matsim.run;
 
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
-import com.google.common.collect.Sets;
 import org.apache.log4j.Logger;
+import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.SampleOptions;
@@ -40,8 +39,8 @@ import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import picocli.CommandLine;
 
+import javax.inject.Singleton;
 import java.util.List;
-import java.util.Set;
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
 public class RunMetropoleRuhrScenario extends MATSimApplication {
@@ -49,10 +48,10 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
 	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(25, 10, 1);
+	private final SampleOptions sample = new SampleOptions(10, 25, 1);
 
 	public RunMetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-1pct.config.xml");
+		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml");
 	}
 
 	public static void main(String[] args) {
@@ -64,14 +63,15 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		OutputDirectoryLogging.catchLogEntries();
 
-		//BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
-		//bikeConfigGroup.setBicycleMode(TransportMode.bike);
+		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
+		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
 		config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
 
+		config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
 		config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
 		config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 
@@ -131,9 +131,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
 
 				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
+
+				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
+				addControlerListenerBinding().to(TuneModeChoice.class).in(Singleton.class);
+
 			}
 		});
 
-		//Bicycles.addAsOverridingModule(controler);
+		Bicycles.addAsOverridingModule(controler);
 	}
 }
