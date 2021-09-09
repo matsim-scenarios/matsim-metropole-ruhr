@@ -9,7 +9,7 @@ library(sf)
 
 source("https://raw.githubusercontent.com/matsim-scenarios/matsim-duesseldorf/master/src/main/R/theme.R")
 
-#setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+# setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
 
 # trip distance groups
 levels = c("0 - 1000", "1000 - 2000", "2000 - 5000", "5000 - 10000", "10000 - 20000", "20000+")
@@ -17,12 +17,75 @@ breaks = c(0, 1000, 2000, 5000, 10000, 20000, Inf)
 
 shape <- st_read("../../../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp", crs=25832)
 
-#########
-# Read simulation data
-#########
+# Total trips per day
+tt <- 17728996
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils4\\matsim-metropole-ruhr\\calibration\\output\\base"
-sim_scale <- 4
+##################
+# Read survey data
+##################
+
+persons <- read_delim("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID/MiD2017_Personen_RVR-Gebiet.csv", delim = ";", 
+                      locale = locale(decimal_mark = ",")) %>%
+  filter(kernwo == 2) %>%
+  filter(anzwege3 >= 0 & anzwege3 < 100)
+
+# Avg. number of trips per person per day
+per_day <- weighted.mean(persons$anzwege3, persons$gew_pers)
+
+# number of total trips, based on residents
+tt <- per_day * 5112050
+
+#######
+
+trips <- read_delim("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID/MiD2017_Wege_RVR-Gebiet.csv", delim = ";", 
+                    col_types = cols(
+                    ), locale = locale(decimal_mark = ","))
+
+
+# categories as defined in SrV mapped to matsim mode
+lookup <- tibble(category = c(1, 2, 3, 4, 5), 
+                 mode = c("walk", "bike", "ride", "car", "pt"))
+
+# Filter invalid modes and trip distances, also filter for weekdays
+relevant <- trips %>%
+  filter(kernwo == 2) %>%
+  filter(wegkm < 1000) %>%
+  filter(hvm < 9) %>%
+  mutate(dist=wegkm * 1000) %>%
+  mutate(dist_group = cut(dist, breaks=breaks, labels=levels))
+
+matched <- relevant %>% left_join(lookup, by=c("hvm"="category"))
+
+srv <- matched %>%
+  group_by(dist_group, mode) %>%
+  summarise(trips=sum(gew_wege)) %>%
+  mutate(mode = fct_relevel(mode, "walk", "bike", "pt", "ride", "car")) %>%
+  mutate(source = "srv")
+
+
+srv <- srv %>%
+  mutate(share=trips / sum(srv$trips)) %>%
+  mutate(scaled_trips=tt * share)
+
+
+write_csv(srv, "mid.csv")
+
+#############
+
+srv <- read_csv("mid_adj.csv") %>%
+    mutate(main_mode=mode) %>%
+    mutate(scaled_trips=tt * share) %>%
+    mutate(source = "srv") %>%
+    mutate(dist_group=fct_relevel(dist_group, levels)) %>%
+    arrange(dist_group)
+
+
+##################
+# Read simulation data
+##################
+
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils4\\matsim-metropole-ruhr\\calibration\\output\\base-10pct"
+sim_scale <- 10
 
 persons <- read_delim(list.files(f, pattern = "*.output_persons.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
                      col_types = cols(
@@ -48,20 +111,11 @@ sim <- trips %>%
   mutate(scaled_trips=sim_scale * trips) %>%
   mutate(source = "sim")
 
-########
-# Read survey data
-########
+write_csv(sim, "sim.csv")
 
-srv <- read_csv("mid_adj.csv") %>%
-    mutate(main_mode=mode) %>%
-    mutate(scaled_trips=122258 * 3.2 * share) %>%
-    mutate(source = "srv") %>%
-    mutate(dist_group=fct_relevel(dist_group, levels)) %>%
-    arrange(dist_group)
-
-######
+##################
 # Total modal split
-#######
+##################
 
 srv_aggr <- srv %>%
     group_by(mode) %>%
@@ -104,7 +158,7 @@ dist_order <- factor(total$dist_group, level = levels)
 dist_order <- fct_explicit_na(dist_order, "20000+")
 
 ggplot(total, aes(fill=mode, y=scaled_trips, x=source)) +
-  labs(subtitle = paste("Kelheim scenario", f), x="distance [m]") +
+  labs(subtitle = paste("Metropole Ruhr scenario", f), x="distance [m]") +
   geom_bar(position="stack", stat="identity", width = 0.5) +
   facet_wrap(dist_order, nrow = 1)
 
@@ -112,11 +166,8 @@ ggplot(total, aes(fill=mode, y=scaled_trips, x=source)) +
 # Needed for adding short distance trips
 
 sim_sum <- sum(sim$trips)
-sim_aggr <- sim %>%
-  group_by(dist_group) %>%
-  summarise(share=sum(trips) / sim_sum)
 
 # Needed share of trips
-tripShare <- 0.10
+tripShare <- sum(filter(srv, dist_group=="0 - 1000")$share)
 shortDistance <- sum(filter(sim, dist_group=="0 - 1000")$trips)
 numTrips = (shortDistance - sim_sum * tripShare) / (tripShare - 1)

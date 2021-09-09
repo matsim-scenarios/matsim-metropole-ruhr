@@ -52,7 +52,7 @@ public class CreateDemand {
 				"--input-crs=EPSG:25832",
 				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832",
-				"--num-trips=65581",
+				"--num-trips=551000",
 				"--output=" + OUTPUT.replace("25pct", "tmp")
 		);
 

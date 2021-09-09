@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-1pct.plans.xml.gz"/>
+			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-10pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
@@ -64,10 +64,10 @@
 
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="ChangeExpBeta"/>
+			<param name="subpopulation" value="person"/>
 			<param name="weight" value="0.85"/>
 		</parameterset>
 		<parameterset type="strategysettings">
-			<param name="disableAfterIteration" value="420"/>
 			<param name="strategyName" value="ReRoute"/>
 			<param name="subpopulation" value="person"/>
 			<param name="weight" value="0.10"/>
@@ -80,6 +80,7 @@
 		</parameterset>
 		<parameterset type="strategysettings" >
 			<param name="strategyName" value="TimeAllocationMutator" />
+			<param name="subpopulation" value="person"/>
 			<param name="weight" value="0.05" />
 			<param name="disableAfterIteration" value="400" />
 		</parameterset>
@@ -104,7 +105,7 @@
 				<param name="mode" value="car" />
 				<param name="dailyMonetaryConstant" value="-5.3" />
 				<param name="constant" value="0.0" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-1.0" />
 				<param name="monetaryDistanceRate" value="-0.0002" />
 			</parameterset>
 			<parameterset type="modeParams" >
@@ -117,16 +118,16 @@
 				<param name="mode" value="pt" />
 				<param name="dailyMonetaryConstant" value="-2.15" />
 				<param name="constant" value="-2.0" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-1.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-8.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
 				<param name="constant" value="-0.5" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-0.75" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-10.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="walk" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-8.0" />
 				<param name="constant" value="0.0" />
 			</parameterset>
 		</parameterset>
