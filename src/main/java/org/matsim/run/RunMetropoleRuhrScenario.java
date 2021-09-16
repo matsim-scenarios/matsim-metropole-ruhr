@@ -54,6 +54,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml");
 	}
 
+	/**
+	 * Have this here for unit testing, the other constructor doesn't seem to work for that 🤷‍♀️
+	 */
+	RunMetropoleRuhrScenario(Config config) {
+		super(config);
+	}
+
 	public static void main(String[] args) {
 		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
 	}
