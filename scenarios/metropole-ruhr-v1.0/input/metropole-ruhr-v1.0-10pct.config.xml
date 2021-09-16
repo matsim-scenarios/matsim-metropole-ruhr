@@ -85,9 +85,12 @@
 			<param name="disableAfterIteration" value="400" />
 		</parameterset>
 	</module>
-	<module name="subtourModeChoice" >
-		<param name="chainBasedModes" value="car,bike" />
-		<param name="modes" value="car,pt,bike,walk" />
+	<module name="subtourModeChoice">
+		<param name="chainBasedModes" value="car,bike"/>
+		<param name="modes" value="car,ride,pt,bike,walk"/>
+	</module>
+	<module name="changeMode">
+		<param name="modes" value="car,ride,pt,bike,walk" />
 	</module>
 	<module name="transitRouter" >
 		<param name="extensionRadius" value="500.0" />
