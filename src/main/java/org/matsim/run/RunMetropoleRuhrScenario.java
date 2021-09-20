@@ -48,7 +48,10 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
 	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(10, 25, 1);
+	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
+
+	@CommandLine.Option(names = "--pre-calibrate", defaultValue = "false", description = "Precalibrate without congestion and few iterations")
+	private boolean preCalibration;
 
 	public RunMetropoleRuhrScenario() {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml");
@@ -78,6 +81,24 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		if (sample.isSet()) {
 			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
 			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+		}
+
+		if (preCalibration) {
+			// no congestion
+			config.qsim().setFlowCapFactor(10000);
+			config.qsim().setStorageCapFactor(10000);
+			config.controler().setLastIteration(50);
+
+			config.strategy().setFractionOfIterationsToDisableInnovation(0.95);
+			config.strategy().getStrategySettings()
+					.forEach(s -> {
+						if (s.getStrategyName().equals("SubtourModeChoice") || s.getStrategyName().equals("ChangeSingleTripMode"))
+							s.setWeight(1.0);
+						else if (s.getStrategyName().equals("ChangeExpBeta"))
+							s.setWeight(0.1);
+					});
+
+			addRunOption(config, "pre-calibration");
 		}
 
 		for (long ii = 600; ii <= 97200; ii += 600) {
@@ -133,7 +154,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
 
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
-				addControlerListenerBinding().to(TuneModeChoice.class).in(Singleton.class);
+
+				if (!preCalibration)
+					addControlerListenerBinding().to(TuneModeChoice.class).in(Singleton.class);
 
 			}
 		});
