@@ -92,11 +92,13 @@ public class CachedReRoute extends AbstractMultithreadedModule {
 			final List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(plan);
 			TimeTracker timeTracker = new TimeTracker(timeInterpretation);
 
-			for (TripStructureUtils.Trip oldTrip : trips) {
-				final String routingMode = TripStructureUtils.identifyMainMode(oldTrip.getTripElements());
-				timeTracker.addActivity(oldTrip.getOriginActivity());
+			// currently, the whole plan is rerouted
+			// rerouting only some parts throws strange exceptions later on
+			if (trips.stream().anyMatch(this::needsReRoute))
 
-				if (needsReRoute(oldTrip)) {
+				for (TripStructureUtils.Trip oldTrip : trips) {
+					final String routingMode = TripStructureUtils.identifyMainMode(oldTrip.getTripElements());
+					timeTracker.addActivity(oldTrip.getOriginActivity());
 
 					if (log.isDebugEnabled()) log.debug("about to call TripRouter with routingMode=" + routingMode);
 					final List<? extends PlanElement> newTrip = tripRouter.calcRoute( //
@@ -114,12 +116,7 @@ public class CachedReRoute extends AbstractMultithreadedModule {
 							oldTrip.getOriginActivity(),
 							newTrip,
 							oldTrip.getDestinationActivity());
-
-				} else {
-
-					timeTracker.addElements(oldTrip.getTripElements());
 				}
-			}
 		}
 
 		private boolean needsReRoute(TripStructureUtils.Trip trip) {
