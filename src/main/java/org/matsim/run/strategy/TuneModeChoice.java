@@ -18,7 +18,7 @@
  *                                                                         *
  * *********************************************************************** */
 
-package org.matsim.run;
+package org.matsim.run.strategy;
 
 import com.google.inject.Inject;
 import org.apache.logging.log4j.LogManager;
