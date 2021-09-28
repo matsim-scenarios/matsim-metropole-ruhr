@@ -16,27 +16,27 @@
 	<module name="global">
 		<param name="coordinateSystem" value="EPSG:25832"/>
 		<param name="insistingOnDeprecatedConfigVersion" value="false"/>
-		<param name="numberOfThreads" value="8"/>
+		<param name="numberOfThreads" value="16"/>
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz"/>
+			   value="metropole-ruhr-v1.0.network_resolutionHigh.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.1-10pct.plans.xml.gz"/>
+			   value="metropole-ruhr-v1.1-10pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml"/>
+			   value="metropole-ruhr-v1.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
-			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.transit-schedule.xml.gz"/>
+			   value="metropole-ruhr-v1.0.transit-schedule.xml.gz"/>
 		<param name="useTransit" value="true"/>
 		<param name="vehiclesFile"
-			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.transit-vehicles.xml.gz"/>
+			   value="metropole-ruhr-v1.0.transit-vehicles.xml.gz"/>
 	</module>
 	<module name="planscalcroute">
 		<param name="networkModes" value="car,ride,bike"/>
@@ -45,6 +45,11 @@
 			<param name="beelineDistanceFactor" value="1.1"/>
 			<param name="teleportedModeSpeed" value="1.39"/>
 		</parameterset>
+		<!--	<parameterset type="teleportedModeParameters">
+                <param name="mode" value="bike"/>
+                <param name="beelineDistanceFactor" value="1.3"/>
+                <param name="teleportedModeSpeed" value="4.39"/>
+            </parameterset> -->
 	</module>
 	<module name="qsim">
 		<param name="endTime" value="36:00:00"/>
@@ -88,9 +93,11 @@
 	<module name="subtourModeChoice">
 		<param name="chainBasedModes" value="car,bike"/>
 		<param name="modes" value="car,ride,pt,bike,walk"/>
+		<param name="considerCarAvailability" value="true"/>
 	</module>
 	<module name="changeMode">
 		<param name="modes" value="car,ride,pt,bike,walk" />
+		<param name="ignoreCarAvailability" value="false" />
 	</module>
 	<module name="transitRouter" >
 		<param name="extensionRadius" value="500.0" />
@@ -121,16 +128,16 @@
 				<param name="mode" value="pt" />
 				<param name="dailyMonetaryConstant" value="-2.15" />
 				<param name="constant" value="-2.0" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-8.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
 				<param name="constant" value="-0.5" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-10.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-5.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="walk" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="-8.0" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-2.5" />
 				<param name="constant" value="0.0" />
 			</parameterset>
 		</parameterset>
