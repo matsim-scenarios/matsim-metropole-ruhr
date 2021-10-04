@@ -48,7 +48,10 @@ import org.matsim.run.strategy.TuneModeChoice;
 import picocli.CommandLine;
 
 import javax.inject.Singleton;
+import java.io.File;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
@@ -56,11 +59,16 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
+	public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
+
 	@CommandLine.Mixin
 	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
 
 	@CommandLine.Option(names = "--pre-calibrate", defaultValue = "false", description = "Precalibrate without congestion and few iterations")
 	private boolean preCalibration;
+
+	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
+	private boolean download;
 
 	public RunMetropoleRuhrScenario() {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml");
@@ -97,6 +105,14 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		if (sample.isSet()) {
 			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
 			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+		}
+
+		if (download) {
+			adjustURL(config.network()::getInputFile, config.network()::setInputFile);
+			adjustURL(config.plans()::getInputFile, config.plans()::setInputFile);
+			adjustURL(config.vehicles()::getVehiclesFile, config.vehicles()::setVehiclesFile);
+			adjustURL(config.transit()::getVehiclesFile, config.transit()::setVehiclesFile);
+			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
 		}
 
 		if (preCalibration) {
@@ -205,4 +221,19 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		Bicycles.addAsOverridingModule(controler);
 	}
+
+	/**
+	 * Appends url to download a resource if not present.
+	 */
+	private void adjustURL(Supplier<String> getter, Consumer<String> setter) {
+
+		String input = getter.get();
+		if (input.startsWith("http"))
+			return;
+
+		String name = new File(input).getName();
+
+		setter.accept(URL + name);
+	}
+
 }

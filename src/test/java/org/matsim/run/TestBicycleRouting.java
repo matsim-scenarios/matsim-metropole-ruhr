@@ -35,8 +35,8 @@ public class TestBicycleRouting {
 
         var outputDir = testUtils.getOutputDirectory();
 
-        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withElevation", "--useElevation=true");
-        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withoutElevation", "--useElevation=false");
+        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input");
+        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input");
 
         // load output of both runs
         var scenarioWithElevation = ScenarioUtils.createScenario(ConfigUtils.createConfig());
