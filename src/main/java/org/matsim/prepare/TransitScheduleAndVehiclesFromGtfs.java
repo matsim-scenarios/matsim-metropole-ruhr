@@ -47,7 +47,7 @@ import java.util.List;
 /**
  * @author ikaddoura
  */
-
+@Deprecated
 public class TransitScheduleAndVehiclesFromGtfs {
 
     private static final Logger log = Logger.getLogger(TransitScheduleAndVehiclesFromGtfs.class);

@@ -43,6 +43,7 @@ import org.matsim.vehicles.Vehicles;
  * @author ikaddoura
  *
  */
+@Deprecated
 public class MergeTransitFiles {
 		
 	public static void mergeVehicles(Vehicles baseTransitVehicles, Vehicles transitVehicles) {

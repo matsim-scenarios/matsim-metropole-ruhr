@@ -1,36 +1,22 @@
 package org.matsim.prepare;
 
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.contrib.accessibility.utils.MergeNetworks;
+import org.matsim.application.prepare.pt.CreateTransitScheduleFromGtfs;
 import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.osm.networkReader.LinkProperties;
 import org.matsim.contrib.osm.networkReader.OsmBicycleReader;
 import org.matsim.contrib.osm.networkReader.OsmTags;
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
-import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
@@ -40,10 +26,16 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
-import org.matsim.pt.transitSchedule.api.TransitSchedule;
-import org.matsim.pt.transitSchedule.api.TransitScheduleWriter;
-import org.matsim.vehicles.MatsimVehicleWriter;
-import org.matsim.vehicles.Vehicles;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CreateSupply {
 	
@@ -152,13 +144,12 @@ public class CreateSupply {
 		var network = networkBuilder
 				.build()
 				.read(rootDirectory.resolve(osmData));
-	
 
-		// --------------------------------------- Create Pt -----------------------------------------------------------
 
+		/*
 		var gtfsScenario1 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData1).toString(), gtfsDataDate1, transformation, gtfsData1Prefix);
 		var gtfsScenario2 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData2).toString(), gtfsDataDate2, transformation, gtfsData2Prefix);
-		var gtfsScenario3 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData3).toString(), gtfsDataDate3, transformation, gtfsData3Prefix);
+		var gtfsScenario3 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData2).toString(), gtfsDataDate3, transformation, gtfsData3Prefix);
 
 		new MatsimVehicleWriter(gtfsScenario1.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData1Prefix + ".xml.gz").toString());
 		new MatsimVehicleWriter(gtfsScenario2.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData2Prefix + ".xml.gz").toString());
@@ -187,21 +178,22 @@ public class CreateSupply {
 		MergeNetworks.merge(network, "", gtfsScenario1.getNetwork());
 		MergeNetworks.merge(network, "", gtfsScenario2.getNetwork());
 		MergeNetworks.merge(network, "", gtfsScenario3.getNetwork());
+		 */
 
-		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-only-OSM-and-PT_resolution" + networkResolution + ".xml.gz")).toString());
+		//new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-only-OSM-and-PT_resolution" + networkResolution + ".xml.gz")).toString());
 
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
 		Network network1 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1));
-		new NetworkWriter(network1).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork1.xml.gz")).toString());
+		new NetworkWriter(network1).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork1.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network1);
 		
 		Network network2 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2));
-		new NetworkWriter(network2).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork2.xml.gz")).toString());
+		new NetworkWriter(network2).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork2.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network2);
 		
 		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
-		new NetworkWriter(network3).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz")).toString());
+		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
@@ -219,7 +211,19 @@ public class CreateSupply {
 			node.setCoord(new Coord(node.getCoord().getX(), node.getCoord().getY(), elevation));
 		}
 
-		new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network_resolution" + networkResolution + ".xml.gz")).toString());
+		String networkOut = outputDir.resolve("metropole-ruhr-v1.0.network_resolution" + networkResolution + ".xml.gz").toString();
+		new NetworkWriter(network).write(networkOut);
+
+		// --------------------------------------- Create Pt -----------------------------------------------------------
+
+		new CreateTransitScheduleFromGtfs().execute(
+				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(), rootDirectory.resolve(gtfsData3).toString(),
+				"--date", gtfsDataDate1,  gtfsDataDate2, gtfsDataDate3,
+				"--target-crs", "EPSG:25832",
+				"--network", networkOut,
+				"--output", outputDir.toString(),
+				"--name", "metropole-ruhr-v1.0"
+		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
 

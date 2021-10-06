@@ -45,10 +45,7 @@ public class TestBicycleRouting {
         var scenarioWithoutElevation = ScenarioUtils.createScenario(ConfigUtils.createConfig());
         new PopulationReader(scenarioWithoutElevation).readFile(outputDir + "withoutElevation/" + TestApplication.RUN_ID + ".output_plans.xml.gz");
 
-
         // somehow compare the two routes
-        System.out.println("bla test");
-
         var personWithElevation = scenarioWithElevation.getPopulation().getPersons().get(personId);
         var personWithoutElevation = scenarioWithoutElevation.getPopulation().getPersons().get(personId);
 

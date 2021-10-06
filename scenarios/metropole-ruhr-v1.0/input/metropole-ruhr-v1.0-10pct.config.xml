@@ -20,7 +20,7 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="metropole-ruhr-v1.0.network_resolutionHigh.xml.gz"/>
+			   value="metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
@@ -33,10 +33,10 @@
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
-			   value="metropole-ruhr-v1.0.transit-schedule.xml.gz"/>
+			   value="metropole-ruhr-v1.0-transitSchedule.xml.gz"/>
 		<param name="useTransit" value="true"/>
 		<param name="vehiclesFile"
-			   value="metropole-ruhr-v1.0.transit-vehicles.xml.gz"/>
+			   value="metropole-ruhr-v1.0-transitVehicles.xml.gz"/>
 	</module>
 	<module name="planscalcroute">
 		<param name="networkModes" value="car,ride,bike"/>
