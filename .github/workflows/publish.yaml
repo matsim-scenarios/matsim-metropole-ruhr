@@ -14,3 +14,6 @@ jobs:
         run: mvn --batch-mode deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    env:
+      MAVEN_OPTS: -Xmx10G

@@ -33,4 +33,4 @@ jobs:
         run:  mvn -B package --file pom.xml -Dmatsim.preferLocalDtds=true -Dmaven.javadoc.skip -e
 
     env:
-      MAVEN_OPTS: -Xmx6G
+      MAVEN_OPTS: -Xmx10G
