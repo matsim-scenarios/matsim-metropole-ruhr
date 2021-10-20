@@ -35,8 +35,8 @@ public class TestBicycleRouting {
 
         var outputDir = testUtils.getOutputDirectory();
 
-        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input");
-        MATSimApplication.execute(TestApplication.class, "run", "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input");
+        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input", "--1pct");
+        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input", "--1pct");
 
         // load output of both runs
         var scenarioWithElevation = ScenarioUtils.createScenario(ConfigUtils.createConfig());
@@ -77,9 +77,16 @@ public class TestBicycleRouting {
         @Override
         public Config prepareConfig(Config config) {
             var preparedConfig = super.prepareConfig(config);
+
+            preparedConfig.global().setNumberOfThreads(1);
+            preparedConfig.qsim().setNumberOfThreads(1);
             preparedConfig.plans().setInputFile(null);
             preparedConfig.controler().setLastIteration(0);
             preparedConfig.controler().setRunId(RUN_ID);
+
+            // Disable PT
+            preparedConfig.transit().setVehiclesFile(null);
+            preparedConfig.transit().setTransitScheduleFile(null);
 
             var bikeConfig = ((BicycleConfigGroup) config.getModules().get("bicycle"));
             // set an insanely high disutility for gradients
@@ -90,6 +97,9 @@ public class TestBicycleRouting {
         @Override
         public void prepareScenario(Scenario scenario) {
             super.prepareScenario(scenario);
+
+            // Other agents are not needed for the test
+            scenario.getPopulation().getPersons().clear();
 
             // add single person with two activities
             var factory = scenario.getPopulation().getFactory();
