@@ -27,6 +27,8 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
+import org.matsim.application.analysis.LinkStats;
+import org.matsim.application.analysis.TravelTimeAnalysis;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
@@ -55,6 +57,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
+@MATSimApplication.Analysis({
+		TravelTimeAnalysis.class, LinkStats.class
+})
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
