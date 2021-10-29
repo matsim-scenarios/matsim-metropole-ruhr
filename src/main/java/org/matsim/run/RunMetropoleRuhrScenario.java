@@ -23,6 +23,7 @@ import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
+import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.application.MATSimApplication;
@@ -200,6 +201,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 					+ "Should only be used for testing or car-focused studies with fixed modal split.");
 
 		controler.addOverridingModule(new SwissRailRaptorModule());
+
+		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {
