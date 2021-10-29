@@ -5,7 +5,7 @@
 		<param name="mutationRange" value="7200.0" />
 	</module>
 	<module name="controler">
-		<param name="lastIteration" value="500"/>
+		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
 		<param name="runId" value="metropole-ruhr-v1.0-1pct"/>
 		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-10pct/"/>
@@ -87,7 +87,7 @@
 			<param name="strategyName" value="TimeAllocationMutator" />
 			<param name="subpopulation" value="person"/>
 			<param name="weight" value="0.05" />
-			<param name="disableAfterIteration" value="400" />
+			<param name="disableAfterIteration" value="350" />
 		</parameterset>
 	</module>
 	<module name="subtourModeChoice">
