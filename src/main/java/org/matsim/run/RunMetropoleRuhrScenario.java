@@ -24,6 +24,7 @@ import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.application.MATSimApplication;
@@ -48,6 +49,7 @@ import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.strategy.CreateSingleModePlans;
 import org.matsim.run.strategy.PreCalibrationModeChoice;
 import org.matsim.run.strategy.TuneModeChoice;
+import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
 import javax.inject.Singleton;
@@ -72,6 +74,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--pre-calibrate", defaultValue = "false", description = "Precalibrate without congestion and few iterations")
 	private boolean preCalibration;
+
+	@CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
+	private boolean zeroBikePCU;
 
 	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
 	private boolean download;
@@ -188,6 +193,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		// Nothing to do yet
 		if (preCalibration) {
 			ParallelPersonAlgorithmUtils.run(scenario.getPopulation(), scenario.getConfig().global().getNumberOfThreads(), new CreateSingleModePlans());
+		}
+
+		if (zeroBikePCU) {
+			Id<VehicleType> key = Id.create("bike", VehicleType.class);
+			VehicleType bike = scenario.getVehicles().getVehicleTypes().get(key);
+			bike.setPcuEquivalents(0);
 		}
 
 	}
