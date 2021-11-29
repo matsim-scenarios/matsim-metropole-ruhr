@@ -111,7 +111,7 @@ public class TestBicycleRouting {
             var leg = factory.createLeg(TransportMode.bike);
             leg.setMode(TransportMode.bike);
             plan.addLeg(leg);
-            var otherCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("7339595750004f")).getCoord();
+            var otherCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("7339832750094r")).getCoord();
             var other = factory.createActivityFromCoord("other_3600.0",otherCoord);
             other.setEndTime(3600);
             plan.addActivity(other);
