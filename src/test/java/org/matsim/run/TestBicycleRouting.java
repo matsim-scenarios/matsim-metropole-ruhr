@@ -1,6 +1,5 @@
 package org.matsim.run;
 
-import org.checkerframework.checker.units.qual.C;
 import org.junit.Rule;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -9,6 +8,7 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.matsim.api.core.v01.*;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
@@ -17,20 +17,21 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.population.routes.NetworkRoute;
-import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.testcases.MatsimTestUtils;
 import picocli.CommandLine;
 
-import java.nio.file.Path;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestBicycleRouting {
 
-    private static Id<Person> personId = Id.createPersonId("test-person");
+    private static final Id<Person> personId = Id.createPersonId("test-person");
+    //private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/test-input/metropole-ruhr-v1.0.network_resolutionHigh-with-pt-bicylceTest.xml.gz";
+    private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz";
 
     @Rule
     public MatsimTestUtils testUtils = new MatsimTestUtils();
@@ -40,8 +41,8 @@ public class TestBicycleRouting {
 
         var outputDir = testUtils.getOutputDirectory();
 
-        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input", "--1pct");
-        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input", "--1pct");
+        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input", "--1pct", "--config:network.inputNetworkFile=" + inputNetworkFile);
+        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input", "--1pct", "--config:network.inputNetworkFile=" + inputNetworkFile);
 
         // load output of both runs
         var scenarioWithElevation = ScenarioUtils.createScenario(ConfigUtils.createConfig());
@@ -127,13 +128,15 @@ public class TestBicycleRouting {
             // filter the network
             var bbox = createBoundingBox(scenario.getNetwork());
             var nodeIdsToRemove = scenario.getNetwork().getNodes().values().parallelStream()
-                    .filter(node -> bbox.covers(MGC.coord2Point(node.getCoord())))
+                    .filter(node -> !bbox.covers(MGC.coord2Point(node.getCoord())))
                     .map(Identifiable::getId)
                     .collect(Collectors.toList());
 
             for (var id : nodeIdsToRemove) {
                 scenario.getNetwork().removeNode(id);
             }
+
+            new NetworkWriter(scenario.getNetwork()).write("C:/Users/Janekdererste/Desktop/reduced-network.xml.gz");
 
             // remove elevation if necessary
             if (!isUseElevation) {
