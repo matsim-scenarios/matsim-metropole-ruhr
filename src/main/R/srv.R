@@ -3,6 +3,7 @@
 library(gridExtra)
 library(tidyverse)
 library(lubridate)
+library(scales)
 library(viridis)
 library(ggsci)
 library(sf)
@@ -84,8 +85,8 @@ srv <- read_csv("mid_adj.csv") %>%
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils4\\matsim-metropole-ruhr\\calibration\\runs\\002"
-sim_scale <- 10
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration\\runs\\016"
+sim_scale <- 100/10
 
 persons <- read_delim(list.files(f, pattern = "*.output_persons.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
                      col_types = cols(
@@ -120,7 +121,7 @@ write_csv(sim, "sim.csv")
 srv_aggr <- srv %>%
     group_by(mode) %>%
     summarise(share=sum(share)) %>%  # assume shares sum to 1
-    mutate(mode=fct_relevel(mode, "walk", "bike", "pt", "ride", "car"))  
+    mutate(mode=fct_relevel(mode, "walk", "bike", "pt", "ride", "car"))
   
 aggr <- sim %>%
     group_by(mode) %>%
@@ -151,16 +152,20 @@ ggsave(filename = "modal-split.png", path = ".", g,
 # Combined plot by distance
 ##########
 
-total <- bind_rows(srv, sim)
+total <- bind_rows(srv, sim) %>%
+        mutate(mode=fct_relevel(mode, "walk", "bike", "pt", "ride", "car"))
 
 # Maps left overgroups
 dist_order <- factor(total$dist_group, level = levels)
 dist_order <- fct_explicit_na(dist_order, "20000+")
 
 ggplot(total, aes(fill=mode, y=scaled_trips, x=source)) +
-  labs(subtitle = paste("Metropole Ruhr scenario", f), x="distance [m]") +
+  labs(subtitle = paste("Metropole Ruhr scenario", substring(f, 52)), x="distance [m]", y="trips") +
   geom_bar(position="stack", stat="identity", width = 0.5) +
-  facet_wrap(dist_order, nrow = 1)
+  facet_wrap(dist_order, nrow = 1) +
+  scale_y_continuous(labels = scales::number_format(suffix = " M", scale = 1e-6)) +
+  scale_fill_locuszoom() +
+  theme_minimal()
 
 
 # Needed for adding short distance trips
