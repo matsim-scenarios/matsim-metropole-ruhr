@@ -10,7 +10,7 @@ library(sf)
 
 source("https://raw.githubusercontent.com/matsim-scenarios/matsim-duesseldorf/master/src/main/R/theme.R")
 
-# setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
 
 # trip distance groups
 levels = c("0 - 1000", "1000 - 2000", "2000 - 5000", "5000 - 10000", "10000 - 20000", "20000+")
@@ -85,7 +85,7 @@ srv <- read_csv("mid_adj.csv") %>%
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration\\runs\\016"
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration\\runs\\025"
 sim_scale <- 100/10
 
 persons <- read_delim(list.files(f, pattern = "*.output_persons.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
