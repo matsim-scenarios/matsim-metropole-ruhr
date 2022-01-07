@@ -20,7 +20,7 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz"/>
+			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
@@ -29,14 +29,14 @@
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="metropole-ruhr-v1.0.mode-vehicles.xml"/>
+			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
-			   value="metropole-ruhr-v1.0-transitSchedule.xml.gz"/>
+			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-transitSchedule.xml.gz"/>
 		<param name="useTransit" value="true"/>
 		<param name="vehiclesFile"
-			   value="metropole-ruhr-v1.0-transitVehicles.xml.gz"/>
+			   value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-transitVehicles.xml.gz"/>
 	</module>
 	<module name="planscalcroute">
 		<param name="networkModes" value="car,ride,bike"/>
