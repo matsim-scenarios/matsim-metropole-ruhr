@@ -7,7 +7,7 @@
 	<module name="controler">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v1.0-1pct"/>
+		<param name="runId" value="metropole-ruhr-v1.0-10pct"/>
 		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-10pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
