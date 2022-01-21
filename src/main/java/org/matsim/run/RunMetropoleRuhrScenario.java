@@ -109,11 +109,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
 
-		config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
-		config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
-		config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
-
 		if (sample.isSet()) {
+			config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
+			config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
+			config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
+
 			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
 			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
 		}

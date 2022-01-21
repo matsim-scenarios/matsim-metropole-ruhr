@@ -7,8 +7,8 @@
 	<module name="controler">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v1.0-10pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-10pct/"/>
+		<param name="runId" value="metropole-ruhr-v1.0-3pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-3pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="metropole-ruhr-v1.1-10pct.plans.xml.gz"/>
+			   value="metropole-ruhr-v1.1-3pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
@@ -57,8 +57,8 @@
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.1" />
-		<param name="flowCapacityFactor" value="0.1"/>
+		<param name="storageCapacityFactor" value="0.0333" />
+		<param name="flowCapacityFactor" value="0.0333"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>
@@ -114,25 +114,25 @@
 			<parameterset type="modeParams" >
 				<param name="mode" value="car" />
 				<param name="dailyMonetaryConstant" value="-5.3" />
-				<param name="constant" value="0.8411" />
+				<param name="constant" value="-0.44738795868422765" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-1.0" />
 				<param name="monetaryDistanceRate" value="-0.0002" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
-				<param name="constant" value="-1.868" />
+				<param name="constant" value="-1.468151476058771" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 				<param name="monetaryDistanceRate" value="-0.0002" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="pt" />
 				<param name="dailyMonetaryConstant" value="-2.15" />
-				<param name="constant" value="-0.1691" />
+				<param name="constant" value="0.4899" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
-				<param name="constant" value="0.1661" />
+				<param name="constant" value="0.1172" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-7.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
