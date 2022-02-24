@@ -1,11 +1,12 @@
 library(tidyverse)
 
 # set working directory to where the files are located
-setwd("~/Desktop")
-
+setwd("C:/Users/Janekdererste/Desktop/metropole-ruhr-036")
+print("start reading file")
 # specify input file
-data <- read_delim("021.linkPaxVolumesPerNetworkModePerHour.csv.gz",
+data <- read_delim("036.linkPaxVolumesPerNetworkModePerHour.csv.gz",
            delim=";")
+head(data)
 
 # write rows to additional columns using the 'pivot_wider' function
 vehicles_hours_as_columns <- data %>%
@@ -25,12 +26,14 @@ vehicles_hours_as_columns_bike <- vehicles_hours_as_columns %>%
   mutate(networkMode=NULL) %>%
   mutate(sumDay = rowSums(.[2:30]))
 
+print("write data")
 # write car data
 write_delim(vehicles_hours_as_columns_car,
-            "021.linkPaxVolumesPerNetworkModeHoursAsColumns_car_vehicles.csv",
+            "036.linkPaxVolumesPerNetworkModeHoursAsColumns_car_vehicles.csv",
             delim=";")
 
 # write bike data
 write_delim(vehicles_hours_as_columns_bike,
-            "021.linkPaxVolumesPerNetworkModeHoursAsColumns_bike_vehicles.csv",
+            "036.linkPaxVolumesPerNetworkModeHoursAsColumns_bike_vehicles.csv",
             delim=";")
+print("done")
