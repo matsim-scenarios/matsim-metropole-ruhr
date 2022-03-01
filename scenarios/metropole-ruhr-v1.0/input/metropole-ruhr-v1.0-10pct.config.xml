@@ -5,7 +5,7 @@
 		<param name="mutationRange" value="7200.0" />
 	</module>
 	<module name="controler">
-		<param name="lastIteration" value="400"/>
+		<param name="lastIteration" value="0"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
 		<param name="runId" value="metropole-ruhr-v1.0-10pct"/>
 		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.0-10pct/"/>
@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="metropole-ruhr-v1.1-10pct.plans.xml.gz"/>
+			   value="C:\Users\janek\repos\shared-svn\projects\matsim-metropole-ruhr\metropole-ruhr-v1.0\input\metropole-ruhr-v1.1-1pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">

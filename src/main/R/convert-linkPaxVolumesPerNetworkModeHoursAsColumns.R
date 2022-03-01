@@ -1,10 +1,10 @@
 library(tidyverse)
 
 # set working directory to where the files are located
-setwd("C:/Users/Janekdererste/Desktop/metropole-ruhr-036")
+setwd("C:/Users/janek/Documents/private/Freiberuflich/RVR/super-autobahn-output")
 print("start reading file")
 # specify input file
-data <- read_delim("036.linkPaxVolumesPerNetworkModePerHour.csv.gz",
+data <- read_delim("metropole-ruhr-v1.0-10pct.linkPaxVolumesPerNetworkModePerHour.csv.gz",
            delim=";")
 head(data)
 
@@ -29,11 +29,11 @@ vehicles_hours_as_columns_bike <- vehicles_hours_as_columns %>%
 print("write data")
 # write car data
 write_delim(vehicles_hours_as_columns_car,
-            "036.linkPaxVolumesPerNetworkModeHoursAsColumns_car_vehicles.csv",
+            "metropole-ruhr-v1.0-10pct.linkPaxVolumesPerNetworkModeHoursAsColumns_car_vehicles.csv",
             delim=";")
 
 # write bike data
 write_delim(vehicles_hours_as_columns_bike,
-            "036.linkPaxVolumesPerNetworkModeHoursAsColumns_bike_vehicles.csv",
+            "metropole-ruhr-v1.0-10pct.linkPaxVolumesPerNetworkModeHoursAsColumns_bike_vehicles.csv",
             delim=";")
 print("done")
