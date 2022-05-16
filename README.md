@@ -70,6 +70,8 @@ This will update your repository to the newest version.
 ### Run the scenario
 (Requires either cloning or downloading the repository.)
 
+There are two config files for a `10pct` and `3pct` scenario. The default ist `3pct`, the other config is not in a fully relaxed calibrated state.
+
 ##### ... using a runnable jar file (only available for releases)
 1. You can build an executable jar-file by executing one of the following commands in the top directory. 
 This will download all necessary dependencies (it might take a while the first time it is run) and dump the jar into the top directory.

@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="metropole-ruhr-v1.1-3pct.plans.xml.gz"/>
+			   value="metropole-ruhr-v1.3-3pct.plans-calibrated-selected.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
@@ -77,7 +77,6 @@
 			<param name="subpopulation" value="person"/>
 			<param name="weight" value="0.10"/>
 		</parameterset>
-		<!-- Fade out subtour mode choice strategy between 0.80 - 0.9  -->
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="ChangeSingleTripMode"/>
 			<param name="subpopulation" value="person"/>
