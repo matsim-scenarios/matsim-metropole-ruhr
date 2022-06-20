@@ -29,6 +29,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
@@ -39,6 +40,11 @@ import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.TripStructureUtils.Trip;
+import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
+import org.matsim.core.router.speedy.SpeedyALTFactory;
+import org.matsim.core.router.util.LeastCostPathCalculator;
+import org.matsim.core.router.util.LeastCostPathCalculatorFactory;
+import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
@@ -71,6 +77,9 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--keep-links-in-routes", description = "Keep all links in routes relevant to the area", defaultValue = "false")
 	private boolean keepLinksInRoutes;
+
+	@CommandLine.Option(names = "--use-router", description = "Use router on legs that don't have a route", defaultValue = "false")
+	private boolean useRouter;
 
 	@CommandLine.Mixin
 	private CrsOptions crs;
@@ -117,6 +126,8 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 		GeometryFactory gf = new GeometryFactory();
 
+		LeastCostPathCalculator router = createRouter(network);
+
 		// now delete irrelevant persons
 		Set<Id<Person>> personsToDelete = new HashSet<>();
 		for (Person person : population.getPersons().values()) {
@@ -148,6 +159,23 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains))
 							keepPerson = true;
+
+					} else if (router != null) {
+
+						Node fromNode = network.getLinks().get(route.getStartLinkId()).getFromNode();
+						Node toNode = network.getLinks().get(route.getEndLinkId()).getToNode();
+
+						LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
+
+						if (path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
+
+							// add all these links directly
+							path.links.stream().map(Link::getId)
+									.forEach(linksToInclude::add);
+
+							keepPerson = true;
+
+						}
 
 					}
 				}
@@ -210,6 +238,19 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 
 		return 0;
+	}
+
+	private LeastCostPathCalculator createRouter(Network network) {
+
+		if (!useRouter)
+			return null;
+
+		FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
+		LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
+
+		OnlyTimeDependentTravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
+
+		return fastAStarLandmarksFactory.createPathCalculator(network, travelDisutility, travelTime);
 	}
 
 }
