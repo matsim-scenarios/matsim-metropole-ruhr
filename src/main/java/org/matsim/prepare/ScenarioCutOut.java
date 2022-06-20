@@ -97,6 +97,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 		Set<Id<Link>> linksToDelete = new HashSet<>();
 		Set<Id<Link>> linksToKeep = new HashSet<>();
+
 		for (Link link : network.getLinks().values()) {
 
 			if (geom.contains(MGC.coord2Point(link.getCoord()))
@@ -110,7 +111,9 @@ public class ScenarioCutOut implements MATSimAppCommand {
 			}
 		}
 
-		int n = linksToKeep.size();
+
+		// additional links to include
+		Set<Id<Link>> linksToInclude = new HashSet<>();
 
 		GeometryFactory gf = new GeometryFactory();
 
@@ -152,10 +155,9 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 			if (keepPerson && keepLinksInRoutes) {
 
-
 				for (PlanElement pe : person.getSelectedPlan().getPlanElements()) {
 					if (pe instanceof Leg && ((Leg) pe).getRoute() instanceof NetworkRoute) {
-						linksToKeep.addAll(((NetworkRoute) ((Leg) pe).getRoute()).getLinkIds());
+						linksToInclude.addAll(((NetworkRoute) ((Leg) pe).getRoute()).getLinkIds());
 					}
 				}
 			}
@@ -174,13 +176,18 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 		PopulationUtils.writePopulation(population, outputPopulation.toString());
 
-		if (keepLinksInRoutes && n == linksToKeep.size()) {
-			log.warn("Keep links in routes is activated, but not links have been kept. Probably no routes are present.");
+		if (keepLinksInRoutes && linksToInclude.isEmpty()) {
+			log.warn("Keep links in routes is activated, but no links have been kept. Probably no routes are present.");
 		}
 
-		log.info("Links to delete: " + linksToDelete.size());
+		log.info("Links to add: " + linksToKeep.size());
+
+		if (keepLinksInRoutes) {
+			log.info("Additional links from routes to include: {}", linksToInclude.size());
+		}
+
 		for (Id<Link> linkId : linksToDelete) {
-			if (!linksToKeep.contains(linkId))
+			if (!linksToInclude.contains(linkId))
 				network.removeLink(linkId);
 		}
 
