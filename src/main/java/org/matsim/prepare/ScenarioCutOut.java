@@ -126,6 +126,10 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 		GeometryFactory gf = new GeometryFactory();
 
+		// Using the router always implies one want to keep the links
+		if (useRouter)
+			keepLinksInRoutes = true;
+
 		LeastCostPathCalculator router = createRouter(network);
 
 		// now delete irrelevant persons
@@ -152,42 +156,49 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					break;
 				}
 
-				for (Leg leg : trip.getLegsOnly()) {
 
+				for (Leg leg : trip.getLegsOnly()) {
 					Route route = leg.getRoute();
 					if (keepLinksInRoutes && route instanceof NetworkRoute) {
 
-						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains))
+						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains)) {
+							linksToInclude.addAll(((NetworkRoute) route).getLinkIds());
 							keepPerson = true;
-
-					} else if (router != null) {
-
-						Node fromNode = network.getLinks().get(route.getStartLinkId()).getFromNode();
-						Node toNode = network.getLinks().get(route.getEndLinkId()).getToNode();
-
-						LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
-
-						if (path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
-
-							// add all these links directly
-							path.links.stream().map(Link::getId)
-									.forEach(linksToInclude::add);
-
-							keepPerson = true;
-
 						}
 
 					}
 				}
-			}
 
-			if (keepPerson && keepLinksInRoutes) {
+				if (router != null) {
 
-				for (PlanElement pe : person.getSelectedPlan().getPlanElements()) {
-					if (pe instanceof Leg && ((Leg) pe).getRoute() instanceof NetworkRoute) {
-						linksToInclude.addAll(((NetworkRoute) ((Leg) pe).getRoute()).getLinkIds());
+					Node fromNode;
+					Node toNode;
+
+					if (trip.getOriginActivity().getLinkId() != null) {
+						fromNode = network.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
+					} else {
+						fromNode = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord()).getFromNode();
+					}
+
+					if (trip.getDestinationActivity().getLinkId() != null) {
+						toNode = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
+					} else {
+						toNode = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord()).getFromNode();
+					}
+
+					LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
+
+					if (path != null && path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
+
+						// add all these links directly
+						path.links.stream().map(Link::getId)
+								.forEach(linksToInclude::add);
+
+						keepPerson = true;
 					}
 				}
+
+
 			}
 
 			PopulationUtils.resetRoutes(person.getSelectedPlan());
