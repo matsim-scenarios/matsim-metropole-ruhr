@@ -26,7 +26,7 @@ for (ii in 1:length(completeTripsTableList)) {
 }
 
 for(i in 1:length(myplots)) {
-  png(paste("/Users/gregorr/Desktop/Plots/ModalSplit", i, ".png"))
+  png(paste("/Users/gregorr/Desktop/Plots/ModalSplit", i, ".png"), res=200)
   set.seed(i)
   plot(myplots[[i]]) 
   dev.off()
