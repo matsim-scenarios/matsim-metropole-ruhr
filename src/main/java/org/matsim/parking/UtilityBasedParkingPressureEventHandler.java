@@ -37,17 +37,14 @@ public class UtilityBasedParkingPressureEventHandler implements PersonArrivalEve
 
 
             if( !scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAsMap().containsKey(PARK_PRESSURE_ATTRIBUTE_COST)){
-                throw new RuntimeException(PARK_PRESSURE_ATTRIBUTE_TIME + " is not found as an attribute in link: " + event.getLinkId());
+                throw new RuntimeException(PARK_PRESSURE_ATTRIBUTE_COST + " is not found as an attribute in link: " + event.getLinkId());
             }
 
-            double time = (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_TIME);
+            //double time = (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_TIME);
             double cost = (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_COST);
 
-            if (time != 0 && cost !=0) {
-                // how to calculate time into score/utils
-                PersonScoreEvent personScoreEvent = new PersonScoreEvent(event.getTime(), event.getPersonId(), time, "parkPressure");
+            if (cost !=0) {
                 PersonMoneyEvent personMoneyEvent = new PersonMoneyEvent(event.getTime(), event.getPersonId(),cost,"parkingCost",null, null);
-                eventsManager.processEvent(personScoreEvent);
                 eventsManager.processEvent(personMoneyEvent);
             }
         }

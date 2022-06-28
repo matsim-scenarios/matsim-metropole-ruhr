@@ -42,10 +42,16 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
 
     private static final Logger log = Logger.getLogger(NetworkParkPressureReader.class);
 
+    public static final String ACCESSTIMELINKATTRIBUTECAR = "accesstime_car";
+    public static final String EGRESSTIMELINKATTRIBUTECAR = "egresstime_car";
+
+    public static void main(String[] args) throws IOException {
+        new NetworkParkPressureReader().execute(args);
+    }
+
     @Override
     public Integer call() throws Exception {
         Network network = NetworkUtils.readNetwork(networkPath.toString());
-        //addParkAttributes2Link(network, inputShpFile.toString());
         network.getAttributes().putAttribute("coordinateReferenceSystem", "EPSG:25832");
         Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(inputShpFile.toString());
 
@@ -56,14 +62,16 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
                     Geometry g = (Geometry) feature.getDefaultGeometry();
                     if (g.contains(MGC.coord2Point(l.getCoord()))) {
                         l.getAttributes().putAttribute("cost", feature.getAttribute("cost"));
-                        l.getAttributes().putAttribute("time", feature.getAttribute("time"));
+                        //this assumes that both are the same
+                        l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, feature.getAttribute("time"));
+                        l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, feature.getAttribute("time"));
                         setParkAttribute = true;
                     }
                 }
                 if (setParkAttribute == false) {
-                    log.info("Setting some default value");
                     l.getAttributes().putAttribute("cost", 100000.0);
-                    l.getAttributes().putAttribute("time", 120000.0);
+                    l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, 0);
+                    l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, 0);
                 }
             }
         }
@@ -71,28 +79,5 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
         NetworkUtils.writeNetwork(network, outputNetwork.toString());
         log.info("done");
         return null;
-    }
-
-    private final Map<String, Double> link2ParkPressure = new HashMap<>();
-
-    public static void main(String[] args) throws IOException {
-        new NetworkParkPressureReader().execute(args);
-    }
-
-    public void addParkAttributes2Link(Network network, String shapeFile) throws IOException {
-        //not pt or bike Links
-    /*    for (Link link : network.getLinks().values()) {
-            String attribute = PARK_PRESSURE_ATTRIBUTE_NAME;
-            if (!this.link2ParkPressure.containsKey(link.getId().toString())) {
-                link.getAttributes().putAttribute(attribute, Double.parseDouble(parkPressureScoreParams[2]) * parkPressureScoreConstant);
-            } else {
-                Double parkPressure = link2ParkPressure.get(link.getId().toString());
-                if (parkPressure == 0.7) {
-                    link.getAttributes().putAttribute(attribute, Double.parseDouble(parkPressureScoreParams[0]) * parkPressureScoreConstant);
-                } else if (parkPressure == 0.85) {
-                    link.getAttributes().putAttribute(attribute, Double.parseDouble(parkPressureScoreParams[1]) * parkPressureScoreConstant);
-                }
-            }
-        }*/
     }
 }
