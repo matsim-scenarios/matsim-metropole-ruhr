@@ -36,6 +36,7 @@ import org.matsim.application.options.CrsOptions;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.router.TripStructureUtils;
@@ -127,10 +128,18 @@ public class ScenarioCutOut implements MATSimAppCommand {
 		GeometryFactory gf = new GeometryFactory();
 
 		// Using the router always implies one want to keep the links
-		if (useRouter)
+		LeastCostPathCalculator router = null;
+		Network carOnlyNetwork = null;
+		if (useRouter) {
 			keepLinksInRoutes = true;
 
-		LeastCostPathCalculator router = createRouter(network);
+			TransportModeNetworkFilter filter = new TransportModeNetworkFilter(network);
+
+			carOnlyNetwork = NetworkUtils.createNetwork();
+			filter.filter(carOnlyNetwork, Set.of(TransportMode.car));
+
+			router = createRouter(carOnlyNetwork);
+		}
 
 		// now delete irrelevant persons
 		Set<Id<Person>> personsToDelete = new HashSet<>();
@@ -175,15 +184,15 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					Node toNode;
 
 					if (trip.getOriginActivity().getLinkId() != null) {
-						fromNode = network.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
+						fromNode = carOnlyNetwork.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
 					} else {
-						fromNode = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord()).getFromNode();
+						fromNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getOriginActivity().getCoord()).getFromNode();
 					}
 
 					if (trip.getDestinationActivity().getLinkId() != null) {
-						toNode = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
+						toNode = carOnlyNetwork.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
 					} else {
-						toNode = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord()).getFromNode();
+						toNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getDestinationActivity().getCoord()).getFromNode();
 					}
 
 					LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
@@ -197,8 +206,6 @@ public class ScenarioCutOut implements MATSimAppCommand {
 						keepPerson = true;
 					}
 				}
-
-
 			}
 
 			PopulationUtils.resetRoutes(person.getSelectedPlan());
