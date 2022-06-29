@@ -30,7 +30,10 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.api.core.v01.population.*;
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Population;
+import org.matsim.api.core.v01.population.Route;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
 import org.matsim.application.options.ShpOptions;
@@ -38,6 +41,7 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.TripStructureUtils.Trip;
@@ -52,6 +56,7 @@ import picocli.CommandLine;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @CommandLine.Command(name = "scenario-cutout", description = "TODO")
 public class ScenarioCutOut implements MATSimAppCommand {
@@ -88,6 +93,8 @@ public class ScenarioCutOut implements MATSimAppCommand {
 	@CommandLine.Mixin
 	private ShpOptions shp;
 
+	private final ThreadLocal<LeastCostPathCalculator> routerCache = new ThreadLocal<>();
+
 	public static void main(String[] args) {
 		new ScenarioCutOut().execute(args);
 	}
@@ -123,27 +130,20 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 
 		// additional links to include
-		Set<Id<Link>> linksToInclude = new HashSet<>();
+		Set<Id<Link>> linksToInclude = ConcurrentHashMap.newKeySet();
 
 		GeometryFactory gf = new GeometryFactory();
 
-		// Using the router always implies one want to keep the links
-		LeastCostPathCalculator router = null;
-		Network carOnlyNetwork = null;
+		Network carOnlyNetwork = useRouter ? filterNetwork(network) : null;
 		if (useRouter) {
 			keepLinksInRoutes = true;
-
-			TransportModeNetworkFilter filter = new TransportModeNetworkFilter(network);
-
-			carOnlyNetwork = NetworkUtils.createNetwork();
-			filter.filter(carOnlyNetwork, Set.of(TransportMode.car));
-
-			router = createRouter(carOnlyNetwork);
 		}
 
 		// now delete irrelevant persons
-		Set<Id<Person>> personsToDelete = new HashSet<>();
-		for (Person person : population.getPersons().values()) {
+		Set<Id<Person>> personsToDelete = ConcurrentHashMap.newKeySet();
+
+		ParallelPersonAlgorithmUtils.run(population, Runtime.getRuntime().availableProcessors(), person -> {
+
 			boolean keepPerson = false;
 
 			for (Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
@@ -178,7 +178,9 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					}
 				}
 
-				if (router != null) {
+				if (useRouter) {
+
+					LeastCostPathCalculator router = createRouter(carOnlyNetwork);
 
 					Node fromNode;
 					Node toNode;
@@ -213,7 +215,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 			if (!keepPerson) {
 				personsToDelete.add(person.getId());
 			}
-		}
+		});
 
 		log.info("Persons to delete: " + personsToDelete.size());
 		for (Id<Person> personId : personsToDelete) {
@@ -232,25 +234,28 @@ public class ScenarioCutOut implements MATSimAppCommand {
 			log.info("Additional links from routes to include: {}", linksToInclude.size());
 		}
 
+
+		log.info("number of links in original network: {}", network.getLinks().size());
+
 		for (Id<Link> linkId : linksToDelete) {
 			if (!linksToInclude.contains(linkId))
 				network.removeLink(linkId);
 		}
 
 		// clean the network
-		log.info("number of nodes before cleaning:" + network.getNodes().size());
-		log.info("number of links before cleaning:" + network.getLinks().size());
-		log.info("attempt to clean the network");
+		log.info("number of links before cleaning: {}", network.getLinks().size());
+		log.info("number of nodes before cleaning: {}", network.getNodes().size());
 
 		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
 		cleaner.removeNodesWithoutLinks();
 
 		for (String m : modes) {
+			log.info("Cleaning mode {}", m);
 			cleaner.run(Set.of(m));
 		}
 
-		log.info("number of nodes after cleaning:" + network.getNodes().size());
-		log.info("number of links after cleaning:" + network.getLinks().size());
+		log.info("number of links after cleaning: {}", network.getLinks().size());
+		log.info("number of nodes after cleaning: {}", network.getNodes().size());
 
 		NetworkUtils.writeNetwork(network, outputNetwork.toString());
 
@@ -258,19 +263,29 @@ public class ScenarioCutOut implements MATSimAppCommand {
 		return 0;
 	}
 
-	private LeastCostPathCalculator createRouter(Network network) {
+	private Network filterNetwork(Network network) {
+		TransportModeNetworkFilter filter = new TransportModeNetworkFilter(network);
 
-		if (!useRouter)
-			return null;
-
-		FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
-		LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
-
-		OnlyTimeDependentTravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
-
-		return fastAStarLandmarksFactory.createPathCalculator(network, travelDisutility, travelTime);
+		Network carOnlyNetwork = NetworkUtils.createNetwork();
+		filter.filter(carOnlyNetwork, Set.of(TransportMode.car));
+		return carOnlyNetwork;
 	}
 
+	private LeastCostPathCalculator createRouter(Network network) {
+
+		LeastCostPathCalculator c = routerCache.get();
+		if (c == null) {
+			FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
+			LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
+
+			OnlyTimeDependentTravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
+
+			c = fastAStarLandmarksFactory.createPathCalculator(network, travelDisutility, travelTime);
+			routerCache.set(c);
+		}
+
+		return c;
+	}
 }
 
 
