@@ -24,7 +24,6 @@ import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
-import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -43,11 +42,9 @@ import org.matsim.core.config.groups.StrategyConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
 import org.matsim.core.replanning.PlanStrategy;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
-import org.matsim.parking.UtilityBasedParkingPressureEventHandler;
 import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.strategy.CreateSingleModePlans;
 import org.matsim.run.strategy.PreCalibrationModeChoice;
@@ -62,14 +59,11 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
-
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
 @MATSimApplication.Analysis({
 		TravelTimeAnalysis.class, LinkStats.class
 })
 public class RunMetropoleRuhrScenario extends MATSimApplication {
-
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
@@ -114,9 +108,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
-		config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
-		config.controler().setLastIteration(0);
-		config.network().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_network_parking.xml.gz");
 
 		if (sample.isSet()) {
 			config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
@@ -199,8 +190,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@Override
 	protected void prepareScenario(Scenario scenario) {
 
-		PopulationUtils.sampleDown(scenario.getPopulation(), 0.01);
-
 		// Nothing to do yet
 		if (preCalibration) {
 			ParallelPersonAlgorithmUtils.run(scenario.getPopulation(), scenario.getConfig().global().getNumberOfThreads(), new CreateSingleModePlans());
@@ -225,22 +214,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new SwissRailRaptorModule());
 
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
-
-		// use link-based park pressure
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
-			}
-		});
-
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				//analyse PersonMoneyEvents
-				install(new PersonMoneyEventsAnalysisModule());
-				}
-			});
 
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {

@@ -41,7 +41,7 @@ public class UtilityBasedParkingPressureEventHandler implements PersonArrivalEve
             }
 
             //double time = (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_TIME);
-            double cost = (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_COST);
+            double cost = -1* (double) scenario.getNetwork().getLinks().get(event.getLinkId()).getAttributes().getAttribute(PARK_PRESSURE_ATTRIBUTE_COST);
 
             if (cost !=0) {
                 PersonMoneyEvent personMoneyEvent = new PersonMoneyEvent(event.getTime(), event.getPersonId(),cost,"parkingCost",null, null);
