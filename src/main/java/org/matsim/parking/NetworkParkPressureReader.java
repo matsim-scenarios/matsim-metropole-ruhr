@@ -63,8 +63,8 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
                     if (g.contains(MGC.coord2Point(l.getCoord()))) {
                         l.getAttributes().putAttribute("cost", feature.getAttribute("cost"));
                         //this assumes that both are the same
-                        l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, feature.getAttribute("time"));
-                        l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, feature.getAttribute("time"));
+                        l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, feature.getAttribute("accesstime"));
+                        l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, feature.getAttribute("egresstime"));
                         setParkAttribute = true;
                     }
                 }
