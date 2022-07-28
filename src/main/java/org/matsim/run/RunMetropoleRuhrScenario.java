@@ -24,6 +24,7 @@ import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
+import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -214,6 +215,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new SwissRailRaptorModule());
 
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {
