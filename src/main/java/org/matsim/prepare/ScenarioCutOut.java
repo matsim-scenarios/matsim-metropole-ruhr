@@ -160,7 +160,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 				});
 
 				// also keep persons traveling through or close to area (beeline)
-				if (line.crosses(geom)) {
+				if (line.intersects(geom)) {
 					keepPerson = true;
 					break;
 				}
