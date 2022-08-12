@@ -38,9 +38,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CreateSupply {
-	
+
 	public enum NetworkResolution {Low, Medium, High}
-	
+
 	private static final NetworkResolution networkResolution = NetworkResolution.High;
 
 	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/germany-coarse_nordrhein-westfalen-2021-07-09_merged.osm.pbf");
@@ -61,14 +61,14 @@ public class CreateSupply {
 	private static final String gtfsData2Prefix = "nwl";
 	private static final String gtfsData3Prefix = "fern";
 
-    private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
-    private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
-    private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz/2021-08-19_RRWN_Bestandsnetz.shp");
-    // for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
-    // private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
+	private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
+	private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
+	private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz/2021-08-19_RRWN_Bestandsnetz.shp");
+	// for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
+	// private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
 
 	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/");
-	
+
 	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/");
 	private static final Path longTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
@@ -82,13 +82,13 @@ public class CreateSupply {
 	public static void main(String[] args) {
 
 		String rootDirectory;
-		
+
 		if (args.length <= 0) {
 			throw new IllegalArgumentException("Please set root directory");
 		} else {
 			rootDirectory = args[0];
 		}
-		
+
 		new CreateSupply().run(Paths.get(rootDirectory));
 	}
 
@@ -98,7 +98,7 @@ public class CreateSupply {
 
 		var outputDir = rootDirectory.resolve(outputDirPublic);
 		var outputDirForCounts = rootDirectory.resolve(outputDirCounts);
-		
+
 		OutputDirectoryLogging.catchLogEntries();
 		try {
 			OutputDirectoryLogging.initLoggingWithOutputDirectory(outputDir.resolve("").toString());
@@ -119,19 +119,19 @@ public class CreateSupply {
 				.collect(Collectors.toSet());
 
 		// ----------------------------------------- Create Network ----------------------------------------------------
-		
+
 		var networkBuilder = new OsmBicycleReader.Builder()
 				.setCoordinateTransformation(transformation)
 				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
 				.setPreserveNodeWithId(nodeIdsToKeep::contains)
 				.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
 				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level for service roads to 10 to exclude them
-		
+
 		if (networkResolution == NetworkResolution.Low) {
 			// exclude tracks and cycleways
 			networkBuilder
-			.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level to 10 to exclude them
-			.addOverridingLinkProperties(OsmTags.CYCLEWAY, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
+					.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level to 10 to exclude them
+					.addOverridingLinkProperties(OsmTags.CYCLEWAY, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
 		} else if (networkResolution == NetworkResolution.Medium) {
 			// exclude tracks
 			networkBuilder.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
@@ -140,60 +140,25 @@ public class CreateSupply {
 		} else {
 			throw new RuntimeException("Unknown network resolution. Aborting...");
 		}
-		
+
 		var network = networkBuilder
 				.build()
 				.read(rootDirectory.resolve(osmData));
-
-
-		/*
-		var gtfsScenario1 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData1).toString(), gtfsDataDate1, transformation, gtfsData1Prefix);
-		var gtfsScenario2 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData2).toString(), gtfsDataDate2, transformation, gtfsData2Prefix);
-		var gtfsScenario3 = new TransitScheduleAndVehiclesFromGtfs().run(rootDirectory.resolve(gtfsData2).toString(), gtfsDataDate3, transformation, gtfsData3Prefix);
-
-		new MatsimVehicleWriter(gtfsScenario1.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData1Prefix + ".xml.gz").toString());
-		new MatsimVehicleWriter(gtfsScenario2.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData2Prefix + ".xml.gz").toString());
-		new MatsimVehicleWriter(gtfsScenario3.getTransitVehicles()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles-only-" + gtfsData3Prefix + ".xml.gz").toString());
-		new TransitScheduleWriter(gtfsScenario1.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule-only-" + gtfsData1Prefix + ".xml.gz").toString());
-		new TransitScheduleWriter(gtfsScenario2.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule-only-" + gtfsData2Prefix + ".xml.gz").toString());
-		new TransitScheduleWriter(gtfsScenario3.getTransitSchedule()).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule-only-" + gtfsData3Prefix + ".xml.gz").toString());
-
-		Config config = ConfigUtils.createConfig();
-		config.transit().setUseTransit(true);
-		Scenario scenarioBase = ScenarioUtils.loadScenario(config);
-		TransitSchedule baseTransitSchedule = scenarioBase.getTransitSchedule();
-		Vehicles baseTransitVehicles = scenarioBase.getTransitVehicles();
-		
-		MergeTransitFiles.mergeVehicles(baseTransitVehicles, gtfsScenario1.getTransitVehicles());
-		MergeTransitFiles.mergeVehicles(baseTransitVehicles, gtfsScenario2.getTransitVehicles());
-		MergeTransitFiles.mergeVehicles(baseTransitVehicles, gtfsScenario3.getTransitVehicles());
-
-		MergeTransitFiles.mergeSchedule(baseTransitSchedule, gtfsData1Prefix, gtfsScenario1.getTransitSchedule());
-		MergeTransitFiles.mergeSchedule(baseTransitSchedule, gtfsData2Prefix, gtfsScenario2.getTransitSchedule());
-		MergeTransitFiles.mergeSchedule(baseTransitSchedule, gtfsData3Prefix, gtfsScenario3.getTransitSchedule());
-
-		new MatsimVehicleWriter(baseTransitVehicles).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-vehicles.xml.gz").toString());
-		new TransitScheduleWriter(baseTransitSchedule).writeFile(outputDir.resolve("metropole-ruhr-v1.0.transit-schedule.xml.gz").toString());
-		
-		MergeNetworks.merge(network, "", gtfsScenario1.getNetwork());
-		MergeNetworks.merge(network, "", gtfsScenario2.getNetwork());
-		MergeNetworks.merge(network, "", gtfsScenario3.getNetwork());
-		 */
 
 		//new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-only-OSM-and-PT_resolution" + networkResolution + ".xml.gz")).toString());
 
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
 		Network network1 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1));
-		new NetworkWriter(network1).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork1.xml.gz").toString());
+		new NetworkWriter(network1).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork1.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network1);
-		
+
 		Network network2 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2));
-		new NetworkWriter(network2).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork2.xml.gz").toString());
+		new NetworkWriter(network2).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork2.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network2);
-		
+
 		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
-		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v1.0.network-onlyBikeNetwork3.xml.gz").toString());
+		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork3.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
@@ -211,18 +176,19 @@ public class CreateSupply {
 			node.setCoord(new Coord(node.getCoord().getX(), node.getCoord().getY(), elevation));
 		}
 
-		String networkOut = outputDir.resolve("metropole-ruhr-v1.0.network_resolution" + networkResolution + ".xml.gz").toString();
+		String networkOut = outputDir.resolve("metropole-ruhr-v1.4.network_resolution" + networkResolution + ".xml.gz").toString();
 		new NetworkWriter(network).write(networkOut);
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
 		new CreateTransitScheduleFromGtfs().execute(
 				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(), rootDirectory.resolve(gtfsData3).toString(),
-				"--date", gtfsDataDate1,  gtfsDataDate2, gtfsDataDate3,
+				"--date", gtfsDataDate1, gtfsDataDate2, gtfsDataDate3,
+				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix + "," + gtfsData3Prefix,
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
-				"--name", "metropole-ruhr-v1.0"
+				"--name", "metropole-ruhr-v1.4"
 		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
@@ -247,7 +213,7 @@ public class CreateSupply {
 				.build()
 				.run();
 
-		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v1.0.counts.xml.gz"),
+		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v1.4.counts.xml.gz"),
 				longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
 	}
 
@@ -267,12 +233,12 @@ public class CreateSupply {
 		if (level <= LinkProperties.LEVEL_LIVING_STREET && ruhrGeometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)))) {
 			return true;
 		}
-		
+
 		// within shape include all cycleways and all tracks (the designated bicycle tag is ignored)
 		if (level <= 9 && ruhrGeometries.stream().anyMatch(geometry -> geometry.contains(MGC.coord2Point(coord)))) {
 			return true;
 		}
-		
+
 		return false;
 	}
 

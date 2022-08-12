@@ -20,7 +20,8 @@
 package org.matsim.run;
 
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
-import com.google.inject.name.Names;
+import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
@@ -39,32 +40,26 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
-import org.matsim.core.config.groups.StrategyConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
-import org.matsim.core.replanning.PlanStrategy;
+import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
-import org.matsim.pt.config.TransitConfigGroup;
-import org.matsim.run.strategy.CreateSingleModePlans;
-import org.matsim.run.strategy.PreCalibrationModeChoice;
-import org.matsim.run.strategy.TuneModeChoice;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
-import javax.inject.Singleton;
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
-@CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = "v1.0")
+@CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION)
 @MATSimApplication.Analysis({
 		TravelTimeAnalysis.class, LinkStats.class
 })
 public class RunMetropoleRuhrScenario extends MATSimApplication {
+
+	public static final String VERSION = "v1.4";
 
 	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
 
@@ -72,9 +67,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Mixin
 	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
-
-	@CommandLine.Option(names = "--pre-calibrate", defaultValue = "false", description = "Precalibrate without congestion and few iterations")
-	private boolean preCalibration;
 
 	@CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
 	private boolean zeroBikePCU;
@@ -127,43 +119,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
 		}
 
-		if (preCalibration) {
-			// no congestion
-			config.qsim().setFlowCapFactor(10000);
-			config.qsim().setStorageCapFactor(10000);
-			config.controler().setLastIteration(50);
-
-			config.strategy().setFractionOfIterationsToDisableInnovation(0.95);
-
-			List<StrategyConfigGroup.StrategySettings> strategies = config.strategy().getStrategySettings().stream()
-					.filter(s -> !s.getStrategyName().equals("SubtourModeChoice") && !s.getStrategyName().equals("ChangeSingleTripMode") && !s.getStrategyName().equals("ReRoute"))
-					.collect(Collectors.toList());
-
-			config.strategy().clearStrategySettings();
-
-			strategies.forEach(s -> {
-				if (s.getStrategyName().equals("ChangeExpBeta"))
-					s.setWeight(0.1);
-			});
-
-			strategies.forEach(s -> config.strategy().addStrategySettings(s));
-
-			StrategyConfigGroup.StrategySettings preCalibMode = new StrategyConfigGroup.StrategySettings();
-
-			preCalibMode.setStrategyName("PreCalibrateMode");
-			preCalibMode.setWeight(1.0);
-			preCalibMode.setSubpopulation("person");
-
-			config.strategy().addStrategySettings(preCalibMode);
-
-			// Not creating new pt legs
-			config.changeMode().setModes(new String[]{"car", "ride", "bike", "walk"});
-
-			config.transit().setBoardingAcceptance(TransitConfigGroup.BoardingAcceptance.checkStopOnly);
-
-			addRunOption(config, "pre-calibration");
-		}
-
 		for (long ii = 600; ii <= 97200; ii += 600) {
 
 			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
@@ -190,11 +145,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
-
-		// Nothing to do yet
-		if (preCalibration) {
-			ParallelPersonAlgorithmUtils.run(scenario.getPopulation(), scenario.getConfig().global().getNumberOfThreads(), new CreateSingleModePlans());
-		}
 
 		if (zeroBikePCU) {
 			Id<VehicleType> key = Id.create("bike", VehicleType.class);
@@ -230,12 +180,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
-				if (preCalibration) {
+				// Configure mode-choice strategy
+				addControlerListenerBinding().to(StrategyWeightFadeout.class).in(Singleton.class);
+				Multibinder<StrategyWeightFadeout.Schedule> schedules = Multibinder.newSetBinder(binder(), StrategyWeightFadeout.Schedule.class);
+				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice, "person", 0.75, 0.85));
+				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute, "person", 0.78));
 
-					bind(PlanStrategy.class).annotatedWith(Names.named("PreCalibrateMode")).toProvider(PreCalibrationModeChoice.class);
-
-				} else
-					addControlerListenerBinding().to(TuneModeChoice.class).in(Singleton.class);
 
 			}
 		});

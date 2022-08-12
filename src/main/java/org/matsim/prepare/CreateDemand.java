@@ -9,6 +9,7 @@ import org.matsim.core.population.io.StreamingPopulationWriter;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
+import org.matsim.run.RunMetropoleRuhrScenario;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,7 +21,7 @@ public class CreateDemand {
 	private static final Path heightData = rootFolder.resolve("./original-data/2021-05-29_RVR_Grid_10m.tif");
 
 	private static final Path outputFolder = Paths.get("../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input");
-	private static final String OUTPUT = outputFolder.resolve("metropole-ruhr-v1.1-25pct.plans.xml.gz").toString();
+	private static final String OUTPUT = outputFolder.resolve("metropole-ruhr-" + RunMetropoleRuhrScenario.VERSION + "-25pct.plans.xml.gz").toString();
 
 	public static void main(String[] args) {
 
@@ -47,13 +48,26 @@ public class CreateDemand {
 				"--output=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/"
 		);
 
+		String tmp = OUTPUT.replace("25pct", "tmp");
 		new GenerateShortDistanceTrips().execute(
 				"--population=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
 				"--input-crs=EPSG:25832",
 				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832",
 				"--num-trips=551000",
-				"--output=" + OUTPUT.replace("25pct", "tmp")
+				"--output=" + tmp
+		);
+
+		new XYToLinks().execute(
+				"--input=" + tmp,
+				"--output=" + tmp,
+				"--network=../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
+				"--car-only"
+		);
+
+		new FixSubtourModes().execute(
+				"--input=" + tmp,
+				"--output=" + tmp
 		);
 
 		//------------------- add elevation to population -------------------------------------------
@@ -75,7 +89,7 @@ public class CreateDemand {
 		// open the output population
 		out.startStreaming(OUTPUT);
 		// read the population, add elevation to each person and write each person to output population
-		in.readFile(OUTPUT.replace("25pct", "tmp"));
+		in.readFile(tmp);
 		// finish the output population after the reader is finished
 		out.closeStreaming();
 
@@ -83,7 +97,7 @@ public class CreateDemand {
 
 		new DownSamplePopulation().execute(OUTPUT,
 				"--sample-size=0.25",
-				"--samples", "0.1", "0.03", "0.01","0.001"
+				"--samples", "0.1", "0.03", "0.01", "0.001"
 		);
 
 		new CheckPopulation().execute(OUTPUT,
