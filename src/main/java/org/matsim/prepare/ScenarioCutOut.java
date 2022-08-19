@@ -30,24 +30,25 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
+import org.matsim.api.core.v01.population.Route;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.population.PopulationUtils;
-import org.matsim.core.population.routes.AbstractRoute;
+import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
+import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.TripStructureUtils.Trip;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.LeastCostPathCalculatorFactory;
-import org.matsim.core.scoring.functions.ActivityUtilityParameters;
 import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
@@ -55,171 +56,236 @@ import picocli.CommandLine;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @CommandLine.Command(name = "scenario-cutout", description = "TODO")
 public class ScenarioCutOut implements MATSimAppCommand {
 
-    private static final Logger log = LogManager.getLogger(ScenarioCutOut.class);
+	private static final Logger log = LogManager.getLogger(ScenarioCutOut.class);
 
-    @CommandLine.Option(names = "--input", description = "Path to input population", required = true)
-    private Path input;
+	@CommandLine.Option(names = "--input", description = "Path to input population", required = true)
+	private Path input;
 
-    @CommandLine.Option(names = "--network", description = "Path to network", required = true)
-    private Path networkPath;
+	@CommandLine.Option(names = "--network", description = "Path to network", required = true)
+	private Path networkPath;
 
-    @CommandLine.Option(names = "--buffer", description = "Buffer around zones in meter", defaultValue = "1000")
-    private double buffer;
+	@CommandLine.Option(names = "--buffer", description = "Buffer around zones in meter", defaultValue = "1000")
+	private double buffer;
 
-    @CommandLine.Option(names = "--output-network", description = "Path to output network", required = true)
-    private Path outputNetwork;
+	@CommandLine.Option(names = "--output-network", description = "Path to output network", required = true)
+	private Path outputNetwork;
 
-    @CommandLine.Option(names = "--output-population", description = "Path to output population", required = true)
-    private Path outputPopulation;
+	@CommandLine.Option(names = "--output-population", description = "Path to output population", required = true)
+	private Path outputPopulation;
 
-    @CommandLine.Option(names = "--modes", description = "Modes to consider when cutting network", defaultValue = "car,bike,ride", split = ",")
-    private Set<String> modes;
+	@CommandLine.Option(names = "--modes", description = "Modes to consider when cutting network", defaultValue = "car,bike,ride", split = ",")
+	private Set<String> modes;
 
-    @CommandLine.Mixin
-    private CrsOptions crs;
+	@CommandLine.Option(names = "--keep-links-in-routes", description = "Keep all links in routes relevant to the area", defaultValue = "false")
+	private boolean keepLinksInRoutes;
 
-    @CommandLine.Mixin
-    private ShpOptions shp;
+	@CommandLine.Option(names = "--use-router", description = "Use router on legs that don't have a route", defaultValue = "false")
+	private boolean useRouter;
 
-    public static void main(String[] args) {
-        new ScenarioCutOut().execute(args);
-    }
+	@CommandLine.Mixin
+	private CrsOptions crs;
 
-    @Override
-    public Integer call() throws Exception {
+	@CommandLine.Mixin
+	private ShpOptions shp;
 
-        Network network = NetworkUtils.readNetwork(networkPath.toString());
-        Population population = PopulationUtils.readPopulation(input.toString());
+	private final ThreadLocal<LeastCostPathCalculator> routerCache = new ThreadLocal<>();
 
-        if (crs.getInputCRS() == null) {
-            log.error("Input CRS must be specified");
-            return 2;
-        }
+	public static void main(String[] args) {
+		new ScenarioCutOut().execute(args);
+	}
 
-        Geometry geom = shp.getGeometry().buffer(buffer);
+	@Override
+	public Integer call() throws Exception {
 
-        Set<Id<Link>> linksToDelete = new HashSet<>();
-        for (Link link : network.getLinks().values()) {
+		Network network = NetworkUtils.readNetwork(networkPath.toString());
+		Population population = PopulationUtils.readPopulation(input.toString());
 
-            if (geom.contains(MGC.coord2Point(link.getCoord()))
-                    || geom.contains(MGC.coord2Point(link.getFromNode().getCoord()))
-                    || geom.contains(MGC.coord2Point(link.getToNode().getCoord()))
-                    || link.getAllowedModes().contains(TransportMode.pt)) {
-                // keep the link
-            } else {
-                linksToDelete.add(link.getId());
-            }
-        }
+		if (crs.getInputCRS() == null) {
+			log.error("Input CRS must be specified");
+			return 2;
+		}
 
-        log.info("Links to delete: " + linksToDelete.size());
-        for (Id<Link> linkId : linksToDelete) {
-            network.removeLink(linkId);
-        }
+		Geometry geom = shp.getGeometry().buffer(buffer);
 
-        // clean the network
-        log.info("number of nodes before cleaning:" + network.getNodes().size());
-        log.info("number of links before cleaning:" + network.getLinks().size());
-        log.info("attempt to clean the network");
+		Set<Id<Link>> linksToDelete = new HashSet<>();
+		Set<Id<Link>> linksToKeep = new HashSet<>();
 
-        MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
-        for (String m : modes) {
-            cleaner.run(Set.of(m));
-        }
-        cleaner.removeNodesWithoutLinks();
-        log.info("number of nodes after cleaning:" + network.getNodes().size());
-        log.info("number of links after cleaning:" + network.getLinks().size());
+		for (Link link : network.getLinks().values()) {
 
-        NetworkUtils.writeNetwork(network, outputNetwork.toString());
+			if (geom.contains(MGC.coord2Point(link.getCoord()))
+					|| geom.contains(MGC.coord2Point(link.getFromNode().getCoord()))
+					|| geom.contains(MGC.coord2Point(link.getToNode().getCoord()))
+					|| link.getAllowedModes().contains(TransportMode.pt)) {
+				// keep the link
+				linksToKeep.add(link.getId());
+			} else {
+				linksToDelete.add(link.getId());
+			}
+		}
 
-        GeometryFactory gf = new GeometryFactory();
 
-        LeastCostPathCalculator router = createRouter(network);
+		// additional links to include
+		Set<Id<Link>> linksToInclude = ConcurrentHashMap.newKeySet();
 
-        // now delete irrelevant persons
-        Set<Id<Person>> personsToDelete = new HashSet<>();
-        for (Person person : population.getPersons().values()) {
-            boolean keepPerson = false;
+		GeometryFactory gf = new GeometryFactory();
 
-            for (Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+		Network carOnlyNetwork = useRouter ? filterNetwork(network) : null;
+		if (useRouter) {
+			keepLinksInRoutes = true;
+		}
 
-                // keep all agents starting or ending in area
-                if (geom.contains(MGC.coord2Point(trip.getOriginActivity().getCoord())) || geom.contains(MGC.coord2Point(trip.getDestinationActivity().getCoord()))) {
-                    keepPerson = true;
-                    break;
-                }
+		// now delete irrelevant persons
+		Set<Id<Person>> personsToDelete = ConcurrentHashMap.newKeySet();
 
-                LineString line = gf.createLineString(new Coordinate[]{
-                        MGC.coord2Coordinate(trip.getOriginActivity().getCoord()),
-                        MGC.coord2Coordinate(trip.getDestinationActivity().getCoord())
-                });
+		ParallelPersonAlgorithmUtils.run(population, Runtime.getRuntime().availableProcessors(), person -> {
 
-                // also keep persons traveling through or close to area (beeline)
-                if (line.crosses(geom)) {
-                    keepPerson = true;
-                    break;
-                }
+			boolean keepPerson = false;
 
-/*				// check if any point of route is contained in network
+			for (Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+
+				// keep all agents starting or ending in area
+				if (geom.contains(MGC.coord2Point(trip.getOriginActivity().getCoord())) || geom.contains(MGC.coord2Point(trip.getDestinationActivity().getCoord()))) {
+					keepPerson = true;
+					break;
+				}
+
+				LineString line = gf.createLineString(new Coordinate[]{
+						MGC.coord2Coordinate(trip.getOriginActivity().getCoord()),
+						MGC.coord2Coordinate(trip.getDestinationActivity().getCoord())
+				});
+
+				// also keep persons traveling through or close to area (beeline)
+				if (line.crosses(geom)) {
+					keepPerson = true;
+					break;
+				}
+
+
 				for (Leg leg : trip.getLegsOnly()) {
+					Route route = leg.getRoute();
+					if (keepLinksInRoutes && route instanceof NetworkRoute) {
 
-					AbstractRoute route;
-					if (leg.getRoute() != null && leg.getRoute() instanceof AbstractRoute) {
-
-						route = (AbstractRoute) leg.getRoute();
-
-						Node fromNode = network.getLinks().get(route.getStartLinkId()).getFromNode();
-						Node toNode = network.getLinks().get(route.getEndLinkId()).getToNode();
-
-						LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
-
-						boolean contained = path.nodes.stream()
-								.map(Node::getCoord)
-								.map(MGC::coord2Point)
-								.anyMatch(geom::contains);
-
-						if (contained)
+						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains)) {
+							linksToInclude.addAll(((NetworkRoute) route).getLinkIds());
 							keepPerson = true;
+						}
 
 					}
-				}*/
-            }
+				}
 
-            // removing link id from plans
-            for (Activity activity : PopulationUtils.getActivities(person.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities)) {
-                activity.setLinkId(null);
-            }
+				if (useRouter) {
 
-            PopulationUtils.resetRoutes(person.getSelectedPlan());
+					LeastCostPathCalculator router = createRouter(carOnlyNetwork);
 
-            if (!keepPerson) {
-                personsToDelete.add(person.getId());
-            }
-        }
+					Node fromNode;
+					Node toNode;
 
-        log.info("Persons to delete: " + personsToDelete.size());
-        for (Id<Person> personId : personsToDelete) {
-            population.removePerson(personId);
-        }
+					if (trip.getOriginActivity().getLinkId() != null) {
+						fromNode = carOnlyNetwork.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
+					} else {
+						fromNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getOriginActivity().getCoord()).getFromNode();
+					}
 
-        PopulationUtils.writePopulation(population, outputPopulation.toString());
+					if (trip.getDestinationActivity().getLinkId() != null) {
+						toNode = carOnlyNetwork.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
+					} else {
+						toNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getDestinationActivity().getCoord()).getFromNode();
+					}
 
-        return 0;
-    }
+					LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
 
-    private LeastCostPathCalculator createRouter(Network network) {
+					if (path != null && path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
 
-        FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
-        LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
+						// add all these links directly
+						path.links.stream().map(Link::getId)
+								.forEach(linksToInclude::add);
 
-        OnlyTimeDependentTravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
+						keepPerson = true;
+					}
+				}
+			}
 
-        return fastAStarLandmarksFactory.createPathCalculator(network, travelDisutility, travelTime);
-    }
+			PopulationUtils.resetRoutes(person.getSelectedPlan());
 
+			if (!keepPerson) {
+				personsToDelete.add(person.getId());
+			}
+		});
+
+		log.info("Persons to delete: " + personsToDelete.size());
+		for (Id<Person> personId : personsToDelete) {
+			population.removePerson(personId);
+		}
+
+		PopulationUtils.writePopulation(population, outputPopulation.toString());
+
+		if (keepLinksInRoutes && linksToInclude.isEmpty()) {
+			log.warn("Keep links in routes is activated, but no links have been kept. Probably no routes are present.");
+		}
+
+		log.info("Links to add: " + linksToKeep.size());
+
+		if (keepLinksInRoutes) {
+			log.info("Additional links from routes to include: {}", linksToInclude.size());
+		}
+
+
+		log.info("number of links in original network: {}", network.getLinks().size());
+
+		for (Id<Link> linkId : linksToDelete) {
+			if (!linksToInclude.contains(linkId))
+				network.removeLink(linkId);
+		}
+
+		// clean the network
+		log.info("number of links before cleaning: {}", network.getLinks().size());
+		log.info("number of nodes before cleaning: {}", network.getNodes().size());
+
+		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
+		cleaner.removeNodesWithoutLinks();
+
+		for (String m : modes) {
+			log.info("Cleaning mode {}", m);
+			cleaner.run(Set.of(m));
+		}
+
+		log.info("number of links after cleaning: {}", network.getLinks().size());
+		log.info("number of nodes after cleaning: {}", network.getNodes().size());
+
+		NetworkUtils.writeNetwork(network, outputNetwork.toString());
+
+
+		return 0;
+	}
+
+	private Network filterNetwork(Network network) {
+		TransportModeNetworkFilter filter = new TransportModeNetworkFilter(network);
+
+		Network carOnlyNetwork = NetworkUtils.createNetwork();
+		filter.filter(carOnlyNetwork, Set.of(TransportMode.car));
+		return carOnlyNetwork;
+	}
+
+	private LeastCostPathCalculator createRouter(Network network) {
+
+		LeastCostPathCalculator c = routerCache.get();
+		if (c == null) {
+			FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
+			LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
+
+			OnlyTimeDependentTravelDisutility travelDisutility = new OnlyTimeDependentTravelDisutility(travelTime);
+
+			c = fastAStarLandmarksFactory.createPathCalculator(network, travelDisutility, travelTime);
+			routerCache.set(c);
+		}
+
+		return c;
+	}
 }
 
 
