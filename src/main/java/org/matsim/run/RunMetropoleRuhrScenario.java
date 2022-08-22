@@ -46,13 +46,15 @@ import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
 import org.matsim.core.replanning.PlanStrategy;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.core.scoring.functions.ScoringParametersForPerson;
+import org.matsim.prepare.PreparePopulation;
 import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.strategy.CreateSingleModePlans;
 import org.matsim.run.strategy.PreCalibrationModeChoice;
 import org.matsim.run.strategy.TuneModeChoice;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
-
+import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import javax.inject.Singleton;
 import java.io.File;
 import java.util.List;
@@ -81,6 +83,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
 	private boolean download;
+
+	@CommandLine.Option(names = "--income-dependent", defaultValue = "true", description = "Income dependent scoring", negatable = true)
+	private boolean incomeDependent;
 
 	public RunMetropoleRuhrScenario() {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-3pct.config.xml");
@@ -216,6 +221,16 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
+
+		if (incomeDependent) {
+			log.info("Using income dependent scoring");
+			controler.addOverridingModule(new AbstractModule() {
+				@Override
+				public void install() {
+					bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+				}
+			});
+		}
 
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {
