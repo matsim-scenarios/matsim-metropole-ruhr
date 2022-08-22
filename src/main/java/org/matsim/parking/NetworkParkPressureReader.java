@@ -54,6 +54,7 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
         Network network = NetworkUtils.readNetwork(networkPath.toString());
         network.getAttributes().putAttribute("coordinateReferenceSystem", "EPSG:25832");
         Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(inputShpFile.toString());
+        log.info("read shp File");
 
         for (Link l : network.getLinks().values()) {
             boolean setParkAttribute = false;
@@ -62,17 +63,45 @@ public class NetworkParkPressureReader implements MATSimAppCommand {
                     Geometry g = (Geometry) feature.getDefaultGeometry();
                     if (g.contains(MGC.coord2Point(l.getCoord()))) {
                         l.getAttributes().putAttribute("cost", feature.getAttribute("cost"));
-                        //this assumes that both are the same
-                        l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, feature.getAttribute("accesstime"));
+                        l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, feature.getAttribute("accestime"));
                         l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, feature.getAttribute("egresstime"));
+
+
+                        l.getAttributes().putAttribute("accesstime_pt", 0.0);
+                        l.getAttributes().putAttribute("egresstime_pt", 0.0);
+                        l.getAttributes().putAttribute("accesstime_bike", 0.0);
+                        l.getAttributes().putAttribute("egresstime_bike", 0.0);
+                        l.getAttributes().putAttribute("accesstime_ride", 0.0);
+                        l.getAttributes().putAttribute("egresstime_ride", 0.0);
+
+                        if (l.getAttributes().getAttribute("cost").equals(0)) {
+                            l.getAttributes().putAttribute("cost", 0.0);
+                        }
                         setParkAttribute = true;
                     }
                 }
                 if (setParkAttribute == false) {
-                    l.getAttributes().putAttribute("cost", 100000.0);
-                    l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, 0);
-                    l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, 0);
+                    l.getAttributes().putAttribute("cost", 0.0);
+                    l.getAttributes().putAttribute(ACCESSTIMELINKATTRIBUTECAR, 0.0);
+                    l.getAttributes().putAttribute(EGRESSTIMELINKATTRIBUTECAR, 0.0);
+
+                    l.getAttributes().putAttribute("accesstime_pt", 0.0);
+                    l.getAttributes().putAttribute("egresstime_pt", 0.0);
+                    l.getAttributes().putAttribute("accesstime_bike", 0.0);
+                    l.getAttributes().putAttribute("egresstime_bike", 0.0);
+                    l.getAttributes().putAttribute("accesstime_ride", 0.0);
+                    l.getAttributes().putAttribute("egresstime_ride", 0.0);
                 }
+            }
+            else {
+                l.getAttributes().putAttribute("accesstime_pt", 0.0);
+                l.getAttributes().putAttribute("egresstime_pt", 0.0);
+                l.getAttributes().putAttribute("accesstime_bike", 0.0);
+                l.getAttributes().putAttribute("egresstime_bike", 0.0);
+                l.getAttributes().putAttribute("accesstime_ride", 0.0);
+                l.getAttributes().putAttribute("egresstime_ride", 0.0);
+                l.getAttributes().putAttribute("accesstime_car", 0.0);
+                l.getAttributes().putAttribute("egresstime_car", 0.0);
             }
         }
 

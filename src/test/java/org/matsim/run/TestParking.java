@@ -125,9 +125,9 @@ public class TestParking {
 
             if (useParking == true) {
                for (Link l: scenario.getNetwork().getLinks().values()) {
-                   l.getAttributes().putAttribute("cost", 1.0);
-                   l.getAttributes().putAttribute("accesstime_car", 100.0);
-                   l.getAttributes().putAttribute("egresstime_car", 100.0);
+                   l.getAttributes().putAttribute("cost", 0.0);
+                   l.getAttributes().putAttribute("accesstime_car", 1234.0);
+                   l.getAttributes().putAttribute("egresstime_car", 1234.0);
                }
             }
         }
