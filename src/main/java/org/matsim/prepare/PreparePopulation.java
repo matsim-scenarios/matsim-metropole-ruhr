@@ -2,11 +2,16 @@ package org.matsim.prepare;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.Population;
+import org.locationtech.jts.geom.Geometry;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.application.options.ShpOptions;
+import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PersonUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.scenario.ScenarioUtils;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -17,18 +22,26 @@ import java.util.Random;
         name = "population",
         description = "Set the car availability attribute in the population"
 )
-
 public class PreparePopulation implements MATSimAppCommand {
 
-    private static final Logger log = LogManager.getLogger(PreparePopulation.class);
+    public static void main(String[] args) {
+        new PreparePopulation().execute(args);
+    }
 
+    private static final Logger log = LogManager.getLogger(PreparePopulation.class);
     private final Random rnd = new Random(1234);
 
     @CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Path to input population")
     private Path input;
 
+    @CommandLine.Option(names = "--attributes", description = "Path to attributes file of population", defaultValue = "")
+    private Path attributePath;
+
     @CommandLine.Option(names = "--output", description = "Path to output population", required = true)
     private Path output;
+
+    @CommandLine.Mixin
+    private ShpOptions shp = new ShpOptions();
 
     @Override
     public Integer call() throws Exception {
@@ -38,9 +51,34 @@ public class PreparePopulation implements MATSimAppCommand {
             return 2;
         }
 
-        Population population = PopulationUtils.readPopulation(input.toString());
+        Config config = ConfigUtils.createConfig();
+        config.plans().setInputFile(input.toString());
+        if (!attributePath.toString().equals("")) {
+            config.plans().setInputPersonAttributeFile(attributePath.toString());
+            config.plans().setInsistingOnUsingDeprecatedPersonAttributeFile(true);
+        }
+        Scenario scenario = ScenarioUtils.loadScenario(config);
+        Population population = scenario.getPopulation();
+
+        Geometry studyArea = null;
+        if (shp.getShapeFile() != null) {
+            studyArea = shp.getGeometry();
+        }
 
         for (Person person : population.getPersons().values()) {
+            // Remove the trailing ".0" in the activity name
+            for (Plan plan : person.getPlans()) {
+                for (PlanElement planElement : plan.getPlanElements()) {
+                    if (planElement instanceof Activity) {
+                        String originalType = ((Activity) planElement).getType();
+                        String newType = originalType;
+                        if (originalType.endsWith(".0")) {
+                            newType = originalType.replace(".0", "");
+                        }
+                        ((Activity) planElement).setType(newType);
+                    }
+                }
+            }
 
             // Set car availability to "never" for agents below 18 years old
             // Standardize the attribute "age"
@@ -53,7 +91,6 @@ public class PreparePopulation implements MATSimAppCommand {
                     avail = "never";
                 }
             }
-
             PersonUtils.setCarAvail(person, avail);
             person.getAttributes().removeAttribute("sim_carAvailability"); // Replace with standardized car availability attribute
 
@@ -78,7 +115,7 @@ public class PreparePopulation implements MATSimAppCommand {
                 householdSize = Double.parseDouble(householdSizeString);
             }
 
-            double income;
+            double income = 0;
             switch (incomeGroup) {
                 case 1:
                     income = 500 / householdSize;
@@ -123,8 +160,6 @@ public class PreparePopulation implements MATSimAppCommand {
             }
             PersonUtils.setIncome(person, income);
         }
-
-
         PopulationUtils.writePopulation(population, output.toString());
 
         return 0;
