@@ -84,7 +84,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
 	private boolean download;
 
-	@CommandLine.Option(names = "--income-dependent", defaultValue = "true", description = "Income dependent scoring", negatable = true)
+	@CommandLine.Option(names = "--income-dependent", defaultValue = "false", description = "Income dependent scoring", negatable = true)
 	private boolean incomeDependent;
 
 	public RunMetropoleRuhrScenario() {

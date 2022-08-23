@@ -60,11 +60,6 @@ public class PreparePopulation implements MATSimAppCommand {
         Scenario scenario = ScenarioUtils.loadScenario(config);
         Population population = scenario.getPopulation();
 
-        Geometry studyArea = null;
-        if (shp.getShapeFile() != null) {
-            studyArea = shp.getGeometry();
-        }
-
         for (Person person : population.getPersons().values()) {
             // Remove the trailing ".0" in the activity name
             for (Plan plan : person.getPlans()) {
