@@ -24,6 +24,7 @@ import com.google.inject.name.Names;
 import org.apache.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
+import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -48,6 +49,7 @@ import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
 import org.matsim.core.replanning.PlanStrategy;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.parking.UtilityBasedParkingPressureEventHandler;
 import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.strategy.CreateSingleModePlans;
 import org.matsim.run.strategy.PreCalibrationModeChoice;
@@ -110,11 +112,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
 		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
+		log.info("using accessEgressModeToLinkPlusTimeConstant");
 		config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
-		config.network().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_network_parking.xml.gz");
 
 		if (sample.isSet()) {
 			config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
@@ -197,10 +199,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@Override
 	protected void prepareScenario(Scenario scenario) {
 
-	//	for (Person p: scenario.getPopulation().getPersons().values()) {
-	//		PopulationUtils.resetRoutes(p.getSelectedPlan());
-	//	}
-
 		// Nothing to do yet
 		if (preCalibration) {
 			ParallelPersonAlgorithmUtils.run(scenario.getPopulation(), scenario.getConfig().global().getNumberOfThreads(), new CreateSingleModePlans());
@@ -240,6 +238,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
+
+
 				if (preCalibration) {
 
 					bind(PlanStrategy.class).annotatedWith(Names.named("PreCalibrateMode")).toProvider(PreCalibrationModeChoice.class);
@@ -247,6 +247,23 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				} else
 					addControlerListenerBinding().to(TuneModeChoice.class).in(Singleton.class);
 
+			}
+		});
+
+		log.info("Adding parking cost");
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
+			}
+		});
+
+		log.info("Adding money event analysis");
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				//analyse PersonMoneyEvents
+				install(new PersonMoneyEventsAnalysisModule());
 			}
 		});
 

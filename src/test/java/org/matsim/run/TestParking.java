@@ -14,6 +14,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.population.io.PopulationReader;
@@ -80,8 +81,8 @@ public class TestParking {
             preparedConfig.transit().setVehiclesFile(null);
             preparedConfig.transit().setTransitScheduleFile(null);
 
-            if (useParking== true) {
-                preparedConfig.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
+            if (useParking== false) {
+                config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
             }
 
             return preparedConfig;
