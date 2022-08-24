@@ -51,14 +51,19 @@ public class PreparePopulation implements MATSimAppCommand {
             return 2;
         }
 
-        Config config = ConfigUtils.createConfig();
+
+        //why so complicated
+       /* Config config = ConfigUtils.createConfig();
         config.plans().setInputFile(input.toString());
         if (!attributePath.toString().equals("")) {
             config.plans().setInputPersonAttributeFile(attributePath.toString());
             config.plans().setInsistingOnUsingDeprecatedPersonAttributeFile(true);
-        }
-        Scenario scenario = ScenarioUtils.loadScenario(config);
-        Population population = scenario.getPopulation();
+        }*/
+        //config.network().setInputCRS("EPSG:25832");
+        //Scenario scenario = ScenarioUtils.createScenario(config);
+        //Population population = scenario.getPopulation();
+
+        Population population = PopulationUtils.readPopulation(input.toString());
 
         for (Person person : population.getPersons().values()) {
             // Remove the trailing ".0" in the activity name
