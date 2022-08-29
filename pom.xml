@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.matsim-scenarios</groupId>
 	<artifactId>matsim-metropole-ruhr</artifactId>
-	<version>1.3</version>
+	<version>1.4</version>
 
 	<name>MATSim Metropole Ruhr project</name>
 	<description>MATSim Metropole Ruhr project</description>
@@ -20,7 +20,7 @@
 		<!-- <matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>  -->
 
 		<!-- PR release -->
-		<matsim.version>14.0</matsim.version>
+		<matsim.version>15.0-PR2138</matsim.version>
 		
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
