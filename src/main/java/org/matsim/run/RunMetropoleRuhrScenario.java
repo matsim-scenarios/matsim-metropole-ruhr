@@ -45,8 +45,10 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
+import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
 import java.io.File;
 import java.util.List;

@@ -83,6 +83,9 @@ public class CreateDemand {
 					var elevation = elevationReader.getElevationAt(activity.getCoord());
 					activity.setCoord(new Coord(activity.getCoord().getX(), activity.getCoord().getY(), elevation));
 				}));
+
+		in.addAlgorithm(new PreparePersonAttributes());
+
 		// this relies on the fact that algorithms are called in the same order as they are added.
 		in.addAlgorithm(out);
 
@@ -94,6 +97,10 @@ public class CreateDemand {
 		out.closeStreaming();
 
 		//----------------------
+
+		new ExtractHomeCoordinates().execute(OUTPUT,
+				"--csv="+ OUTPUT.replace(".xml.gz", "-homes.csv")
+		);
 
 		new DownSamplePopulation().execute(OUTPUT,
 				"--sample-size=0.25",
