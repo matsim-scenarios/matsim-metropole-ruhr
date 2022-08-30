@@ -151,7 +151,6 @@ public class ScenarioCutOut implements MATSimAppCommand {
 				// keep all agents starting or ending in area
 				if (geom.contains(MGC.coord2Point(trip.getOriginActivity().getCoord())) || geom.contains(MGC.coord2Point(trip.getDestinationActivity().getCoord()))) {
 					keepPerson = true;
-					break;
 				}
 
 				LineString line = gf.createLineString(new Coordinate[]{
@@ -162,7 +161,6 @@ public class ScenarioCutOut implements MATSimAppCommand {
 				// also keep persons traveling through or close to area (beeline)
 				if (line.intersects(geom)) {
 					keepPerson = true;
-					break;
 				}
 
 
@@ -207,6 +205,14 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 						keepPerson = true;
 					}
+				}
+
+				if (keepPerson) {
+					if (trip.getOriginActivity().getLinkId() != null)
+						linksToInclude.add(trip.getOriginActivity().getLinkId());
+
+					if (trip.getDestinationActivity().getLinkId() != null)
+						linksToInclude.add(trip.getDestinationActivity().getLinkId());
 				}
 			}
 
