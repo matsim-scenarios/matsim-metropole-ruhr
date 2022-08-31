@@ -54,10 +54,7 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @CommandLine.Command(name = "scenario-cutout", description = "TODO")
@@ -150,7 +147,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 			List<Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
 
-			List<Id<Link>> linkIds = new ArrayList<>();
+			Set<Id<Link>> linkIds = new HashSet<>();
 
 			for (Trip trip : trips) {
 
@@ -174,11 +171,10 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					Route route = leg.getRoute();
 					if (keepLinksInRoutes && route instanceof NetworkRoute) {
 
+						linkIds.addAll(((NetworkRoute) route).getLinkIds());
 						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains)) {
-							linkIds.addAll(((NetworkRoute) route).getLinkIds());
 							keepPerson = true;
 						}
-
 					}
 				}
 
@@ -189,14 +185,16 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					Node fromNode;
 					Node toNode;
 
-					if (trip.getOriginActivity().getLinkId() != null) {
-						fromNode = carOnlyNetwork.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
+					Map<Id<Link>, ? extends Link> carLinks = carOnlyNetwork.getLinks();
+
+					if (trip.getOriginActivity().getLinkId() != null && carLinks.get(trip.getOriginActivity().getLinkId()) != null) {
+						fromNode = carLinks.get(trip.getOriginActivity().getLinkId()).getFromNode();
 					} else {
 						fromNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getOriginActivity().getCoord()).getFromNode();
 					}
 
-					if (trip.getDestinationActivity().getLinkId() != null) {
-						toNode = carOnlyNetwork.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
+					if (trip.getDestinationActivity().getLinkId() != null && carLinks.get(trip.getDestinationActivity().getLinkId()) != null) {
+						toNode = carLinks.get(trip.getDestinationActivity().getLinkId()).getFromNode();
 					} else {
 						toNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getDestinationActivity().getCoord()).getFromNode();
 					}
