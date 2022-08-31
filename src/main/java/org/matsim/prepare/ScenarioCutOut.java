@@ -54,7 +54,9 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -146,7 +148,11 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 			boolean keepPerson = false;
 
-			for (Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+			List<Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+
+			List<Id<Link>> linkIds = new ArrayList<>();
+
+			for (Trip trip : trips) {
 
 				// keep all agents starting or ending in area
 				if (geom.contains(MGC.coord2Point(trip.getOriginActivity().getCoord())) || geom.contains(MGC.coord2Point(trip.getDestinationActivity().getCoord()))) {
@@ -169,7 +175,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					if (keepLinksInRoutes && route instanceof NetworkRoute) {
 
 						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains)) {
-							linksToInclude.addAll(((NetworkRoute) route).getLinkIds());
+							linkIds.addAll(((NetworkRoute) route).getLinkIds());
 							keepPerson = true;
 						}
 
@@ -201,26 +207,30 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 						// add all these links directly
 						path.links.stream().map(Link::getId)
-								.forEach(linksToInclude::add);
+								.forEach(linkIds::add);
 
 						keepPerson = true;
 					}
 				}
 
-				if (keepPerson) {
-					if (trip.getOriginActivity().getLinkId() != null)
-						linksToInclude.add(trip.getOriginActivity().getLinkId());
+				if (trip.getOriginActivity().getLinkId() != null)
+					linkIds.add(trip.getOriginActivity().getLinkId());
 
-					if (trip.getDestinationActivity().getLinkId() != null)
-						linksToInclude.add(trip.getDestinationActivity().getLinkId());
-				}
+				if (trip.getDestinationActivity().getLinkId() != null)
+					linkIds.add(trip.getDestinationActivity().getLinkId());
+
+			}
+
+			if (keepPerson) {
+				linksToInclude.addAll(linkIds);
+
+			} else {
+
+				personsToDelete.add(person.getId());
 			}
 
 			PopulationUtils.resetRoutes(person.getSelectedPlan());
 
-			if (!keepPerson) {
-				personsToDelete.add(person.getId());
-			}
 		});
 
 		log.info("Persons to delete: " + personsToDelete.size());
