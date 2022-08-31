@@ -203,13 +203,12 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 					LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
 
-					if (path != null && path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
-
+					if (path != null) {
 						// add all these links directly
-						path.links.stream().map(Link::getId)
-								.forEach(linkIds::add);
-
-						keepPerson = true;
+						path.links.stream().map(Link::getId).forEach(linkIds::add);
+						if (path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
+							keepPerson = true;
+						}
 					}
 				}
 
@@ -223,9 +222,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 			if (keepPerson) {
 				linksToInclude.addAll(linkIds);
-
 			} else {
-
 				personsToDelete.add(person.getId());
 			}
 
