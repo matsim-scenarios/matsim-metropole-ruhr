@@ -63,6 +63,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
+import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -110,6 +112,14 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
+
+		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
+		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName("oneHourPCost");
+		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName("extraHourPCost");
+		parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName("maxDailyPCost");
+		parkingCostConfigGroup.setMaxParkingDurationAttributeName("maxPTime");
+		parkingCostConfigGroup.setParkingPenaltyAttributeName("pFine");
+		parkingCostConfigGroup.setResidentialParkingFeeAttributeName("resPCosts");
 
 		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		log.info("using accessEgressModeToLinkPlusTimeConstant");
@@ -250,13 +260,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			}
 		});
 
-		log.info("Adding parking cost");
+		/*log.info("Adding parking cost");
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
 			public void install() {
 				this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
 			}
-		});
+		});*/
 
 		log.info("Adding money event analysis");
 		controler.addOverridingModule(new AbstractModule() {
@@ -266,6 +276,10 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				install(new PersonMoneyEventsAnalysisModule());
 			}
 		});
+
+		controler.addOverridingModule(new ParkingCostModule());
+
+
 
 		Bicycles.addAsOverridingModule(controler);
 	}
