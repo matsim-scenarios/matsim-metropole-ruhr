@@ -134,7 +134,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
 		}
 
-		for (long ii = 600; ii <= 97200; ii += 600) {
+		for (long ii = 600; ii <= 86400; ii += 600) {
 
 			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
 					"educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
