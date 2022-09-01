@@ -79,6 +79,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--income-dependent", defaultValue = "false", description = "Income dependent scoring", negatable = true)
 	private boolean incomeDependent;
 
+	/**
+	 * Constructor for extending scenarios.
+	 */
+	protected RunMetropoleRuhrScenario(String defaultScenario) {
+		super(defaultScenario);
+	}
+
 	public RunMetropoleRuhrScenario() {
 		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-3pct.config.xml");
 	}

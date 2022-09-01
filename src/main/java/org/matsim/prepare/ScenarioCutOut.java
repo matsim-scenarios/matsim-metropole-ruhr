@@ -210,11 +210,16 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					}
 				}
 
-				if (trip.getOriginActivity().getLinkId() != null)
+				// activity link ids are reset, because it is not guaranteed they can be retained
+				if (trip.getOriginActivity().getLinkId() != null) {
 					linkIds.add(trip.getOriginActivity().getLinkId());
+					trip.getOriginActivity().setLinkId(null);
+				}
 
-				if (trip.getDestinationActivity().getLinkId() != null)
+				if (trip.getDestinationActivity().getLinkId() != null) {
 					linkIds.add(trip.getDestinationActivity().getLinkId());
+					trip.getDestinationActivity().setLinkId(null);
+				}
 
 			}
 
