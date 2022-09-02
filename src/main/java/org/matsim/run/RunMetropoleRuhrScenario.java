@@ -219,7 +219,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
 
-				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
+//				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
 
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
