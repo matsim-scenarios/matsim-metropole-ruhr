@@ -30,7 +30,6 @@ import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -39,15 +38,15 @@ import java.util.List;
  * @author nagel / gleich
  *
  */
-public final class IntermodalPtRouterAnalysisModeIdentifier implements AnalysisMainModeIdentifier {
+public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainModeIdentifier {
 	private final List<String> modeHierarchy = new ArrayList<>() ;
-	private static final Logger log = Logger.getLogger(IntermodalPtRouterAnalysisModeIdentifier.class);
+	private static final Logger log = Logger.getLogger(IntermodalPtAnalysisModeIdentifier.class);
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_BIKE_USED_FOR_ACCESS_OR_EGRESS = "pt_w_bike_used";
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_CAR_USED_FOR_ACCESS_OR_EGRESS = "pt_w_car_used";
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_BIKE_AND_CAR_USED_FOR_ACCESS_OR_EGRESS = "pt_w_bike_and_car_used";
 
 	@Inject
-	public IntermodalPtRouterAnalysisModeIdentifier() {
+	public IntermodalPtAnalysisModeIdentifier() {
 		modeHierarchy.add( TransportMode.walk ) ;
 		modeHierarchy.add( TransportMode.bike );
 		modeHierarchy.add( TransportMode.ride ) ;
