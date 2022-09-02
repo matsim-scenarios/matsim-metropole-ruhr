@@ -48,6 +48,7 @@ import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
+import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsModule;
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
@@ -108,8 +109,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected Config prepareConfig(Config config) {
-		// avoid unmaterialized config group exceptions for PtExtensionsConfigGroup
+		// avoid unmaterialized config group exceptions for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
 		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
+		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
 
 		OutputDirectoryLogging.catchLogEntries();
 
