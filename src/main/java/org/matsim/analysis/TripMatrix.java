@@ -16,10 +16,14 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import picocli.CommandLine;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 
 @SuppressWarnings("unused")
 @CommandLine.Command( name = "trip-matrix")
@@ -57,7 +61,7 @@ public class TripMatrix implements MATSimAppCommand {
 
 		log.info("Start parsing trips csv file at: " + tripsFile);
 		int counter = 0;
-		try (var reader = Files.newBufferedReader(tripsFile); var parser = CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader().parse(reader)) {
+		try (var reader = createReader(tripsFile); var parser = CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader().parse(reader)) {
 
 			for (CSVRecord record : parser) {
 				var startX = Double.parseDouble(record.get("start_x"));
@@ -101,6 +105,12 @@ public class TripMatrix implements MATSimAppCommand {
 				.map(Map.Entry::getKey)
 				.findAny()
 				.orElseThrow(() -> new RuntimeException("Point " + point.toString() + " was not covered by any feature."));
+	}
+
+	private static Reader createReader(Path path) throws IOException {
+		var fileStream = Files.newInputStream(path);
+		var gzipStream = new GZIPInputStream(fileStream);
+		return new InputStreamReader(gzipStream);
 	}
 
 	static record MatrixEntry(String fromKey, String toKey, String endActivity) {}
