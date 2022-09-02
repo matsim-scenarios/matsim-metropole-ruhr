@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
-@CommandLine.Command( name = "TripMatrix")
+@CommandLine.Command( name = "trip-matrix")
 public class TripMatrix implements MATSimAppCommand {
 
 	private static final Logger log = LogManager.getLogger(TripMatrix.class);
