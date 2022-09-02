@@ -48,6 +48,7 @@ import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
+import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsModule;
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.vehicles.VehicleType;
@@ -191,6 +192,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			}
 		});
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
+		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
 		// analysis
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
