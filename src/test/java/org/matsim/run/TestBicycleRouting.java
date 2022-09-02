@@ -1,5 +1,6 @@
 package org.matsim.run;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -34,7 +35,7 @@ public class TestBicycleRouting {
     @Rule
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
-    @Test
+    @Test@Ignore
     public void testElevationRouting() {
 
         var outputDir = testUtils.getOutputDirectory();
