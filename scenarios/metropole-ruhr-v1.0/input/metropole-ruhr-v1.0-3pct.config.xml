@@ -97,7 +97,7 @@
 		<param name="probaForRandomSingleTripMode" value="0.5" />
 	</module>
 	<module name="changeMode">
-		<param name="modes" value="car,ride,pt,bike,walk" />
+		<param name="modes" value="car,ride,pt,pt_intermodal_allowed,bike,walk" />
 		<param name="ignoreCarAvailability" value="false" />
 	</module>
 	<module name="transitRouter" >
