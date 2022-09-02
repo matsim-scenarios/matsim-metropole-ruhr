@@ -154,7 +154,7 @@
 		<dependency>
 			<groupId>com.github.matsim-vsp</groupId>
 			<artifactId>pt-extensions</artifactId>
-			<version>609986ef68</version>
+			<version>959b24f</version>
 		</dependency>
 
 	</dependencies>
