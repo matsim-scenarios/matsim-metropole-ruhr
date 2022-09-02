@@ -187,6 +187,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			@Override
 			public void install() {
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
+				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtRouterAnalysisModeIdentifier.class);
 			}
 		});
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
