@@ -22,7 +22,8 @@ package org.matsim.run;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
@@ -64,7 +65,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	public static final String VERSION = "v1.4";
 
-	private static final Logger log = Logger.getLogger(RunMetropoleRuhrScenario.class);
+	private static final Logger log = LogManager.getLogger(RunMetropoleRuhrScenario.class);
 
 	public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
 

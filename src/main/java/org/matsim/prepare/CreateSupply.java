@@ -2,7 +2,8 @@ package org.matsim.prepare;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
@@ -77,7 +78,7 @@ public class CreateSupply {
 
 	// we use UTM-32 as coordinate system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
-	private static final Logger logger = Logger.getLogger(CreateSupply.class);
+	private static final Logger logger = LogManager.getLogger(CreateSupply.class);
 
 	public static void main(String[] args) {
 

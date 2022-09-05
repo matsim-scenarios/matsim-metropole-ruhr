@@ -1,6 +1,7 @@
 package org.matsim.prepare;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.DirectPosition2D;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 
 public class ElevationReader {
 
-    private final static Logger log = Logger.getLogger(ElevationReader.class);
+    private final static Logger log = LogManager.getLogger(ElevationReader.class);
     private final Collection<ElevationMap> elevationMaps;
     private final CoordinateTransformation transformation;
 
@@ -47,7 +48,7 @@ public class ElevationReader {
 
     private static class ElevationMap {
 
-        private final static Logger log = Logger.getLogger(ElevationMap.class);
+        private final static Logger log = LogManager.getLogger(ElevationMap.class);
         private final double[] outPixel = new double[1];
         private final GridCoverage2D coverage;
         private final Raster raster;

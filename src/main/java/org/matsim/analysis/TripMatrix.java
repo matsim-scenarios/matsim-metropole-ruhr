@@ -4,8 +4,8 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -24,6 +24,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+
+;
 
 @SuppressWarnings("unused")
 @CommandLine.Command( name = "trip-matrix")
@@ -67,7 +69,7 @@ public class TripMatrix implements MATSimAppCommand {
 				var startX = Double.parseDouble(record.get("start_x"));
 				var startY =Double.parseDouble( record.get("start_y"));
 				var endX = Double.parseDouble(record.get("end_x"));
-				var endY = Double.parseDouble(record.get("endY"));
+				var endY = Double.parseDouble(record.get("end_y"));
 				var endActivity = record.get("end_activity_type");
 
 				var startKey = findKey(startX, startY, preparedFeatures, factory);
@@ -82,7 +84,7 @@ public class TripMatrix implements MATSimAppCommand {
 			}
 		}
 
-		var outputPath = runDirectory.resolve("trip_matrix.csv");
+		var outputPath = runDirectory.resolve(runId + ".trip_matrix.csv");
 		log.info("Writing output file to: " + outputPath);
 		try (var writer = Files.newBufferedWriter(outputPath); var printer = CSVFormat.DEFAULT.withDelimiter(';').withHeader("start", "end", "purpose", "count").print(writer)) {
 
@@ -104,7 +106,7 @@ public class TripMatrix implements MATSimAppCommand {
 				.filter(entry -> entry.getValue().covers(point))
 				.map(Map.Entry::getKey)
 				.findAny()
-				.orElseThrow(() -> new RuntimeException("Point " + point.toString() + " was not covered by any feature."));
+				.orElse("OUTSIDE_SHAPE");
 	}
 
 	private static Reader createReader(Path path) throws IOException {
