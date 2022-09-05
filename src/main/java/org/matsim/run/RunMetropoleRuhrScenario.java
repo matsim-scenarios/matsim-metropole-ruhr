@@ -26,6 +26,7 @@ import com.google.inject.multibindings.Multibinder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
+import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
@@ -63,7 +64,7 @@ import java.util.function.Supplier;
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION)
 @MATSimApplication.Analysis({
-		TravelTimeAnalysis.class, LinkStats.class
+		TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
 })
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 

@@ -52,6 +52,8 @@ import java.util.*;
 import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.TERMINATE;
 
+;
+
 /**
  * @author tschlenther
  *
