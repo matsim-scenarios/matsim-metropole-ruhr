@@ -30,12 +30,12 @@ import static org.junit.Assert.assertTrue;
 public class TestBicycleRouting {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
-    private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz";
+    private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz";
 
     @Rule
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
-    @Test@Ignore
+    @Test
     public void testElevationRouting() {
 
         var outputDir = testUtils.getOutputDirectory();
@@ -110,14 +110,14 @@ public class TestBicycleRouting {
             var factory = scenario.getPopulation().getFactory();
             var plan = factory.createPlan();
             var homeCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("431735990000f")).getCoord();
-            var home = factory.createActivityFromCoord("home_600.0", homeCoord);
+            var home = factory.createActivityFromCoord("home_600", homeCoord);
             home.setEndTime(0);
             plan.addActivity(home);
             var leg = factory.createLeg(TransportMode.bike);
             leg.setMode(TransportMode.bike);
             plan.addLeg(leg);
             var otherCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("7339832750094r")).getCoord();
-            var other = factory.createActivityFromCoord("other_3600.0",otherCoord);
+            var other = factory.createActivityFromCoord("other_3600",otherCoord);
             other.setEndTime(3600);
             plan.addActivity(other);
             var person = factory.createPerson(personId);
