@@ -22,7 +22,8 @@
  package org.matsim.run;
 
 import com.google.inject.Inject;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.TransportPlanningMainModeIdentifier;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.population.Leg;
@@ -40,7 +41,7 @@ import java.util.List;
  */
 public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainModeIdentifier {
 	private final List<String> modeHierarchy = new ArrayList<>() ;
-	private static final Logger log = Logger.getLogger(IntermodalPtAnalysisModeIdentifier.class);
+	private static final Logger log = LogManager.getLogger(IntermodalPtAnalysisModeIdentifier.class);
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_BIKE_USED_FOR_ACCESS_OR_EGRESS = "pt_w_bike_used";
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_CAR_USED_FOR_ACCESS_OR_EGRESS = "pt_w_car_used";
 	public static final String ANALYSIS_MAIN_MODE_PT_WITH_BIKE_AND_CAR_USED_FOR_ACCESS_OR_EGRESS = "pt_w_bike_and_car_used";
