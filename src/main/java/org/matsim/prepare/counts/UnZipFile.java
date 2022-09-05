@@ -1,6 +1,7 @@
 package org.matsim.prepare.counts;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -9,7 +10,7 @@ import java.util.zip.ZipFile;
 
 class UnZipFile {
 
-	Logger log = Logger.getLogger(UnZipFile.class);
+	Logger log = LogManager.getLogger(UnZipFile.class);
 
 	File unZipFile(File src) throws IOException {
 //	 log.info("trying to unzip file " + src.getName());

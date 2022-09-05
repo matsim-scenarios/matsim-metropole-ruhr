@@ -22,7 +22,8 @@
 package org.matsim.prepare.counts;
 
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -57,7 +58,7 @@ import static java.nio.file.FileVisitResult.TERMINATE;
  */
 public class ShortTermCountsCreator extends LongTermCountsCreator {
 	
-	private static final Logger log = Logger.getLogger(ShortTermCountsCreator.class);
+	private static final Logger log = LogManager.getLogger(ShortTermCountsCreator.class);
 
 	protected ShortTermCountsCreator(Set<String> columnCombination,
 									 Network network,
