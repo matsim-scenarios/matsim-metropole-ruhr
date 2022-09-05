@@ -50,11 +50,11 @@ public class CreateSupply {
 
 	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
 
-	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20220225_gtfs_vrr_od.zip");
+	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
 	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
 	private static final Path gtfsData3 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
 
-	private static final String gtfsDataDate1 = "2022-02-03";
+	private static final String gtfsDataDate1 = "2021-11-17";
 	private static final String gtfsDataDate2 = "2021-02-04";
 	private static final String gtfsDataDate3 = "2021-08-19";
 
