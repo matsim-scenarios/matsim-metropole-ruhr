@@ -4,6 +4,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -26,6 +27,7 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
+import org.opengis.feature.simple.SimpleFeature;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -74,6 +76,9 @@ public class CreateSupply {
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
 	private static final Path shortTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-short-term-counts.csv");
+
+	private static final Path parkingShapeFile = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/Parkraum_20220902/Parkraum.shp");
+
 
 	// we use UTM-32 as coordinate system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
@@ -210,6 +215,89 @@ public class CreateSupply {
 			var elevation = elevationReader.getElevationAt(node.getCoord());
 			node.setCoord(new Coord(node.getCoord().getX(), node.getCoord().getY(), elevation));
 		}
+
+		Collection<SimpleFeature> features = ShapeFileReader.getAllFeatures(rootDirectory.resolve(parkingShapeFile).toString());
+
+		for (var link : network.getLinks().values()) {
+
+			if (!link.getAllowedModes().contains("pt")) {
+
+				Coord coord = link.getCoord();
+				Point point = MGC.coord2Point(coord);
+
+				double oneHourPCost = 0.;
+				double extraHourPCost = 0.;
+				double maxDailyPCost = 0.;
+				double maxParkingTime = 0.;
+				double pFine = 0.;
+				double resPCosts = 0.;
+				double accesstime = 0.;
+				double egresstime = 0.;
+				Long zoneName = 0L;
+				String zoneGroup = "";
+
+
+				for (SimpleFeature feature : features) {
+					Geometry geometry = (Geometry) feature.getDefaultGeometry();
+
+					if (geometry.covers(point)) {
+
+						if (feature.getAttribute("id") != null) {
+							zoneName = (Long) feature.getAttribute("id");
+						}
+
+						if (feature.getAttribute("GN") != null) {
+							zoneGroup = (String) feature.getAttribute("GN");
+						}
+
+						if (feature.getAttribute("cost") != null) {
+							if (feature.getAttribute("cost").equals(0)) {
+								feature.setAttribute("cost", 0.0);
+							}
+							oneHourPCost = (Double) feature.getAttribute("cost");
+							extraHourPCost = (Double) feature.getAttribute("cost");
+						}
+
+						if (feature.getAttribute("max_cost") != null) {
+							if (feature.getAttribute("max_cost").equals(0)) {
+								feature.setAttribute("max_cost", 0.0);
+							}
+							maxDailyPCost = (Double) feature.getAttribute("max_cost");
+						}
+
+						if (feature.getAttribute("accestime") != null) {
+							accesstime = (Double) feature.getAttribute("accestime");
+						}
+
+						if (feature.getAttribute("egresstime") != null) {
+							egresstime = (Double) feature.getAttribute("egresstime");
+						}
+
+						break;
+					}
+				}
+
+				link.getAttributes().putAttribute("oneHourPCost", oneHourPCost);
+				link.getAttributes().putAttribute("extraHourPCost", extraHourPCost);
+				link.getAttributes().putAttribute("maxDailyPCost", maxDailyPCost);
+				link.getAttributes().putAttribute("maxPTime", maxParkingTime);
+				link.getAttributes().putAttribute("pFine", pFine);
+				link.getAttributes().putAttribute("resPCosts", resPCosts);
+				link.getAttributes().putAttribute("zoneName", zoneName);
+				link.getAttributes().putAttribute("zoneGroup", zoneGroup);
+				link.getAttributes().putAttribute("accesstime_car", accesstime);
+				link.getAttributes().putAttribute("egresstime_car", egresstime);
+				link.getAttributes().putAttribute("accesstime_pt", 0.0);
+				link.getAttributes().putAttribute("egresstime_pt", 0.0);
+				link.getAttributes().putAttribute("accesstime_bike", 0.0);
+				link.getAttributes().putAttribute("egresstime_bike", 0.0);
+				link.getAttributes().putAttribute("accesstime_ride", 0.0);
+				link.getAttributes().putAttribute("egresstime_ride", 0.0);
+			}
+		}
+
+
+
 
 		String networkOut = outputDir.resolve("metropole-ruhr-v1.0.network_resolution" + networkResolution + ".xml.gz").toString();
 		new NetworkWriter(network).write(networkOut);
