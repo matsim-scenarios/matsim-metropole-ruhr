@@ -20,7 +20,6 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
-import org.matsim.parking.UtilityBasedParkingPressureEventHandler;
 import org.matsim.testcases.MatsimTestUtils;
 import picocli.CommandLine;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
