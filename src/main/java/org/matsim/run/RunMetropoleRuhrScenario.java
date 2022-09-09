@@ -28,10 +28,12 @@ import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
+import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.analysis.travelTimeValidation.TravelTimeAnalysis;
@@ -45,6 +47,15 @@ import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
+import org.matsim.core.replanning.PlanStrategy;
+import org.matsim.core.router.AnalysisMainModeIdentifier;
+
+import org.matsim.pt.config.TransitConfigGroup;
+import org.matsim.run.strategy.CreateSingleModePlans;
+import org.matsim.run.strategy.PreCalibrationModeChoice;
+import org.matsim.run.strategy.TuneModeChoice;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -61,6 +72,12 @@ import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
+import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
+
+import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
+
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION)
 @MATSimApplication.Analysis({
@@ -119,7 +136,17 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-		config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
+		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
+		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName("oneHourPCost");
+		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName("extraHourPCost");
+		parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName("maxDailyPCost");
+		parkingCostConfigGroup.setMaxParkingDurationAttributeName("maxPTime");
+		parkingCostConfigGroup.setParkingPenaltyAttributeName("pFine");
+		parkingCostConfigGroup.setResidentialParkingFeeAttributeName("resPCosts");
+
+		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
+		log.info("using accessEgressModeToLinkPlusTimeConstant");
+		config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
@@ -224,6 +251,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
+
 				// Configure mode-choice strategy
 				addControlerListenerBinding().to(StrategyWeightFadeout.class).in(Singleton.class);
 				Multibinder<StrategyWeightFadeout.Schedule> schedules = Multibinder.newSetBinder(binder(), StrategyWeightFadeout.Schedule.class);
@@ -233,6 +261,27 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 			}
 		});
+
+		/*log.info("Adding parking cost");
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
+			}
+		});*/
+
+		log.info("Adding money event analysis");
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				//analyse PersonMoneyEvents
+				install(new PersonMoneyEventsAnalysisModule());
+			}
+		});
+
+		controler.addOverridingModule(new ParkingCostModule());
+
+
 
 		Bicycles.addAsOverridingModule(controler);
 	}
