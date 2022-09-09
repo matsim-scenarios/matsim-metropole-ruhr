@@ -54,8 +54,7 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @CommandLine.Command(name = "scenario-cutout", description = "TODO")
@@ -146,12 +145,15 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 			boolean keepPerson = false;
 
-			for (Trip trip : TripStructureUtils.getTrips(person.getSelectedPlan())) {
+			List<Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
+
+			Set<Id<Link>> linkIds = new HashSet<>();
+
+			for (Trip trip : trips) {
 
 				// keep all agents starting or ending in area
 				if (geom.contains(MGC.coord2Point(trip.getOriginActivity().getCoord())) || geom.contains(MGC.coord2Point(trip.getDestinationActivity().getCoord()))) {
 					keepPerson = true;
-					break;
 				}
 
 				LineString line = gf.createLineString(new Coordinate[]{
@@ -160,9 +162,8 @@ public class ScenarioCutOut implements MATSimAppCommand {
 				});
 
 				// also keep persons traveling through or close to area (beeline)
-				if (line.crosses(geom)) {
+				if (line.intersects(geom)) {
 					keepPerson = true;
-					break;
 				}
 
 
@@ -170,11 +171,10 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					Route route = leg.getRoute();
 					if (keepLinksInRoutes && route instanceof NetworkRoute) {
 
+						linkIds.addAll(((NetworkRoute) route).getLinkIds());
 						if (((NetworkRoute) route).getLinkIds().stream().anyMatch(linksToKeep::contains)) {
-							linksToInclude.addAll(((NetworkRoute) route).getLinkIds());
 							keepPerson = true;
 						}
-
 					}
 				}
 
@@ -185,36 +185,52 @@ public class ScenarioCutOut implements MATSimAppCommand {
 					Node fromNode;
 					Node toNode;
 
-					if (trip.getOriginActivity().getLinkId() != null) {
-						fromNode = carOnlyNetwork.getLinks().get(trip.getOriginActivity().getLinkId()).getFromNode();
+					Map<Id<Link>, ? extends Link> carLinks = carOnlyNetwork.getLinks();
+
+					if (trip.getOriginActivity().getLinkId() != null && carLinks.get(trip.getOriginActivity().getLinkId()) != null) {
+						fromNode = carLinks.get(trip.getOriginActivity().getLinkId()).getFromNode();
 					} else {
 						fromNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getOriginActivity().getCoord()).getFromNode();
 					}
 
-					if (trip.getDestinationActivity().getLinkId() != null) {
-						toNode = carOnlyNetwork.getLinks().get(trip.getDestinationActivity().getLinkId()).getFromNode();
+					if (trip.getDestinationActivity().getLinkId() != null && carLinks.get(trip.getDestinationActivity().getLinkId()) != null) {
+						toNode = carLinks.get(trip.getDestinationActivity().getLinkId()).getFromNode();
 					} else {
 						toNode = NetworkUtils.getNearestLink(carOnlyNetwork, trip.getDestinationActivity().getCoord()).getFromNode();
 					}
 
 					LeastCostPathCalculator.Path path = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
 
-					if (path != null && path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
-
+					if (path != null) {
 						// add all these links directly
-						path.links.stream().map(Link::getId)
-								.forEach(linksToInclude::add);
-
-						keepPerson = true;
+						path.links.stream().map(Link::getId).forEach(linkIds::add);
+						if (path.links.stream().map(Link::getId).anyMatch(linksToKeep::contains)) {
+							keepPerson = true;
+						}
 					}
 				}
+
+				// activity link ids are reset, because it is not guaranteed they can be retained
+				if (trip.getOriginActivity().getLinkId() != null) {
+					linkIds.add(trip.getOriginActivity().getLinkId());
+					trip.getOriginActivity().setLinkId(null);
+				}
+
+				if (trip.getDestinationActivity().getLinkId() != null) {
+					linkIds.add(trip.getDestinationActivity().getLinkId());
+					trip.getDestinationActivity().setLinkId(null);
+				}
+
+			}
+
+			if (keepPerson) {
+				linksToInclude.addAll(linkIds);
+			} else {
+				personsToDelete.add(person.getId());
 			}
 
 			PopulationUtils.resetRoutes(person.getSelectedPlan());
 
-			if (!keepPerson) {
-				personsToDelete.add(person.getId());
-			}
 		});
 
 		log.info("Persons to delete: " + personsToDelete.size());

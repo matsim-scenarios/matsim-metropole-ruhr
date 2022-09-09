@@ -21,29 +21,8 @@
  */
 package org.matsim.prepare.counts;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.matsim.api.core.v01.Id;
@@ -60,13 +39,21 @@ import org.matsim.counts.Count;
 import org.matsim.counts.Counts;
 import org.matsim.counts.Volume;
 
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
+;
+
 /**
  * @author tschlenther
  *
  */
 public class LongTermCountsCreator {
 
-	private static final Logger log = Logger.getLogger(LongTermCountsCreator.class);
+	private static final Logger log = LogManager.getLogger(LongTermCountsCreator.class);
 
 	private static final boolean USE_DATA_WITH_LESS_THAN_9_VEHICLE_CLASSES = true;
 	final List<String> allNeededColumnHeaders = new ArrayList<>();

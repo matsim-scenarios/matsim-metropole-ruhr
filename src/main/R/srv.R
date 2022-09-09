@@ -85,8 +85,8 @@ srv <- read_csv("mid_adj.csv") %>%
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration3pct\\runs\\036"
-sim_scale <- 100/3
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration\\runs\\028"
+sim_scale <- 100/10
 
 persons <- read_delim(list.files(f, pattern = "*.output_persons.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
                      col_types = cols(
