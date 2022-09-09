@@ -33,7 +33,6 @@ import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.analysis.travelTimeValidation.TravelTimeAnalysis;
@@ -43,19 +42,9 @@ import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
-import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.population.PopulationUtils;
-import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
-import org.matsim.core.replanning.PlanStrategy;
-import org.matsim.core.router.AnalysisMainModeIdentifier;
-
-import org.matsim.pt.config.TransitConfigGroup;
-import org.matsim.run.strategy.CreateSingleModePlans;
-import org.matsim.run.strategy.PreCalibrationModeChoice;
-import org.matsim.run.strategy.TuneModeChoice;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -67,14 +56,13 @@ import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesM
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
+import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
+import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
-import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -99,9 +87,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
 	private boolean download;
-
-	@CommandLine.Option(names = "--income-dependent", defaultValue = "false", description = "Income dependent scoring", negatable = true)
-	private boolean incomeDependent;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -221,6 +206,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
 			}
 		});
+
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
@@ -228,15 +214,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
-		if (incomeDependent) {
-			log.info("Using income dependent scoring");
-			controler.addOverridingModule(new AbstractModule() {
-				@Override
-				public void install() {
-					bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
-				}
-			});
-		}
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+			}
+		});
 
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule(new AbstractModule() {
