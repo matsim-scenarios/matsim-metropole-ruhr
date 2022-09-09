@@ -23,6 +23,7 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.parking.UtilityBasedParkingPressureEventHandler;
 import org.matsim.testcases.MatsimTestUtils;
 import picocli.CommandLine;
+import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
@@ -99,7 +100,7 @@ public class TestParking {
             var factory = scenario.getPopulation().getFactory();
             var plan = factory.createPlan();
             var homeCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("431735990000f")).getCoord();
-            var home = factory.createActivityFromCoord("home_600.0", homeCoord);
+            var home = factory.createActivityFromCoord("work_600.0", homeCoord);
             home.setEndTime(0);
             plan.addActivity(home);
             var leg = factory.createLeg(TransportMode.car);
@@ -126,9 +127,16 @@ public class TestParking {
 
             if (useParking == true) {
                for (Link l: scenario.getNetwork().getLinks().values()) {
-                   l.getAttributes().putAttribute("cost", 0.0);
                    l.getAttributes().putAttribute("accesstime_car", 1234.0);
                    l.getAttributes().putAttribute("egresstime_car", 1234.0);
+                   l.getAttributes().putAttribute("oneHourPCost", 10.0);
+                   l.getAttributes().putAttribute("extraHourPCost", 10.0);
+                   l.getAttributes().putAttribute("maxDailyPCost", 10.0);
+                   l.getAttributes().putAttribute("maxPTime", 0.0);
+                   l.getAttributes().putAttribute("pFine", 0.0);
+                   l.getAttributes().putAttribute("resPCosts", 0.0);
+                   l.getAttributes().putAttribute("zoneName", "zoneName");
+                   l.getAttributes().putAttribute("zoneGroup", "zoneGroup");
                }
             }
         }
@@ -137,14 +145,6 @@ public class TestParking {
         protected void prepareControler(Controler controler) {
 
             if (useParking==true) {
-                // use link-based park pressure
-                controler.addOverridingModule(new AbstractModule() {
-                    @Override
-                    public void install() {
-                        this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
-                    }
-                });
-
                 controler.addOverridingModule(new AbstractModule() {
                     @Override
                     public void install() {
@@ -152,6 +152,7 @@ public class TestParking {
                         install(new PersonMoneyEventsAnalysisModule());
                     }
                 });
+                controler.addOverridingModule(new ParkingCostModule());
             }
         }
     }
