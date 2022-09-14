@@ -8,11 +8,13 @@ import geopandas as gpd
 import numpy as np
 
 try:
+    # Use the matsim package if available
     from matsim import calibration
 except:
+    # Alternatively, import calibration.py from same directory
     import calibration
 
-#%%
+# %%
 
 if os.path.exists("mid.csv"):
     srv = pd.read_csv("mid.csv")
@@ -27,10 +29,12 @@ if os.path.exists("mid.csv"):
 
     adj.to_csv("mid_adj.csv", index=False)
 
-#%%
+# %%
 
 modes = ["walk", "car", "ride", "pt", "bike"]
 fixed_mode = "walk"
+
+# Initial ASCs
 initial = {
     "bike": -2.3,
     "pt": 0,
@@ -38,35 +42,40 @@ initial = {
     "ride": -4.12
 }
 
-# Use adjusted modal split for our distance distribution
+# Modal split target
 target = {
-    "walk":  0.212802,
-    "bike":  0.095676,
-    "pt":    0.118528,
-    "car":   0.454354,
-    "ride":  0.118640
+    "walk": 0.212802,
+    "bike": 0.095676,
+    "pt": 0.118528,
+    "car": 0.454354,
+    "ride": 0.118640
 }
 
 region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp").set_crs("EPSG:25832")
 
-def f(persons):    
+
+def f(persons):
     df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", op="intersects")
     return df
 
-def filter_freight(df):
-    return df[df.main_mode != "freight"]
 
-#print(calibration.calc_mode_share("runs/015", map_trips=filter_freight))
+def adjust_trips(df):
+    df = df[df.main_mode != "freight"]
+
+    # Assign all intermodal pt trips to pt as main mode
+    df.loc[df.main_mode.str.startswith("pt_"), "main_mode"] = "pt"
+
+    return df
+
 
 study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr-1.0-SNAPSHOT.jar",
-                                        "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
-                                        modes, target, 
-                                        initial_asc=initial,
-                                        args="--10pct",
-                                        jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
-                                        person_filter=f, map_trips=filter_freight)
+                                                 "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
+                                                 modes, target,
+                                                 initial_asc=initial,
+                                                 args="--10pct",
+                                                 jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
+                                                 person_filter=f, map_trips=adjust_trips)
 
-
-#%%
+# %%
 
 study.optimize(obj, 10)
