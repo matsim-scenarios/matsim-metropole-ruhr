@@ -21,6 +21,7 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.testcases.MatsimTestUtils;
 import picocli.CommandLine;
+import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
 import java.util.stream.Collectors;
 
@@ -122,6 +123,7 @@ public class TestBicycleRouting {
             plan.addActivity(other);
             var person = factory.createPerson(personId);
             person.addPlan(plan);
+            person.getAttributes().putAttribute(IncomeDependentUtilityOfMoneyPersonScoringParameters.PERSONAL_INCOME_ATTRIBUTE_NAME, 1.0);
             scenario.getPopulation().addPerson(person);
 
             // filter the network
