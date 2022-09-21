@@ -67,7 +67,7 @@ import java.util.function.Supplier;
 import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
 
-@CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION)
+@CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
 		TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
 })
@@ -87,6 +87,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
 	private boolean download;
+
+	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
+	private boolean intermodal;
 
 	/**
 	 * Constructor for extending scenarios.
