@@ -124,9 +124,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected Config prepareConfig(Config config) {
-		// avoid unmaterialized config group exceptions for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
+		// avoid unmaterialized config group exceptions in general for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
+		// avoid unmaterialized config group exceptions in tests for PtIntermodalRoutingModesConfigGroup, SwissRailRaptorConfigGroup
 		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
 		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
+		PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
+		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
 
 		if (!intermodal) {
 			// remove config options
@@ -155,7 +158,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			}
 			changeModeConfigGroup.setModes(modesWOIntermodal);
 
-			SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
 			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
 			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
 					swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
@@ -175,7 +177,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroupArray[i]);
 			}
 
-			PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
 			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
 					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
 							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().size()]);
