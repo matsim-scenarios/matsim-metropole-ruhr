@@ -98,14 +98,14 @@ public class TestParking {
             var factory = scenario.getPopulation().getFactory();
             var plan = factory.createPlan();
             var homeCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("431735990000f")).getCoord();
-            var home = factory.createActivityFromCoord("work_600.0", homeCoord);
+            var home = factory.createActivityFromCoord("work_600", homeCoord);
             home.setEndTime(0);
             plan.addActivity(home);
             var leg = factory.createLeg(TransportMode.car);
             leg.setMode(TransportMode.car);
             plan.addLeg(leg);
             var otherCoord = scenario.getNetwork().getLinks().get( Id.createLinkId("7339832750094r")).getCoord();
-            var other = factory.createActivityFromCoord("other_3600.0",otherCoord);
+            var other = factory.createActivityFromCoord("other_3600",otherCoord);
             other.setEndTime(3600);
             plan.addActivity(other);
             var person = factory.createPerson(personId);
