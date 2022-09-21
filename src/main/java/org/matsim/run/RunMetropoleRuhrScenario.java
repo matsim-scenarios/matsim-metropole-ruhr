@@ -19,6 +19,7 @@
 
 package org.matsim.run;
 
+import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
@@ -40,18 +41,24 @@ import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.ChangeModeConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
+import org.matsim.core.config.groups.SubtourModeChoiceConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
+import org.matsim.core.replanning.strategies.SubtourModeChoice;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
+import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsModule;
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
+import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
@@ -60,6 +67,8 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -118,6 +127,62 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		// avoid unmaterialized config group exceptions for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
 		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
 		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
+
+		if (!intermodal) {
+			// remove config options
+			SubtourModeChoiceConfigGroup subtourModeChoice = config.subtourModeChoice();
+			String[] modes = subtourModeChoice.getModes();
+			String[] modesWOIntermodal = new String[modes.length - 1];
+			int j = 0;
+			for (int i = 0; i < modes.length; i++) {
+				if (!modes[i].equals("pt_intermodal_allowed")) {
+					modesWOIntermodal[j] = modes[i];
+					j++;
+				}
+			}
+			subtourModeChoice.setModes(modesWOIntermodal);
+			// intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
+
+			ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
+			modes = changeModeConfigGroup.getModes();
+			modesWOIntermodal = new String[modes.length - 1];
+			j = 0;
+			for (int i = 0; i < modes.length; i++) {
+				if (!modes[i].equals("pt_intermodal_allowed")) {
+					modesWOIntermodal[j] = modes[i];
+					j++;
+				}
+			}
+			changeModeConfigGroup.setModes(modesWOIntermodal);
+
+			SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
+			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
+			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
+					swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
+			intermodalAccessEgressParameterSets.clear();
+
+			PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
+					ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
+							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().size()]);
+			for (int i = 0; i < intermodalAccessEgressModeUtilityRandomizationArray.length; i++) {
+				intermodalTripFareCompensatorsConfigGroup.removeParameterSet((ConfigGroup) intermodalAccessEgressModeUtilityRandomizationArray[i]);
+			}
+
+			IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
+					intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
+							toArray(new IntermodalTripFareCompensatorConfigGroup[intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().size()]);
+			for (int i = 0; i < intermodalTripFareCompensatorConfigGroupArray.length; i++) {
+				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroupArray[i]);
+			}
+
+			PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
+			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
+					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
+							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().size()]);
+			for (int i = 0; i < ptIntermodalRoutingModeParameterArrays.length; i++) {
+				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArrays[i]);
+			}
+		}
 
 		OutputDirectoryLogging.catchLogEntries();
 
