@@ -78,8 +78,7 @@ public class TestParking {
             preparedConfig.controler().setRunId(RUN_ID);
 
             // Disable PT
-            preparedConfig.transit().setVehiclesFile(null);
-            preparedConfig.transit().setTransitScheduleFile(null);
+            preparedConfig.transit().setUseTransit(false);
 
             if (useParking== false) {
                 config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
