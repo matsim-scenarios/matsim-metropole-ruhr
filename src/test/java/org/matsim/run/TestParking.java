@@ -33,7 +33,7 @@ import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgre
 public class TestParking {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
-    private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh-with-pt.xml.gz";
+    private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz";
 
     @Rule
     public MatsimTestUtils testUtils = new MatsimTestUtils();
