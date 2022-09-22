@@ -167,8 +167,8 @@
 			<param name="personFilterValue" value="true" />
 			<param name="searchExtensionRadius" value="500.0" />
 			<!-- take care that this still corresponds to the attribute used for tagging these TransitStops in RunDrtOpenBerlinScenario -->
-			<param name="stopFilterAttribute" value="stopFilter" />
-			<param name="stopFilterValue" value="station_S/U/RE/RB" />
+			<param name="stopFilterAttribute" value="car_bike_accessible" />
+			<param name="stopFilterValue" value="true" />
 		</parameterset>
 		<parameterset type="intermodalAccessEgress" >
 			<param name="initialSearchRadius" value="1500.0" />
@@ -179,8 +179,8 @@
 			<param name="personFilterValue" value="true" />
 			<param name="searchExtensionRadius" value="500.0" />
 			<!-- take care that this still corresponds to the attribute used for tagging these TransitStops in RunDrtOpenBerlinScenario -->
-			<param name="stopFilterAttribute" value="stopFilter" />
-			<param name="stopFilterValue" value="station_S/U/RE/RB" />
+			<param name="stopFilterAttribute" value="car_bike_accessible" />
+			<param name="stopFilterValue" value="true" />
 		</parameterset>
 	</module>
 	<module name="ptIntermodalRoutingModes" >
