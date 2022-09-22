@@ -35,7 +35,7 @@ import java.net.URL;
 public class TagTransitSchedule {
 
     public static void main(String[] args) {
-        String scheduleFile = "/home/gregor/git/matsim-metropole-ruhr/scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule.xml.gz";
+        String scheduleFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule.xml.gz";
 
         Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
         new TransitScheduleReader(scenario).readFile(scheduleFile);
@@ -135,7 +135,7 @@ public class TagTransitSchedule {
         //Y	5719160.550863991
         tagTransitStop(transitSchedule, Id.create("nwlde:05978:60867_Parent", TransitStopFacility.class), newAttributeName, newAttributeValue);
 
-        new TransitScheduleWriter(transitSchedule).writeFile("/home/gregor/git/matsim-metropole-ruhr/scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule-attributed.xml.gz");
+        new TransitScheduleWriter(transitSchedule).writeFile("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule-attributed.xml.gz");
     }
 
     private static void tagTransitStop(TransitSchedule transitSchedule, Id<TransitStopFacility> stopFacilityId,
