@@ -197,11 +197,13 @@
 			</parameterset>
 		</parameterset>
 	</module>
-	<!-- experimental: randomization of access/egress by car utility to let try out various parking lots with potentially different cost -->
 	<module name="ptExtensions" >
 		<parameterset type="intermodalAccessEgressModeUtilityRandomization" >
 			<param name="accessEgressMode" value="car" />
+			<!-- experimental: randomization of access/egress by car utility to let try out various parking lots with potentially different cost -->
 			<param name="additiveRandomizationWidth" value="1.0" />
+			<!-- randomization of access/egress by car utility for all parking lots: take into account dailyMonetaryConstant car -->
+			<param name="additiveRandomizationWidthFrozenPerDirectionAndMode" value="3.0" />
 		</parameterset>
 	</module>
 	<module name="intermodalTripFareCompensators">
