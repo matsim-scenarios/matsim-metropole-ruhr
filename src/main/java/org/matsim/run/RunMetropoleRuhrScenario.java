@@ -50,7 +50,6 @@ import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
-import org.matsim.core.replanning.strategies.SubtourModeChoice;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
@@ -67,8 +66,6 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -261,7 +258,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	protected void prepareControler(Controler controler) {
 
 		if (!controler.getConfig().transit().isUsingTransitInMobsim())
-			throw new RuntimeException("Public transit will be teleported and not simulated in the mobsim! "
+			log.error("Public transit will be teleported and not simulated in the mobsim! "
 					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
 					+ "Should only be used for testing or car-focused studies with fixed modal split.");
 
