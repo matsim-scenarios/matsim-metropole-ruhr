@@ -20,7 +20,7 @@
 		<!-- <matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>  -->
 
 		<!-- PR release -->
-		<matsim.version>15.0-PR2186</matsim.version>
+		<matsim.version>15.0-PR2210</matsim.version>
 		
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
