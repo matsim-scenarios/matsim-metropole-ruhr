@@ -100,8 +100,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	/**
 	 * Constructor for extending scenarios.
 	 */
-	protected RunMetropoleRuhrScenario(String defaultScenario) {
+	protected RunMetropoleRuhrScenario(String defaultScenario, boolean intermodal) {
 		super(defaultScenario);
+		this.intermodal = intermodal;
 	}
 
 	public RunMetropoleRuhrScenario() {
@@ -129,14 +130,17 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
 
 		if (!intermodal) {
+
+			log.info("Disabling intermodal config...");
+
 			// remove config options
 			SubtourModeChoiceConfigGroup subtourModeChoice = config.subtourModeChoice();
 			String[] modes = subtourModeChoice.getModes();
 			String[] modesWOIntermodal = new String[modes.length - 1];
 			int j = 0;
-			for (int i = 0; i < modes.length; i++) {
-				if (!modes[i].equals("pt_intermodal_allowed")) {
-					modesWOIntermodal[j] = modes[i];
+			for (String mode : modes) {
+				if (!mode.equals("pt_intermodal_allowed")) {
+					modesWOIntermodal[j] = mode;
 					j++;
 				}
 			}
@@ -147,9 +151,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			modes = changeModeConfigGroup.getModes();
 			modesWOIntermodal = new String[modes.length - 1];
 			j = 0;
-			for (int i = 0; i < modes.length; i++) {
-				if (!modes[i].equals("pt_intermodal_allowed")) {
-					modesWOIntermodal[j] = modes[i];
+			for (String mode : modes) {
+				if (!mode.equals("pt_intermodal_allowed")) {
+					modesWOIntermodal[j] = mode;
 					j++;
 				}
 			}
@@ -162,23 +166,23 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 			PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
 					ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
-							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().size()]);
-			for (int i = 0; i < intermodalAccessEgressModeUtilityRandomizationArray.length; i++) {
-				intermodalTripFareCompensatorsConfigGroup.removeParameterSet((ConfigGroup) intermodalAccessEgressModeUtilityRandomizationArray[i]);
+							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
+			for (PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization intermodalAccessEgressModeUtilityRandomization : intermodalAccessEgressModeUtilityRandomizationArray) {
+				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalAccessEgressModeUtilityRandomization);
 			}
 
 			IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
 					intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
-							toArray(new IntermodalTripFareCompensatorConfigGroup[intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().size()]);
-			for (int i = 0; i < intermodalTripFareCompensatorConfigGroupArray.length; i++) {
-				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroupArray[i]);
+							toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
+			for (IntermodalTripFareCompensatorConfigGroup intermodalTripFareCompensatorConfigGroup : intermodalTripFareCompensatorConfigGroupArray) {
+				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroup);
 			}
 
 			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
 					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
-							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().size()]);
-			for (int i = 0; i < ptIntermodalRoutingModeParameterArrays.length; i++) {
-				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArrays[i]);
+							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
+			for (PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet ptIntermodalRoutingModeParameterArray : ptIntermodalRoutingModeParameterArrays) {
+				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArray);
 			}
 		}
 
