@@ -41,7 +41,6 @@ import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ChangeModeConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
@@ -95,14 +94,13 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	private boolean download;
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
-	private boolean intermodal;
+	protected boolean intermodal;
 
 	/**
 	 * Constructor for extending scenarios.
 	 */
-	protected RunMetropoleRuhrScenario(String defaultScenario, boolean intermodal) {
+	protected RunMetropoleRuhrScenario(String defaultScenario) {
 		super(defaultScenario);
-		this.intermodal = intermodal;
 	}
 
 	public RunMetropoleRuhrScenario() {
