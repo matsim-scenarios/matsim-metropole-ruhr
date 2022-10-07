@@ -44,11 +44,11 @@ initial = {
 
 # Modal split target
 target = {
-    "walk": 0.212802,
-    "bike": 0.095676,
-    "pt": 0.118528,
-    "car": 0.454354,
-    "ride": 0.118640
+    "walk": 0.205397,
+    "bike": 0.097191,
+    "pt":  0.120314,
+    "car": 0.456896,
+    "ride": 0.120203
 }
 
 region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp").set_crs("EPSG:25832")
