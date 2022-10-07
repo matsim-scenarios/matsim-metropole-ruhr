@@ -3,6 +3,7 @@
 library(gridExtra)
 library(tidyverse)
 library(lubridate)
+library(patchwork)
 library(scales)
 library(viridis)
 library(ggsci)
@@ -85,15 +86,25 @@ srv <- read_csv("mid_adj.csv") %>%
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration\\runs\\028"
-sim_scale <- 100/10
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct-noim\\runs\\000"
+sim_scale <- 100/3
+
+homes <- read_csv("../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv", 
+                  col_types = cols(
+                    person = col_character()
+                  ))
+
 
 persons <- read_delim(list.files(f, pattern = "*.output_persons.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
                      col_types = cols(
                        person = col_character()
                      )) %>%
-          st_as_sf(coords = c("first_act_x", "first_act_y"), crs = 25832) %>%
+            right_join(homes) %>%
+            st_as_sf(coords = c("home_x", "home_y"), crs = 25832) %>%
+  #        st_as_sf(coords = c("first_act_x", "first_act_y"), crs = 25832) %>%
           st_filter(shape)
+
+
 
 trips <- read_delim(list.files(f, pattern = "*.output_trips.csv.gz", full.names = T, include.dirs = F), delim = ";", trim_ws = T, 
                     col_types = cols(
@@ -101,7 +112,7 @@ trips <- read_delim(list.files(f, pattern = "*.output_trips.csv.gz", full.names 
                     )) %>%
         filter(main_mode!="freight") %>%
         semi_join(persons) %>%
-        mutate(dist_group = cut(traveled_distance, breaks=breaks, labels=levels)) %>%
+        mutate(dist_group = cut(traveled_distance, breaks=breaks, labels=levels, right = F)) %>%  # traveled_distance == 0 is considered
         filter(!is.na(dist_group))
 
 
@@ -142,11 +153,11 @@ p2_aggr <- ggplot(data=aggr, mapping =  aes(x=1, y=share, fill=mode)) +
   coord_flip() +
   geom_text(aes(label=scales::percent(share, accuracy = 0.1)), size= 5, position=position_fill(vjust=0.5)) +
   scale_fill_locuszoom() +
-  theme_void()
+  theme_void() +
+  theme(legend.position = "bottom")
 
-g <- arrangeGrob(p1_aggr, p2_aggr, ncol = 2)
-ggsave(filename = "modal-split.png", path = ".", g,
-       width = 12, height = 2, device='png', dpi=300)
+combined <- p1_aggr / p2_aggr
+combined + plot_layout(guides = "collect")
 
 #########
 # Combined plot by distance
