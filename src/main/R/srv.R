@@ -11,7 +11,8 @@ library(sf)
 
 source("https://raw.githubusercontent.com/matsim-scenarios/matsim-duesseldorf/master/src/main/R/theme.R")
 
-setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+#setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+setwd("~/git/matsim-metropole-ruhr/src/main/R")
 
 # trip distance groups
 levels = c("0 - 1000", "1000 - 2000", "2000 - 5000", "5000 - 10000", "10000 - 20000", "20000+")
@@ -45,8 +46,11 @@ trips <- read_delim("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID
 
 
 # categories as defined in SrV mapped to matsim mode
-lookup <- tibble(category = c(1, 2, 3, 4, 5), 
-                 mode = c("walk", "bike", "ride", "car", "pt"))
+lookup_hvm <- tibble(category = c(1, 2, 3, 4, 5), 
+                 mode_hvm = c("walk", "bike", "ride", "car", "pt"))
+lookup_vm_kombi <- tibble(category = c(1, 2, 3, 4, 5, 6, 7, 8), 
+                     mode_vm_kombi = c("walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car"))
+
 
 # Filter invalid modes and trip distances, also filter for weekdays
 relevant <- trips %>%
@@ -56,12 +60,14 @@ relevant <- trips %>%
   mutate(dist=wegkm * 1000) %>%
   mutate(dist_group = cut(dist, breaks=breaks, labels=levels))
 
-matched <- relevant %>% left_join(lookup, by=c("hvm"="category"))
+matched <- relevant %>% left_join(lookup_hvm, by=c("hvm"="category"))
+matched <- matched %>% left_join(lookup_vm_kombi, by=c("vm_kombi"="category"))
+# TODO: some trips have main mode hvm=pt, but vm_kombi 9 or 703 (no details known) -> inflate pt modes by share of those pt modes without known access/egress
 
 srv <- matched %>%
-  group_by(dist_group, mode) %>%
+  group_by(dist_group, mode_hvm) %>%
   summarise(trips=sum(gew_wege)) %>%
-  mutate(mode = fct_relevel(mode, "walk", "bike", "pt", "ride", "car")) %>%
+  mutate(mode_hvm = fct_relevel(mode_hvm, "walk", "bike", "ride", "car", "pt")) %>%
   mutate(source = "srv")
 
 
@@ -71,6 +77,17 @@ srv <- srv %>%
 
 
 write_csv(srv, "mid.csv")
+
+srv_intermodal <- matched %>%
+  group_by(dist_group, mode_hvm) %>%
+  summarise(trips=sum(gew_wege)) %>%
+  mutate(mode_hvm = fct_relevel(mode_vm_kombi, "walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car")) %>%
+  mutate(source = "srv")
+
+
+srv_intermodal <- srv_intermodal %>%
+  mutate(share=trips / sum(srv_intermodal$trips)) %>%
+  mutate(scaled_trips=tt * share)
 
 #############
 
