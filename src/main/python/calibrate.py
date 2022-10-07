@@ -74,7 +74,7 @@ study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr
                                                  initial_asc=initial,
                                                  args="--10pct",
                                                  jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
-                                                 person_filter=f, map_trips=adjust_trips)
+                                                 person_filter=f, map_trips=adjust_trips, chain_runs=True)
 
 # %%
 
