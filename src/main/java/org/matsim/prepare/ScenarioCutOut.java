@@ -233,10 +233,12 @@ public class ScenarioCutOut implements MATSimAppCommand {
 
 		});
 
-		log.info("Persons to delete: " + personsToDelete.size());
+		log.info("Persons to delete: {}", personsToDelete.size());
 		for (Id<Person> personId : personsToDelete) {
 			population.removePerson(personId);
 		}
+
+		log.info("Persons in the scenario: {}", population.getPersons().size());
 
 		PopulationUtils.writePopulation(population, outputPopulation.toString());
 
