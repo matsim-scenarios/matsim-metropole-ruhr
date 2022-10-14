@@ -78,16 +78,29 @@ srv <- srv %>%
 
 write_csv(srv, "mid.csv")
 
-srv_intermodal <- matched %>%
-  group_by(dist_group, mode_hvm) %>%
+# no dist group
+srv_intermodal_overall <- matched %>%
+  group_by(mode_vm_kombi) %>%
   summarise(trips=sum(gew_wege)) %>%
-  mutate(mode_hvm = fct_relevel(mode_vm_kombi, "walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car")) %>%
+  mutate(mode_vm_kombi = fct_relevel(mode_vm_kombi, "walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car")) %>%
   mutate(source = "srv")
 
-
-srv_intermodal <- srv_intermodal %>%
-  mutate(share=trips / sum(srv_intermodal$trips)) %>%
+srv_intermodal_overall <- srv_intermodal_overall %>%
+  mutate(share=trips / sum(srv_intermodal_overall$trips)) %>%
   mutate(scaled_trips=tt * share)
+
+# with dist group
+srv_intermodal_dist_group <- matched %>%
+  group_by(dist_group, mode_vm_kombi) %>%
+  summarise(trips=sum(gew_wege)) %>%
+  mutate(mode_vm_kombi = fct_relevel(mode_vm_kombi, "walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car")) %>%
+  mutate(source = "srv")
+
+srv_intermodal_dist_group <- srv_intermodal_dist_group %>%
+  mutate(share=trips / sum(srv_intermodal_dist_group$trips)) %>%
+  mutate(scaled_trips=tt * share)
+
+write_csv(srv_intermodal_dist_group, "mid_intermodal.csv")
 
 #############
 
