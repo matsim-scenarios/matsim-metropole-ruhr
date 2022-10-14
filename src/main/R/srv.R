@@ -20,6 +20,7 @@ breaks = c(0, 1000, 2000, 5000, 10000, 20000, Inf)
 shape <- st_read("../../../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp", crs=25832)
 
 # Total trips per day
+
 tt <- 17728996
 
 ##################
@@ -48,6 +49,10 @@ trips <- read_delim("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID
 lookup <- tibble(category = c(1, 2, 3, 4, 5), 
                  mode = c("walk", "bike", "ride", "car", "pt"))
 
+lookup_im <- tibble(category = c(1, 2, 3, 4, 5, 6, 7, 8, 9), 
+                 mode_combi = c("walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car", "pt_w_unknown"))
+
+
 # Filter invalid modes and trip distances, also filter for weekdays
 relevant <- trips %>%
   filter(kernwo == 2) %>%
@@ -56,7 +61,9 @@ relevant <- trips %>%
   mutate(dist=wegkm * 1000) %>%
   mutate(dist_group = cut(dist, breaks=breaks, labels=levels))
 
-matched <- relevant %>% left_join(lookup, by=c("hvm"="category"))
+matched <- relevant %>% 
+  left_join(lookup, by=c("hvm"="category")) %>%
+  left_join(lookup_im, by=c("vm_kombi"="category"))
 
 srv <- matched %>%
   group_by(dist_group, mode) %>%
@@ -64,13 +71,26 @@ srv <- matched %>%
   mutate(mode = fct_relevel(mode, "walk", "bike", "pt", "ride", "car")) %>%
   mutate(source = "srv")
 
-
 srv <- srv %>%
   mutate(share=trips / sum(srv$trips)) %>%
   mutate(scaled_trips=tt * share)
 
+#-----
+
+srv_im <- matched %>%
+  group_by(dist_group, mode_combi) %>%
+  summarise(trips=sum(gew_wege)) %>%
+  mutate(mode_combi = fct_relevel(mode_combi, "walk", "bike", "pt", "ride", "car", "pt_w_bike_used", "pt_w_ride_used", "pt_w_car_used")) %>%
+  rename(mode = mode_combi) %>%
+  mutate(source = "srv")
+
+srv_im <- srv_im %>%
+  mutate(share=trips / sum(srv_im$trips)) %>%
+  mutate(scaled_trips=tt * share)
+
 
 write_csv(srv, "mid.csv")
+write_csv(srv_im, "mid_im.csv")
 
 #############
 
@@ -81,12 +101,18 @@ srv <- read_csv("mid_adj.csv") %>%
     mutate(dist_group=fct_relevel(dist_group, levels)) %>%
     arrange(dist_group)
 
+srv_im <- read_csv("mid_im_adj.csv") %>%
+  mutate(main_mode=mode) %>%
+  mutate(scaled_trips=tt * share) %>%
+  mutate(source = "srv") %>%
+  mutate(dist_group=fct_relevel(dist_group, levels)) %>%
+  arrange(dist_group)
 
 ##################
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct-noim\\runs\\000"
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\004"
 sim_scale <- 100/3
 
 homes <- read_csv("../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv", 
@@ -111,6 +137,8 @@ trips <- read_delim(list.files(f, pattern = "*.output_trips.csv.gz", full.names 
                       person = col_character()
                     )) %>%
         filter(main_mode!="freight") %>%
+        mutate(mode_combi=main_mode) %>%
+        mutate(main_mode=ifelse(startsWith(main_mode, "pt_"), "pt", main_mode)) %>%
         semi_join(persons) %>%
         mutate(dist_group = cut(traveled_distance, breaks=breaks, labels=levels, right = F)) %>%  # traveled_distance == 0 is considered
         filter(!is.na(dist_group))
@@ -123,7 +151,7 @@ sim <- trips %>%
   mutate(scaled_trips=sim_scale * trips) %>%
   mutate(source = "sim")
 
-write_csv(sim, "sim.csv")
+#write_csv(sim, "sim.csv")
 
 ##################
 # Total modal split
@@ -178,8 +206,15 @@ ggplot(total, aes(fill=mode, y=scaled_trips, x=source)) +
   scale_fill_locuszoom() +
   theme_minimal()
 
+#########
+# Intermodal plots
+##########
 
-# Needed for adding short distance trips
+# TODO
+
+#########
+# Calculation for short term trips
+##########
 
 sim_sum <- sum(sim$trips)
 
