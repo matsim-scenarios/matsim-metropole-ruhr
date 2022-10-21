@@ -270,7 +270,7 @@ ggplot(total_im, aes(fill=mode, y=scaled_trips, x=source)) +
   labs(subtitle = paste("Metropole Ruhr scenario", substring(f, 52)), x="distance [m]", y="intermodal trips") +
   geom_bar(position="stack", stat="identity", width = 0.5) +
   facet_wrap(dist_order_im, nrow = 1) +
-  scale_y_continuous(labels = scales::number_format(suffix = " M", scale = 1e-6)) +
+  scale_y_continuous(labels = scales::number_format(suffix = " K", scale = 1e-3)) +
   scale_fill_uchicago() +
   theme_minimal()
 
