@@ -11,7 +11,7 @@ library(sf)
 
 source("https://raw.githubusercontent.com/matsim-scenarios/matsim-duesseldorf/master/src/main/R/theme.R")
 
-setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+setwd("~/git/matsim-metropole-ruhr/src/main/R")
 
 # trip distance groups
 levels = c("0 - 1000", "1000 - 2000", "2000 - 5000", "5000 - 10000", "10000 - 20000", "20000+")
@@ -52,6 +52,11 @@ lookup <- tibble(category = c(1, 2, 3, 4, 5),
 lookup_im <- tibble(category = c(1, 2, 3, 4, 5, 6, 7, 8, 9), 
                  mode_combi = c("walk", "bike", "pt_w_bike_used", "pt", "pt_w_ride_used", "pt_w_car_used", "ride", "car", "pt_w_unknown"))
 
+order_modes_srv <- c("walk", "bike", "ride", "car", "pt")
+order_modes_srv_im <- c("walk", "bike", "pt", "pt_w_bike_used", "pt_w_car_used", "pt_w_ride_used", "pt_w_unknown", "ride", "car")
+order_modes_sim_im <- c("walk", "bike", "pt", "pt_w_bike_used", "pt_w_car_used", "pt_w_bike_and_car_used", "ride", "car")
+order_modes_srv_sim_im <- c("walk", "bike", "pt", "pt_w_bike_used", "pt_w_car_used", "pt_w_bike_and_car_used", "pt_w_ride_used", "pt_w_unknown", "ride", "car")
+
 
 # Filter invalid modes and trip distances, also filter for weekdays
 relevant <- trips %>%
@@ -68,7 +73,7 @@ matched <- relevant %>%
 srv <- matched %>%
   group_by(dist_group, mode) %>%
   summarise(trips=sum(gew_wege)) %>%
-  mutate(mode = fct_relevel(mode, "walk", "bike", "pt", "ride", "car")) %>%
+  mutate(mode = fct_relevel(mode, order_modes_srv)) %>%
   mutate(source = "srv")
 
 srv <- srv %>%
@@ -80,7 +85,7 @@ srv <- srv %>%
 srv_im <- matched %>%
   group_by(dist_group, mode_combi) %>%
   summarise(trips=sum(gew_wege)) %>%
-  mutate(mode_combi = fct_relevel(mode_combi, "walk", "bike", "pt", "ride", "car", "pt_w_bike_used", "pt_w_ride_used", "pt_w_car_used")) %>%
+  mutate(mode_combi = fct_relevel(mode_combi, order_modes_srv_im)) %>%
   rename(mode = mode_combi) %>%
   mutate(source = "srv")
 
@@ -112,7 +117,8 @@ srv_im <- read_csv("mid_im_adj.csv") %>%
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\004"
+#f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\004"
+f <- "/home/gregor/ilsMount/matsim-metropole-ruhr/calibration-1.4-3pct/runs/007"
 sim_scale <- 100/3
 
 homes <- read_csv("../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv", 
@@ -147,7 +153,14 @@ trips <- read_delim(list.files(f, pattern = "*.output_trips.csv.gz", full.names 
 sim <- trips %>%
   group_by(dist_group, main_mode) %>%
   summarise(trips=n()) %>%
-  mutate(mode = fct_relevel(main_mode, "walk", "bike", "pt", "ride", "car")) %>%
+  mutate(mode = fct_relevel(main_mode, order_modes_srv)) %>%
+  mutate(scaled_trips=sim_scale * trips) %>%
+  mutate(source = "sim")
+
+sim_im <- trips %>%
+  group_by(dist_group, mode_combi) %>%
+  summarise(trips=n()) %>%
+  mutate(mode = fct_relevel(mode_combi, order_modes_sim_im)) %>%
   mutate(scaled_trips=sim_scale * trips) %>%
   mutate(source = "sim")
 
@@ -160,7 +173,7 @@ sim <- trips %>%
 srv_aggr <- srv %>%
     group_by(mode) %>%
     summarise(share=sum(share)) %>%  # assume shares sum to 1
-    mutate(mode=fct_relevel(mode, "walk", "bike", "pt", "ride", "car"))
+    mutate(mode=fct_relevel(mode, order_modes_srv))
   
 aggr <- sim %>%
     group_by(mode) %>%
@@ -192,7 +205,7 @@ combined + plot_layout(guides = "collect")
 ##########
 
 total <- bind_rows(srv, sim) %>%
-        mutate(mode=fct_relevel(mode, "walk", "bike", "pt", "ride", "car"))
+        mutate(mode=fct_relevel(mode, order_modes_srv))
 
 # Maps left overgroups
 dist_order <- factor(total$dist_group, level = levels)
@@ -210,7 +223,63 @@ ggplot(total, aes(fill=mode, y=scaled_trips, x=source)) +
 # Intermodal plots
 ##########
 
-# TODO
+srv_aggr_im <- srv_im %>%
+  group_by(mode) %>%
+  summarise(share=sum(share)) %>%  # assume shares sum to 1
+  filter(grepl("pt", mode)) %>% 
+  mutate(mode=fct_relevel(mode, order_modes_srv_im))
+
+aggr_im <- sim_im %>%
+  group_by(mode) %>%
+  summarise(share=sum(trips) / sum(sim$trips)) %>% 
+  filter(grepl("pt", mode)) %>% 
+  mutate(mode=fct_relevel(mode, order_modes_sim_im))
+
+p1_aggr_im <- ggplot(data=srv_aggr_im, mapping =  aes(x=1, y=share, fill=mode)) +
+  labs(subtitle = "Survey data") +
+  geom_bar(position="fill", stat="identity") +
+  coord_flip() +
+  geom_text(aes(label=scales::percent(share, accuracy = 0.01)), size= 5, position=position_fill(vjust=0.5), angle=90) +
+  scale_fill_manual(values=c("pt"="blue", "pt_w_bike_used"="orange", "pt_w_car_used"="lightblue", "pt_w_ride_used"="green", "pt_w_unknown"="grey")) +
+  theme_void() +
+  theme(legend.position="bottom")
+
+p2_aggr_im <- ggplot(data=aggr_im, mapping =  aes(x=1, y=share, fill=mode)) +
+  labs(subtitle = "Simulation") +
+  geom_bar(position="fill", stat="identity", color=c("darkblue", "orange", "lightblue", "turquoise")) +
+  coord_flip() +
+  geom_text(aes(label=scales::percent(share, accuracy = 0.01)), size= 5, position=position_fill(vjust=0.5), angle=90) +
+  scale_fill_locuszoom() +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+combined_im <- p1_aggr_im / p2_aggr_im
+combined_im + plot_layout(guides = "collect")
+
+# intermodal distance plot
+
+entriesModeToFillNA <- rbind (tibble(mode=order_modes_srv_sim_im, source="srv"), tibble(mode=order_modes_srv_sim_im, source="sim")) 
+entriesDistToFillNA <- rbind (tibble(dist_group=unique(srv_im$dist_group), source="srv"), tibble(dist_group=unique(srv_im$dist_group), source="sim"))
+entriesToFillNA <- full_join(entriesModeToFillNA, entriesDistToFillNA)
+
+total_im <- bind_rows(srv_im, sim_im) %>%
+  full_join(entriesToFillNA) %>% 
+  arrange(dist_group, mode, source) %>% 
+  mutate(mode=fct_relevel(mode, order_modes_srv_sim_im)) %>% 
+  filter(grepl("pt", mode))
+
+# Maps left overgroups
+dist_order_im <- factor(total_im$dist_group, level = levels)
+dist_order_im <- fct_explicit_na(dist_order_im, "20000+")
+
+ggplot(total_im, aes(fill=mode, y=scaled_trips, x=source)) +
+  labs(subtitle = paste("Metropole Ruhr scenario", substring(f, 52)), x="distance [m]", y="trips") +
+  geom_bar(position="stack", stat="identity", width = 0.5) +
+  facet_wrap(dist_order, nrow = 1) +
+  scale_y_continuous(labels = scales::number_format(suffix = " M", scale = 1e-6)) +
+  scale_fill_locuszoom() +
+  theme_minimal()
+
 
 #########
 # Calculation for short term trips
