@@ -43,6 +43,8 @@ public class PopulationAnalysis implements MATSimAppCommand {
     public enum HomeLocationCategory {inside, outside, unknown}
 
     private final List<Person> personsLivesInAnalyzedArea = new ArrayList<>();
+    private final List<Person> personsLivesNotInAnalyzedArea = new ArrayList<>();
+
 
     public static void main(String[] args) throws IOException {
         new PopulationAnalysis().execute(args);
@@ -73,6 +75,7 @@ public class PopulationAnalysis implements MATSimAppCommand {
 
         System.out.println("Start person home location analysis...");
         int counter = 0;
+
         int numPersonsLiveInKelheim = 0;
         for (Person person : population.getPersons().values()) {
             for (PlanElement planElement : person.getSelectedPlan().getPlanElements()) {
@@ -92,15 +95,51 @@ public class PopulationAnalysis implements MATSimAppCommand {
                         } else {
                             csvWriter.printRecord(person.getId().toString(),
                                     Double.toString(homeCoord.getX()), Double.toString(homeCoord.getY()), HomeLocationCategory.outside);
+                            personsLivesNotInAnalyzedArea.add(person);
                         }
                         break;
                     }
                 }
             }
         }
+
+        int counterWorkActivities = 0;
+        for (Person person: personsLivesNotInAnalyzedArea) {
+            for (PlanElement planElement : person.getSelectedPlan().getPlanElements()) {
+                if (planElement instanceof Activity) {
+                    String actType = ((Activity) planElement).getType();
+                    Coord activityCoord = ((Activity) planElement).getCoord();
+                    if (actType.startsWith("work")) {
+                        if (analyzedArea.contains(MGC.coord2Point(activityCoord))) {
+                            counterWorkActivities++;
+                        }
+                    }
+                }
+            }
+        }
+
+        int nrOfAgentsWithNoActivityInStudyArea =0;
+        for (Person person: personsLivesNotInAnalyzedArea) {
+            boolean activityInStudyArea = false;
+            for (PlanElement planElement : person.getSelectedPlan().getPlanElements()) {
+                if (planElement instanceof Activity) {
+                    Coord activityCoord = ((Activity) planElement).getCoord();
+                    if (analyzedArea.contains(MGC.coord2Point(activityCoord))) {
+                        activityInStudyArea = true;
+                    }
+                }
+            }
+            if (activityInStudyArea==false) {
+                nrOfAgentsWithNoActivityInStudyArea++;
+            }
+        }
+
+
         csvWriter.close();
 
         System.out.println("There are " + counter + " persons with home activity");
+        System.out.println("Total number of agents not living in the study area: " + personsLivesNotInAnalyzedArea.size() + " Number of work activities of those agents: " + counterWorkActivities);
+        System.out.println("Nr of agents with no activity in study area: " + nrOfAgentsWithNoActivityInStudyArea);
         if (analyzedArea != null) {
             System.out.println("There are " + numPersonsLiveInKelheim +
                     " persons living in the analyzed area (with home location inside the provided shape file");
