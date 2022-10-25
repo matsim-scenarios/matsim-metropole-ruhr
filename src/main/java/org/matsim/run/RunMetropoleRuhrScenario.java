@@ -58,6 +58,7 @@ import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTri
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
+import org.matsim.prepare.counts.CreateCountsFromBAStData;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
@@ -75,6 +76,10 @@ import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgre
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
 		TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
+})
+
+@MATSimApplication.Prepare({
+		CreateCountsFromBAStData.class
 })
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 
