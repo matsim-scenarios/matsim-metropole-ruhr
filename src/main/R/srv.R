@@ -19,6 +19,9 @@ breaks = c(0, 1000, 2000, 5000, 10000, 20000, Inf)
 
 shape <- st_read("../../../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp", crs=25832)
 
+# Alternative shape-file for hamm
+shape <- st_read("../../../../shared-svn/projects/matsim-metropole-ruhr/hamm-v1.0/original-data/Stadtgebiet_Hamm/Stadtgebiet_Hamm.shp")
+
 # Total trips per day
 
 tt <- 17728996
@@ -110,12 +113,22 @@ srv_im <- read_csv("mid_im_adj.csv") %>%
   mutate(dist_group=fct_relevel(dist_group, levels)) %>%
   arrange(dist_group)
 
+
+srv_hamm <- tibble(
+  mode=c("walk", "bike", "pt", "car", "ride"),
+  share=c(0.17, 0.19, 0.08, 0.46, 0.10)
+) %>% mutate(mode=fct_relevel(mode, order_modes))
+
 ##################
 # Read simulation data
 ##################
 
-f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\007"
-sim_scale <- 100/3
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\010"
+
+# Hamm
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\hamm\\calibration\\runs\\007"
+
+sim_scale <- 100/10
 
 homes <- read_csv("../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv", 
                   col_types = cols(
@@ -174,7 +187,8 @@ srv_aggr <- srv %>%
   
 aggr <- sim %>%
     group_by(mode) %>%
-    summarise(share=sum(trips) / sum(sim$trips))
+    summarise(share=sum(trips) / sum(sim$trips)) %>%
+    mutate(mode=fct_relevel(mode, order_modes))
 
 p1_aggr <- ggplot(data=srv_aggr, mapping =  aes(x=1, y=share, fill=mode)) +
   labs(subtitle = "Survey data") +
@@ -202,7 +216,7 @@ combined + plot_layout(guides = "auto")
 ##########
 
 total <- bind_rows(srv, sim) %>%
-        mutate(mode=fct_relevel(mode, order_modes_srv))
+        mutate(mode=fct_relevel(mode, order_modes))
 
 # Maps left overgroups
 dist_order <- factor(total$dist_group, level = levels)
