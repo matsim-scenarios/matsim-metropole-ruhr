@@ -29,59 +29,12 @@ persons <- persons %>% replace(is.na(.), 0)
 persons<-persons %>% 
   mutate(usedCar = ifelse(nrOfCarTrips >= 1, "usedCar", "notUsedCar")) 
 
-##snz Data
-snzCarAvailability <- persons %>% count(area, sim_carAvailability)
-## calculate relative values
-snzCarAvailability <- snzCarAvailability %>% group_by(area) %>% mutate(Percentage=round((n/sum(n)),2)) %>% ungroup()
-
-#grouped relative plot
-ggplot(snzCarAvailability, aes(fill=sim_carAvailability, y=area, x=Percentage)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Prozent") +
-  ylab("Landkreis") +
-  ggtitle("snzCarAvailability Attribut")+
-  geom_text(aes(label = percent(Percentage)), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous(labels = scales::percent) +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Besitzrate") +
-  theme_minimal()
-
 #count how often each case happens in the different areas
 personsNrOfCarUsers <- persons %>% count(area, usedCar)
 
-#Grouped absolute plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=n)) + 
-  geom_bar(position="dodge", stat="identity") +
-  xlab("Anzahl") +
-  ylab("Landkreis")+
-  theme_minimal()
+#data tidying
+personsNrOfCarUsers <- pivot_wider(personsNrOfCarUsers, names_from = usedCar, values_from = n)
+personsNrOfCarUsers <- rename(personsNrOfCarUsers, notUsedCar= "nrOfNoneCarUsers")
+personsNrOfCarUsers <- rename(personsNrOfCarUsers, usedCar= "nrOfCarUsers")
 
-## calculate relative values
-personsNrOfCarUsers <- personsNrOfCarUsers %>% group_by(area) %>% mutate(Percentage=round((n/sum(n)),2)) %>% ungroup()
-
-##calculate numer of cars per 1000 inhabitants
-personsNrOfCarUsers <- personsNrOfCarUsers %>% group_by(area) %>% mutate(nrPer1000Inhabitants=round(Percentage*1000,2)) %>% ungroup()
-
-#grouped relative plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=Percentage)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Prozent") +
-  ylab("Landkreis") +
-  ggtitle("Resultate des Modells")+
-  geom_text(aes(label = percent(Percentage)), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous(labels = scales::percent) +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Besitzrate") +
-  theme_minimal()
-
-#grouped absolute plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=nrPer1000Inhabitants)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Anzahl") +
-  ylab("Landkreis") +
-  ggtitle("Resultate des Modells")+
-  geom_text(aes(label = nrPer1000Inhabitants), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous() +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Anzahl je 1000 Einwohner") +
-  theme_minimal()
-
-
-
+write_excel_csv2(personsNrOfCarUsers, "/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/carAvailability/Pkw-Dichte_MATSim.csv")
