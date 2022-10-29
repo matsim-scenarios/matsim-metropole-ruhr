@@ -4,9 +4,9 @@ library(patchwork)
 library(scales)
 
 ### trips.csv to get car use
-completeTrips <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_trips.csv.gz")
-## persons.csv to get SNZ attributes
-persons <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_persons.csv.gz")
+completeTrips <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_trips.csv.gz")
+##
+persons <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_persons.csv.gz")
 ## person2homeRegionAndCoord
 person2region <-read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/person2Home.csv")
 ## joining person and persons2region
@@ -25,7 +25,7 @@ carTrips <- rename(carTrips, "nrOfCarTrips" = n)
 persons <- left_join(persons, carTrips, by="person")
 persons <- persons %>% replace(is.na(.), 0)
 
-#create variable wether car was used or not used by the agent
+#create variable whether car was used or not used by the agent
 persons<-persons %>% 
   mutate(usedCar = ifelse(nrOfCarTrips >= 1, "usedCar", "notUsedCar")) 
 
@@ -34,7 +34,7 @@ personsNrOfCarUsers <- persons %>% count(area, usedCar)
 
 #data tidying
 personsNrOfCarUsers <- pivot_wider(personsNrOfCarUsers, names_from = usedCar, values_from = n)
-personsNrOfCarUsers <- rename(personsNrOfCarUsers, notUsedCar= "nrOfNoneCarUsers")
-personsNrOfCarUsers <- rename(personsNrOfCarUsers, usedCar= "nrOfCarUsers")
+#personsNrOfCarUsers <- rename(personsNrOfCarUsers, notUsedCar = "nrOfNoneCarUsers")
+#personsNrOfCarUsers <- rename(personsNrOfCarUsers, usedCar= "nrOfCarUsers")
 
 write_excel_csv2(personsNrOfCarUsers, "/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/carAvailability/Pkw-Dichte_MATSim.csv")
