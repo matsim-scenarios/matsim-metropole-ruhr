@@ -12,6 +12,8 @@ library(sf)
 source("https://raw.githubusercontent.com/matsim-scenarios/matsim-duesseldorf/master/src/main/R/theme.R")
 
 setwd("C:/Users/chris/Development/matsim-scenarios/matsim-metropole-ruhr/src/main/R")
+setwd("~/git/matsim-metropole-ruhr/src/main/R")
+
 
 # trip distance groups
 levels = c("0 - 1000", "1000 - 2000", "2000 - 5000", "5000 - 10000", "10000 - 20000", "20000+")
@@ -72,7 +74,7 @@ matched <- relevant %>%
 
 srv <- matched %>%
   group_by(dist_group, mode) %>%
-  summarise(trips=sum(gew_wege)) %>%
+  summarise(trips=sum(gew_wege), raw_trips_in_survey=n()) %>%
   mutate(mode = fct_relevel(mode, order_modes)) %>%
   mutate(source = "srv")
 
@@ -84,7 +86,7 @@ srv <- srv %>%
 
 srv_im <- matched %>%
   group_by(dist_group, mode_combi) %>%
-  summarise(trips=sum(gew_wege)) %>%
+  summarise(trips=sum(gew_wege), raw_trips_in_survey=n()) %>%
   mutate(mode_combi = fct_relevel(mode_combi, order_modes_im)) %>%
   rename(mode = mode_combi) %>%
   mutate(source = "srv")
@@ -96,6 +98,9 @@ srv_im <- srv_im %>%
 
 write_csv(srv, "mid.csv")
 write_csv(srv_im, "mid_im.csv")
+
+write_excel_csv(srv_im, "mid_im.xlsx")
+
 
 #############
 
@@ -123,6 +128,15 @@ srv_hamm <- tibble(
 # Read simulation data
 ##################
 
+f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\007"
+f <- "~/ilsMount/matsim-metropole-ruhr/calibration-1.4-3pct/runs/010"
+f <- "~/ilsMount/matsim-metropole-ruhr/intermodalTestRuns/output/intermod_car-5.0/"
+f <- "~/ilsMount/matsim-metropole-ruhr/intermodalTestRuns/output/intermod_bike-6.0_car-8.0_run010_250it/"
+
+#f <- "~/ilsMount/matsim-metropole-ruhr/intermodalTestRuns/output/intermod_car-0.0/"
+
+
+sim_scale <- 100/3
 f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\calibration-1.4-3pct\\runs\\010"
 
 # Hamm
@@ -159,6 +173,7 @@ trips <- read_delim(list.files(f, pattern = "*.output_trips.csv.gz", full.names 
         filter(!is.na(dist_group))
 
 
+numberTrips <- nrow(trips)
 sim <- trips %>%
   group_by(dist_group, main_mode) %>%
   summarise(trips=n()) %>%
@@ -168,7 +183,9 @@ sim <- trips %>%
 
 sim_im <- trips %>%
   group_by(dist_group, mode_combi) %>%
-  summarise(trips=n()) %>%
+  summarise(trips=n(), .groups="keep") %>%
+  mutate(share = trips/numberTrips) %>%
+  group_by(dist_group) %>%
   mutate(mode_combi = fct_relevel(mode_combi, order_modes_im)) %>%
   rename(mode = mode_combi) %>%
   mutate(scaled_trips=sim_scale * trips) %>%
@@ -257,10 +274,10 @@ p1_aggr_im <- ggplot(data=srv_aggr_im, mapping =  aes(x=1, y=share, fill=mode)) 
 
 p2_aggr_im <- ggplot(data=aggr_im, mapping =  aes(x=1, y=share, fill=mode)) +
   labs(subtitle = "Simulation") +
-  geom_bar(position="fill", stat="identity", color=c("darkblue", "orange", "lightblue", "turquoise")) +
+  geom_bar(position="fill", stat="identity") +
   coord_flip() +
   geom_text(aes(label=scales::percent(share, accuracy = 0.01)), size= 5, position=position_fill(vjust=0.5), angle=90) +
-  scale_fill_locuszoom() +
+  scale_fill_manual(values=c("pt"="blue", "pt_w_bike_used"="orange", "pt_w_car_used"="lightblue", "pt_w_bike_and_car_used"="yellow")) +
   theme_void() +
   theme(legend.position = "bottom")
 
@@ -268,6 +285,8 @@ p2_aggr_im <- ggplot(data=aggr_im, mapping =  aes(x=1, y=share, fill=mode)) +
 
 combined_im <- p1_aggr_im / p2_aggr_im / guide_area()
 combined_im + plot_layout(guides = "collect")
+ggsave("intermod_pt_aggr.png", plot=combined_im + plot_layout(guides = "collect"), width = 8 * 14/5, height = 3 * 14/5, units = "cm", scale=1, dpi = 300)
+
 
 # intermodal distance plot
 # -------------------
@@ -287,7 +306,22 @@ ggplot(total_im, aes(fill=mode, y=scaled_trips, x=source)) +
   scale_y_continuous(labels = scales::number_format(suffix = " K", scale = 1e-3)) +
   scale_fill_uchicago() +
   theme_minimal()
+ggsave("intermod_pt_dist.png", width = 8 * 14/5, height = 3 * 14/5, units = "cm", scale=1, dpi = 300, bg="white")
 
+# output as table
+total_ordered_table_srv_sim_im <- full_join(srv_im, sim_im, by=c("dist_group", "mode"), suffix=c("_srv", "_sim")) %>%
+  arrange(dist_group, mode) %>%
+  mutate(mode=fct_relevel(mode, order_modes_im))
+
+total_ordered_table_srv_sim_im %>%
+  select(dist_group, mode, share_srv, share_sim) %>%
+  filter(str_starts(mode, "pt_")) %>%
+  mutate(mode=fct_relevel(mode, order_modes_im)) %>% write_csv("intermod_dist_group.csv")
+
+total_ordered_table_srv_sim_im %>%
+  group_by(mode) %>%
+  summarise(share_srv = sum(share_srv, na.rm = TRUE), share_sim = sum(share_sim, na.rm = TRUE)) %>%
+  mutate(mode=fct_relevel(mode, order_modes_im)) %>% write_csv("intermod_no_dist_group.csv")
 
 #########
 # Calculation for short term trips
