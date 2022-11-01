@@ -80,6 +80,23 @@ srv <- srv %>%
   mutate(share=trips / sum(srv$trips)) %>%
   mutate(scaled_trips=tt * share)
 
+
+srv_mode_user <- matched %>%
+    left_join(persons, by = "HP_ID") %>%
+    group_by(HP_ID, mode) %>%
+    summarize(count=n(), gew=first(gew_pers))
+
+weight <- srv_mode_user %>%
+          group_by(HP_ID) %>%
+          summarize(weight=first(gew))
+
+# Weight makes huge difference
+
+srv_mode_user <- srv_mode_user %>%
+    group_by(mode) %>%
+    summarize(share=sum(gew)/ sum(weight$weight))
+#    summarize(share=n()/n_distinct(srv_mode_user$HP_ID))
+
 #-----
 
 srv_im <- matched %>%
@@ -128,7 +145,7 @@ f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-
 # Hamm
 f <- "\\\\sshfs.kr\\rakow@cluster.math.tu-berlin.de\\net\\ils\\matsim-metropole-ruhr\\hamm\\calibration\\runs\\007"
 
-sim_scale <- 100/10
+sim_scale <- 100/3
 
 homes <- read_csv("../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv", 
                   col_types = cols(
@@ -174,6 +191,15 @@ sim_im <- trips %>%
   mutate(scaled_trips=sim_scale * trips) %>%
   mutate(source = "sim")
 
+
+sim_mode_user <- trips %>%
+  group_by(person, main_mode) %>%
+  summarize(count=n())
+
+sim_mode_user <- sim_mode_user %>%
+  group_by(main_mode) %>%
+  summarize(share=n()/n_distinct(sim_mode_user$person))
+
 #write_csv(sim, "sim.csv")
 
 ##################
@@ -217,6 +243,10 @@ combined + plot_layout(guides = "auto")
 
 total <- bind_rows(srv, sim) %>%
         mutate(mode=fct_relevel(mode, order_modes))
+
+# Filter srv trips
+#total <- total %>%
+#    mutate(scaled_trips=ifelse(source=="srv", yes=0, no=scaled_trips))
 
 # Maps left overgroups
 dist_order <- factor(total$dist_group, level = levels)
