@@ -2,13 +2,24 @@ library(tidyverse)
 library(dplyr)
 library(patchwork)
 library(scales)
+library(sf)
 
 ### trips.csv to get car use
-completeTrips <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_trips.csv.gz")
-## persons.csv to get SNZ attributes
-persons <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_persons.csv.gz")
+completeTrips <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_trips.csv.gz", col_types = cols(person = col_character()))
+##
+persons <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_persons.csv.gz", col_types = cols(person = col_character()))
 ## person2homeRegionAndCoord
-person2region <-read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/person2Home.csv")
+person2region <- read_csv("/Users/gregorr/Documents/work/respos/shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv",
+                          col_types = cols(person = col_character(), home_x = col_double(), home_y = col_double()
+                          ))
+
+shape <- st_read("/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/dvg2krs_ruhrgebiet-rvr/dvg2krs_ruhrgebiet-rvr.shp")
+person2region <- person2region %>%
+  st_as_sf(coords = c("home_x", "home_y"), crs = 25832) %>%
+  st_join(shape)
+person2region <- select(person2region, person, geometry, GN)
+person2region <- person2region %>% replace(is.na(.), "other")
+
 ## joining person and persons2region
 persons <- left_join(persons, person2region, by= "person")
 
@@ -25,63 +36,16 @@ carTrips <- rename(carTrips, "nrOfCarTrips" = n)
 persons <- left_join(persons, carTrips, by="person")
 persons <- persons %>% replace(is.na(.), 0)
 
-#create variable wether car was used or not used by the agent
+#create variable whether car was used or not used by the agent
 persons<-persons %>% 
   mutate(usedCar = ifelse(nrOfCarTrips >= 1, "usedCar", "notUsedCar")) 
 
-##snz Data
-snzCarAvailability <- persons %>% count(area, sim_carAvailability)
-## calculate relative values
-snzCarAvailability <- snzCarAvailability %>% group_by(area) %>% mutate(Percentage=round((n/sum(n)),2)) %>% ungroup()
-
-#grouped relative plot
-ggplot(snzCarAvailability, aes(fill=sim_carAvailability, y=area, x=Percentage)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Prozent") +
-  ylab("Landkreis") +
-  ggtitle("snzCarAvailability Attribut")+
-  geom_text(aes(label = percent(Percentage)), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous(labels = scales::percent) +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Besitzrate") +
-  theme_minimal()
-
 #count how often each case happens in the different areas
-personsNrOfCarUsers <- persons %>% count(area, usedCar)
+personsNrOfCarUsers <- persons %>% count(GN, usedCar)
 
-#Grouped absolute plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=n)) + 
-  geom_bar(position="dodge", stat="identity") +
-  xlab("Anzahl") +
-  ylab("Landkreis")+
-  theme_minimal()
+#data tidying
+personsNrOfCarUsers <- pivot_wider(personsNrOfCarUsers, names_from = usedCar, values_from = n)
+#personsNrOfCarUsers <- rename(personsNrOfCarUsers, notUsedCar = "nrOfNoneCarUsers")
+#personsNrOfCarUsers <- rename(personsNrOfCarUsers, usedCar= "nrOfCarUsers")
 
-## calculate relative values
-personsNrOfCarUsers <- personsNrOfCarUsers %>% group_by(area) %>% mutate(Percentage=round((n/sum(n)),2)) %>% ungroup()
-
-##calculate numer of cars per 1000 inhabitants
-personsNrOfCarUsers <- personsNrOfCarUsers %>% group_by(area) %>% mutate(nrPer1000Inhabitants=round(Percentage*1000,2)) %>% ungroup()
-
-#grouped relative plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=Percentage)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Prozent") +
-  ylab("Landkreis") +
-  ggtitle("Resultate des Modells")+
-  geom_text(aes(label = percent(Percentage)), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous(labels = scales::percent) +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Besitzrate") +
-  theme_minimal()
-
-#grouped absolute plot
-ggplot(personsNrOfCarUsers, aes(fill=usedCar, y=area, x=nrPer1000Inhabitants)) + 
-  geom_bar(position="stack", stat="identity") +
-  xlab("Anzahl") +
-  ylab("Landkreis") +
-  ggtitle("Resultate des Modells")+
-  geom_text(aes(label = nrPer1000Inhabitants), position = position_stack(vjust = 0.5)) +
-  scale_x_continuous() +
-  scale_fill_discrete(labels = c("Pkw-Besitzer", "nicht Pkw-Besitzer"), name ="Anzahl je 1000 Einwohner") +
-  theme_minimal()
-
-
-
+write_excel_csv2(personsNrOfCarUsers, "/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/carAvailability/Pkw-Dichte_MATSim.csv")
