@@ -112,25 +112,25 @@
 			<parameterset type="modeParams" >
 				<param name="mode" value="car" />
 				<param name="dailyMonetaryConstant" value="-5.3" />
-				<param name="constant" value="-0.4128" />
+				<param name="constant" value="0.8379675427416293" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-1.0" />
 				<param name="monetaryDistanceRate" value="-0.0002" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
-				<param name="constant" value="-1.30034" />
+				<param name="constant" value="-2.2644332732845336" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 				<param name="monetaryDistanceRate" value="-0.0002" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="pt" />
 				<param name="dailyMonetaryConstant" value="-2.15" />
-				<param name="constant" value="0.60604" />
+				<param name="constant" value="0.07469218978843763" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
-				<param name="constant" value="0.162" />
+				<param name="constant" value="-0.1502904438227941" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-7.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
