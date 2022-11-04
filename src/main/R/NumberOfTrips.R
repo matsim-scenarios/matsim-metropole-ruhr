@@ -11,12 +11,12 @@ library(sf)
 
 
 ### trips.csv to get nrOfTrips
-completeTrips <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_trips.csv.gz")
+completeTrips <- read_csv2("output_trips.csv.gz")
 ## persons.csv to get SNZ attributes
-persons <- read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/036.output_persons.csv.gz")
+persons <- read_csv2("output_persons.csv.gz")
 
 ## person2homeRegionAndCoord
-person2region <-read_csv2("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v1.2.1/036/person2Home.csv")
+person2region <-read_csv2("person2Home.csv")
 ## joining person and persons2region
 persons <- left_join(persons, person2region, by= "person")
 

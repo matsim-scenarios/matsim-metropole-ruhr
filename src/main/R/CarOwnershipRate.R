@@ -5,15 +5,15 @@ library(scales)
 library(sf)
 
 ### trips.csv to get car use
-completeTrips <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_trips.csv.gz", col_types = cols(person = col_character()))
+completeTrips <- read_csv2("output_trips.csv.gz", col_types = cols(person = col_character()))
 ##
-persons <- read_csv2("/Users/gregorr/Desktop/Test/Pkw_BEsitzraten/010.output_persons.csv.gz", col_types = cols(person = col_character()))
+persons <- read_csv2("output_persons.csv.gz", col_types = cols(person = col_character()))
 ## person2homeRegionAndCoord
-person2region <- read_csv("/Users/gregorr/Documents/work/respos/shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-25pct.plans-homes.csv",
+person2region <- read_csv("metropole-ruhr-v1.4-25pct.plans-homes.csv",
                           col_types = cols(person = col_character(), home_x = col_double(), home_y = col_double()
                           ))
 
-shape <- st_read("/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/dvg2krs_ruhrgebiet-rvr/dvg2krs_ruhrgebiet-rvr.shp")
+shape <- st_read("/dvg2krs_ruhrgebiet-rvr/dvg2krs_ruhrgebiet-rvr.shp")
 person2region <- person2region %>%
   st_as_sf(coords = c("home_x", "home_y"), crs = 25832) %>%
   st_join(shape)
@@ -48,4 +48,4 @@ personsNrOfCarUsers <- pivot_wider(personsNrOfCarUsers, names_from = usedCar, va
 #personsNrOfCarUsers <- rename(personsNrOfCarUsers, notUsedCar = "nrOfNoneCarUsers")
 #personsNrOfCarUsers <- rename(personsNrOfCarUsers, usedCar= "nrOfCarUsers")
 
-write_excel_csv2(personsNrOfCarUsers, "/Users/gregorr/Documents/work/respos/shared-svn/projects/rvr-metropole-ruhr/data/carAvailability/Pkw-Dichte_MATSim.csv")
+write_excel_csv2(personsNrOfCarUsers, "Pkw-Dichte_MATSim.csv")
