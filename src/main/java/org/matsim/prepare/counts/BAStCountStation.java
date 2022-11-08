@@ -1,7 +1,6 @@
 package org.matsim.prepare.counts;
 
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 
 import java.util.HashMap;
@@ -46,14 +45,6 @@ class BAStCountStation {
 
     public HashMap<String, Double> getTrafficVolume2() {
         return trafficVolume2;
-    }
-
-    public String getDir1() {
-        return dir1;
-    }
-
-    public String getDir2() {
-        return dir2;
     }
 
     public Coord getCoord() {
