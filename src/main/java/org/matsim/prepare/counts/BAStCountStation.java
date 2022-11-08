@@ -14,8 +14,11 @@ class BAStCountStation {
     private final String dir2; //from column 'Hi_Ri2'
 
     private Link matchedLink;
-    private Id<Link> oppLink;
+    private Link oppLink;
     private String matchedDir;
+    private String oppDir;
+
+    private boolean hasOppLink = true;
 
     private final Coord coord;
 
@@ -26,7 +29,7 @@ class BAStCountStation {
     BAStCountStation(String id, String name, String dir1, String dir2, Coord coord) {
 
         this.coord = coord;
-        this.dir1 = dir1;
+        this.dir1 = dir1; // is one of: "N", "O", "S", "W"
         this.dir2 = dir2;
         this.id = id;
         this.name = name;
@@ -69,24 +72,39 @@ class BAStCountStation {
         return matchedDir;
     }
 
-    public Id<Link> getOppLink() {
+    public Link getOppLink() {
         return oppLink;
+    }
+
+    public String getOppDir() {
+        return oppDir;
+    }
+
+    public boolean hasOppLink() {
+        return hasOppLink;
     }
 
     public void setMatchedLink(Link matchedLink) {
         this.matchedLink = matchedLink;
 
-        matchDirection();
+        matchDirection(matchedLink, this.dir1);
     }
 
-    public void setOppLink(Id<Link> oppLink) {
+    public void setOppLink(Link oppLink) {
         this.oppLink = oppLink;
+
+        matchDirection(oppLink, this.dir2);
     }
 
-    private void matchDirection() {
-        String direction = getLinkDirection(this.matchedLink);
+    public void setHasNoOppLink() {
+        this.hasOppLink = false;
+    }
 
-        matchedDir = this.dir1.contains(direction) ? "Hi_Ri1" : "Hi_Ri2";
+    private void matchDirection(Link link, String bastDirection) {
+        String direction = getLinkDirection(link);
+
+        matchedDir = direction.contains(bastDirection) ? "KFZ_R1" : "KFZ_R2";
+        oppDir = matchedDir.equals("KFZ_R1") ? "KFZ_R2": "KFZ_R1";
     }
 
     private String getLinkDirection(Link link) {

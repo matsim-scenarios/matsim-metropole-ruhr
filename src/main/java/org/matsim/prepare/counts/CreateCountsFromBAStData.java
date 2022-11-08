@@ -5,7 +5,12 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.locationtech.jts.geom.*;
+import org.locationtech.jts.index.strtree.ItemBoundable;
+import org.locationtech.jts.index.strtree.ItemDistance;
+import org.locationtech.jts.index.strtree.STRtree;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -15,6 +20,8 @@ import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.groups.NetworkConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.filter.NetworkFilterManager;
+import org.matsim.core.utils.geometry.CoordinateTransformation;
+import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.counts.Count;
 import org.matsim.counts.Counts;
 import org.matsim.counts.CountsWriter;
@@ -40,17 +47,14 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to MATSim network", required = true)
     private String network;
 
-    @CommandLine.Option(names = "--bundesstraßenData", description = "path to BASt Bundesstraßen-'Stundenwerte'-.txt file", required = true)
-    private String bundesstraßenData;
+    @CommandLine.Option(names = "--primaryData", description = "path to BASt Bundesstraßen-'Stundenwerte'-.txt file", required = true)
+    private String primaryData;
 
     @CommandLine.Option(names = "--motorwayData", description = "path to BASt Bundesautobahnen-'Stundenwerte'-.txt file", required = true)
     private String motorwayData;
 
     @CommandLine.Option(names = "--stationData", description = "path to default BASt count station .csv", required = true)
     private String stationData;
-
-    @CommandLine.Option(names = "--isMotorwayData", description = "Boolean, if BASt data contains motorways or Bundesstraßen", required = true)
-    private boolean isMotorwayData;
 
     @CommandLine.Option(names = "--output", description = "output counts path", defaultValue = "counts-from-bast.xml.gz")
     private String output;
@@ -73,18 +77,17 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         /*
         * TODO
         *  find opposite direction links
-        *  integration of Bundesstraßen
         * */
 
         var stations = readBAStCountStations(stationData, shp, crs);
 
         matchBAStWithNetwork(network, stations);
 
-        readHourlyTrafficVolume(bundesstraßenData, stations);
+        readHourlyTrafficVolume(primaryData, stations);
         readHourlyTrafficVolume(motorwayData, stations);
 
         log.info("+++++++ Map aggregated traffic volumes to count stations +++++++");
-        Counts counts = new Counts();
+        Counts<Link> counts = new Counts<>();
         stations.values().stream()
                 .filter(station -> station.getMatchedLink() != null)
                 .forEach(station -> mapTrafficVolumeToCount(station, counts));
@@ -96,21 +99,28 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         return 0;
     }
 
-    private void mapTrafficVolumeToCount(BAStCountStation station, Counts counts){
+    private void mapTrafficVolumeToCount(BAStCountStation station, Counts<Link> counts){
 
         if(station.getTrafficVolume1().isEmpty()) {
             log.info("+++++++ No traffic counts available for station " + station.getName() + " +++++++");
             return;
         }
 
-        Count count = counts.createAndAddCount(station.getMatchedLink().getId(), station.getName());
+        Count<Link> count = counts.createAndAddCount(station.getMatchedLink().getId(), station.getName());
+        Count<Link> countOpp = station.hasOppLink() ? null: counts.createAndAddCount(station.getOppLink().getId(), station.getName());
         var trafficVolumes = station.getTrafficVolume1();
+        var trafficVolumesOpp = station.getTrafficVolume2();
 
         for (String hour: trafficVolumes.keySet()){
 
             if(hour.startsWith("0")) hour.replace("0", "");
             int h = Integer.parseInt(hour);
             count.createVolume(h, trafficVolumes.get(hour));
+
+            if(countOpp != null){
+
+                count.createVolume(h, trafficVolumesOpp.get(hour));
+            }
         }
     }
 
@@ -171,7 +181,8 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                     .forEach(number -> {
 
                         BAStCountStation station = stations.get(number);
-                        String direction = station.getMatchedDir().endsWith("1") ? "KFZ_R1": "KFZ_R2";
+                        String direction1 = station.getMatchedDir();
+                        String direction2 = station.getOppDir();
 
                         log.info("Process data for count station " + station.getName());
 
@@ -188,12 +199,12 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 
                             double divisor = hourlyTrafficVolumes.size();
                             Double sum1 = hourlyTrafficVolumes.stream()
-                                    .map(record -> Double.parseDouble(record.get(direction)))
+                                    .map(record -> Double.parseDouble(record.get(direction1)))
                                     .reduce(Double::sum)
                                     .get();
 
                             Double sum2 = hourlyTrafficVolumes.stream()
-                                    .map(record -> Double.parseDouble(record.get("KFZ_R2")))
+                                    .map(record -> Double.parseDouble(record.get(direction2)))
                                     .reduce(Double::sum)
                                     .get();
 
@@ -245,10 +256,32 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
             filteredNetwork = filter.applyFilters();
         }
 
+        Index index = new Index(filteredNetwork);
+
         for(var station: stations.values()){
 
             Link matchedLink = match(filteredNetwork, station);
             station.setMatchedLink(matchedLink);
+
+            Link opp = NetworkUtils.findLinkInOppositeDirection(matchedLink);
+
+            if(opp == null){
+
+                opp = index.query(station);
+
+                if(opp == null) {
+
+                    station.setHasNoOppLink();
+                } else {
+                    station.setOppLink(opp);
+                }
+                /*
+                * TODO
+                *  implement some smart query
+                * */
+            } else {
+                station.setOppLink(opp);
+            }
         }
     }
 
@@ -299,5 +332,80 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                 .collect(Collectors.toList());
 
         return convertToMap(filtered);
+    }
+
+    private class Index{
+
+        private final STRtree index = new STRtree();
+        private final GeometryFactory factory = new GeometryFactory();
+
+        public Index(Network network) {
+
+            var it = network.getLinks().values().iterator();
+
+            while (it.hasNext()) {
+
+                Link link = it.next();
+                Envelope env = getLinkEnv(link);
+
+                index.insert(env, link);
+            }
+
+            index.build();
+        }
+
+        public Link neigherstNeighbourLink(BAStCountStation station){
+
+            Link link = station.getMatchedLink();
+            Envelope env = getLinkEnv(link);
+
+            Link result = (Link) index.nearestNeighbour(env, link, new LinkDistance());
+            return result;
+        }
+
+        public Link query(BAStCountStation station){
+
+            Coordinate p = MGC.coord2Coordinate(station.getCoord());
+
+            List<Link> result = index.query(new Envelope(p));
+
+            if(result.isEmpty()){
+                log.info("Could not find any opposite links for " + station.getMatchedLink().getId());
+                return null;
+            }
+            if(result.size() == 2){
+                if(result.get(0).getId().equals(station.getMatchedLink().getId())){
+                    return result.get(1);
+                } else return result.get(0);
+            }
+            if(result.size() == 1){
+
+                return result.get(0);
+            }
+            log.info("Too many links were found for link " + station.getMatchedLink().getId());
+            return null;
+        }
+
+        private Envelope getLinkEnv(Link link){
+
+            Coord from = link.getFromNode().getCoord();
+            Coord to = link.getToNode().getCoord();
+            Coordinate[] coordinates = {MGC.coord2Coordinate(from), MGC.coord2Coordinate(to)};
+
+            Envelope env = factory.createLineString(coordinates).getEnvelopeInternal();
+
+            return env;
+        }
+    }
+
+    private class LinkDistance implements ItemDistance{
+
+        @Override
+        public double distance(ItemBoundable itemBoundable, ItemBoundable itemBoundable1) {
+
+            Link link1 = (Link) itemBoundable.getItem();
+            Link link2 = (Link) itemBoundable1.getItem();
+            return 1000;
+        }
     }
 }
