@@ -229,7 +229,6 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
             }
         }
 
-        log.info("+++++++ Matched station {} to link {}", station.getName(), matched.getId());
         station.setMatchedLink(matched);
         index.remove(matched);
 
@@ -266,6 +265,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 
         Index index = new Index(filteredNetwork, searchRange);
 
+        log.info("+++++++ Match BASt stations with network +++++++");
         for(var station: stations.values()) match(filteredNetwork, index, station);
     }
 
@@ -347,12 +347,14 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 
             for(Link l: result){
 
+                if(station.getLinkDirection(l).equals(station.getMatchedDir())) continue;
+
                 double distance = link2LineString(l).distance(p);
                 double curClosest = link2LineString(closest).distance(p);
 
                 if(distance < curClosest) closest = l;
             }
-            if(station.getMatchedLink().equals(closest)) throw new RuntimeException("Matched both directions on the same link!");
+            if(closest.equals(station.getMatchedLink())) throw new RuntimeException("Matched both directions on the same link!");
             return closest;
         }
 

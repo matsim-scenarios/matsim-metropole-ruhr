@@ -33,6 +33,8 @@ class BAStCountStation {
         this.id = id;
         this.name = name;
 
+        this.matchedLink = null;
+        this.matchedDir = null;
     }
 
     public String getId() {
@@ -98,7 +100,7 @@ class BAStCountStation {
         oppDir = matchedDir.equals("KFZ_R1") ? "KFZ_R2": "KFZ_R1";
     }
 
-    private String getLinkDirection(Link link) {
+    public String getLinkDirection(Link link) {
 
         Coord fromCoord = link.getFromNode().getCoord();
         Coord toCoord = link.getToNode().getCoord();
