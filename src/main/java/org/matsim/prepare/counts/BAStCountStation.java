@@ -17,6 +17,7 @@ class BAStCountStation {
     private String matchedDir;
     private String oppDir;
 
+    private boolean hasMatchedLink = true;
     private boolean hasOppLink = true;
 
     private final Coord coord;
@@ -73,6 +74,9 @@ class BAStCountStation {
         return oppDir;
     }
 
+    public boolean hasMatchedLink(){
+        return hasMatchedLink;
+    }
     public boolean hasOppLink() {
         return hasOppLink;
     }
@@ -87,6 +91,10 @@ class BAStCountStation {
         this.oppLink = oppLink;
 
         matchDirection(oppLink, this.dir2);
+    }
+
+    public void setHasNoMatchedLink(){
+        this.hasMatchedLink = false;
     }
 
     public void setHasNoOppLink() {

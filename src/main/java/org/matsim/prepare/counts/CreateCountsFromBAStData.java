@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +43,9 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to MATSim network", required = true)
     private String network;
 
+    @CommandLine.Option(names = "--roadTypes", description = "Define on which roads counts are created")
+    private List<String> roadTypes = List.of("motorway", "primary", "trunk");
+
     @CommandLine.Option(names = "--primaryData", description = "path to BASt Bundesstraßen-'Stundenwerte'-.txt file", required = true)
     private String primaryData;
 
@@ -53,6 +57,9 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--searchRange", description = "range for the buffer around count stations, in which links are queried", defaultValue = "50" )
     private double searchRange;
+
+    @CommandLine.Option(names = "--year", description = "Year of counts", required = true)
+    private int year;
 
     @CommandLine.Option(names = "--output", description = "output counts path", defaultValue = "counts-from-bast.xml.gz")
     private String output;
@@ -69,6 +76,12 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         new CreateCountsFromBAStData().execute(args);
     }
 
+    /*
+    TODO
+      manual count machting list
+      cleaner for stations
+     */
+
     @Override
     public Integer call() {
         var stations = readBAStCountStations(stationData, shp, crs);
@@ -84,7 +97,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                 .filter(station -> station.getMatchedLink() != null)
                 .forEach(station -> mapTrafficVolumeToCount(station, counts));
 
-        counts.setYear(2022);
+        counts.setYear(year);
 
         log.info("+++++++ Write MATSim counts to {} +++++++", output);
         new CountsWriter(counts).write(output);
@@ -158,13 +171,14 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                 var keys = stations.keySet();
 
                 preFilteredRecords = records.getRecords().stream()
-                        .filter(record -> keys.contains(record.get("Zst")
-                                .replace("\"", "")))//ONLY FOR DEBUGGING
+                        .filter(record -> keys.contains(record.get("Zst")))//ONLY FOR DEBUGGING
                         .filter(record -> {
                             int day = Integer.parseInt(record.get("Wotag").replace(" ", ""));
                             return day > 1 && day < 5;
                         })
                         .collect(Collectors.toList());
+
+                if(preFilteredRecords.isEmpty()) log.info("Records read from {} don't contain the stations ... ", pathToDisaggregatedData);
             }
 
             log.info("+++++++ Start aggregation of traffic volume data +++++++");
@@ -224,6 +238,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
             log.info("Query is used for matching!");
             matched = index.query(station);
             if(matched == null) {
+                station.setHasNoMatchedLink();
                 log.info("+++++++ Could not match station {}  +++++++", station.getName());
                 return;
             }
@@ -246,17 +261,35 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         index.remove(opp);
     }
 
+    private List<Predicate<String>> createRoadTypeFilter(List<String> types){
+
+        List<Predicate<String>> filter = new ArrayList<>();
+
+        for(String type: types){
+
+            Predicate<String> p = string -> {
+                Pattern pattern = Pattern.compile(type, Pattern.CASE_INSENSITIVE);
+
+                return pattern.matcher(string).find();
+            };
+
+            filter.add(p);
+        }
+        return filter;
+    }
+
     private void matchBAStWithNetwork(String pathToNetwork, Map<String, BAStCountStation> stations){
 
         Network filteredNetwork;
+
+        List<Predicate<String>> roadTypeFilter = createRoadTypeFilter(roadTypes);
 
         {
             Network network = NetworkUtils.readNetwork(pathToNetwork);
             NetworkFilterManager filter = new NetworkFilterManager(network, new NetworkConfigGroup());
             filter.addLinkFilter(link -> link.getAllowedModes().contains(TransportMode.car));
-            filter.addLinkFilter(link -> "motorway".equals(link.getAttributes().getAttribute("type")) ||
-                    "primary".equals(link.getAttributes().getAttribute("type")) ||
-                    "trunk".equals(link.getAttributes().getAttribute("type")));
+            filter.addLinkFilter(link -> roadTypeFilter.stream().
+                    anyMatch(predicate -> predicate.test(link.getAttributes().getAttribute("type").toString())));
             filter.addLinkFilter(link -> !link.getId().toString().startsWith("pt"));
             filter.addLinkFilter(link -> !link.getId().toString().startsWith("bike"));
 
@@ -348,13 +381,14 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
             for(Link l: result){
 
                 if(station.getLinkDirection(l).equals(station.getMatchedDir())) continue;
+                if(l.equals(station.getMatchedLink())) continue;
 
                 double distance = link2LineString(l).distance(p);
                 double curClosest = link2LineString(closest).distance(p);
 
                 if(distance < curClosest) closest = l;
             }
-            if(closest.equals(station.getMatchedLink())) throw new RuntimeException("Matched both directions on the same link!");
+
             return closest;
         }
 
