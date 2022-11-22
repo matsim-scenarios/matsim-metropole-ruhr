@@ -59,6 +59,9 @@ public final class CountsOption {
                 .anyMatch(id -> id.equals(linkId));
     }
 
+    /**
+     * Read in CSV-files and creates counts for manual matched count data
+     * */
     public CountsOption initialize(){
 
         if(ignored != null) {
@@ -154,6 +157,9 @@ public final class CountsOption {
                 .anyMatch(label -> label.equals(name));
     }
 
+    /**
+     * Merges the manual matched counts with another count file, which is created by code for example
+     * */
     public void mergeWithManualMatched(Counts<Link> counts){
 
         for (Count<Link> actual : this.manualMatchedCounts.getCounts().values()) {
