@@ -69,6 +69,8 @@ public final class CountsOption {
         if(manual != null) {
             List<CSVRecord> records = readFile(manual);
 
+            if(!records.isEmpty() && records.stream().findFirst().get().size() < 3) throw new RuntimeException("The manual-matched file needs 3 columns e.g. 'station_name', 'link_id', and 'volume'");
+
             List<String> unique = records.stream()
                     .map(record -> record.get(0))
                     .distinct()
@@ -83,7 +85,7 @@ public final class CountsOption {
                             .collect(Collectors.toList());
 
                     if(entries.isEmpty()) continue;
-                    if(entries.size() != 24) logger.info("Station {} contains less than 24 values!", name);
+                    if(entries.size() != 24) logger.warn("Station {} contains less than 24 values!", name);
 
                     var first = entries.stream().findFirst().get();
                     String cs = first.get(0);
@@ -95,7 +97,7 @@ public final class CountsOption {
                     int hour = 1;
 
                     for(var entry: entries){
-                        double volume = Double.parseDouble(entry.get(3));
+                        double volume = Double.parseDouble(entry.get(2));
                         newCount.createVolume(hour++, volume);
                     }
 
