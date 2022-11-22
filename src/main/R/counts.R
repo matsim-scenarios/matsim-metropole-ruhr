@@ -4,7 +4,7 @@ library(matsim)
 
 FILE_DIR <-  "C:/Users/ACER/Desktop/Uni/VSP/Ruhrgebiet/"
 LINKSTATS <- paste0(FILE_DIR, "linkstats.tsv.gz")
-COUNTS <- paste0(FILE_DIR, "counts-from-bast.xml")
+COUNTS <- paste0(FILE_DIR, "counts-from-bast.xml.gz")
 
 
 # NOTE:
