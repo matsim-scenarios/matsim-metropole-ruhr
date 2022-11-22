@@ -12,7 +12,8 @@ import picocli.CommandLine;
 
 import javax.annotation.Nullable;
 import java.io.FileReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public final class CountsOption {
@@ -26,17 +27,11 @@ public final class CountsOption {
     @CommandLine.Option(names = "--deliminator", description = "deliminator in csv files", defaultValue = ";")
     private Character deliminator;
 
-    private List<String> ignoredCounts = new ArrayList<>();
+    private final List<String> ignoredCounts = new ArrayList<>();
 
-    private Counts<Link> manualMatchedCounts = new Counts<>();
+    private final Counts<Link> manualMatchedCounts = new Counts<>();
 
     private static final Logger logger = LogManager.getLogger(CountsOption.class);
-
-    /*
-    TODO
-     ignored counts
-     manual matching
-     */
 
     public CountsOption(){
 
@@ -55,6 +50,13 @@ public final class CountsOption {
 
     public Counts<Link> getManualMatchedCounts() {
         return manualMatchedCounts;
+    }
+
+    private boolean isLinkMatched(Id<Link> linkId){
+
+        return manualMatchedCounts.getCounts().values().stream()
+                .map(Count::getId)
+                .anyMatch(id -> id.equals(linkId));
     }
 
     public CountsOption initialize(){
@@ -80,11 +82,14 @@ public final class CountsOption {
                             .filter(record -> record.get(0).equals(name))
                             .collect(Collectors.toList());
 
+                    if(entries.isEmpty()) continue;
                     if(entries.size() != 24) logger.info("Station {} contains less than 24 values!", name);
 
                     var first = entries.stream().findFirst().get();
                     String cs = first.get(0);
                     Id<Link> linkId = Id.createLinkId(first.get(1));
+
+                    if(isLinkMatched(linkId)) continue;
 
                     Count<Link> newCount = manualMatchedCounts.createAndAddCount(linkId, cs);
                     int hour = 1;
@@ -101,7 +106,7 @@ public final class CountsOption {
 
                     String name = record.get(0);
                     String idString = record.get(1);
-                    Double miv = Double.parseDouble(record.get(2));
+                    double miv = Double.parseDouble(record.get(2));
                     Id<Link> linkId = Id.createLinkId(idString);
 
                     manualMatchedCounts.createAndAddCount(linkId, name).createVolume(1, miv);
@@ -149,16 +154,15 @@ public final class CountsOption {
 
     public void mergeWithManualMatched(Counts<Link> counts){
 
-    }
+        for (Count<Link> actual : this.manualMatchedCounts.getCounts().values()) {
 
-    public static void main(String[] args) {
+            Count<Link> newCount = counts.createAndAddCount(actual.getId(), actual.getCsLabel());
 
-        String ignored = "C:\\Users\\ACER\\Desktop\\Uni\\VSP\\Ruhrgebiet\\Testdaten\\ignored.csv";
-        String manual = "C:\\Users\\ACER\\Desktop\\Uni\\VSP\\Ruhrgebiet\\Testdaten\\manual.csv";
+            for (int i = 1; i <= 24; i++) {
 
-        var option = new CountsOption(ignored, manual, ';');
-        option.initialize();
-
-        return;
+                if (actual.getVolume(i) == null) continue;
+                newCount.createVolume(i, actual.getVolume(i).getValue());
+            }
+        }
     }
 }
