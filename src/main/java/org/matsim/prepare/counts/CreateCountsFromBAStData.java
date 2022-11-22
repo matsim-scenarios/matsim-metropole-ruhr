@@ -25,10 +25,7 @@ import picocli.CommandLine;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -76,12 +73,6 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         new CreateCountsFromBAStData().execute(args);
     }
 
-    /*
-    TODO
-      manual count machting list
-      cleaner for stations
-     */
-
     @Override
     public Integer call() {
         var stations = readBAStCountStations(stationData, shp, crs);
@@ -91,11 +82,11 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         readHourlyTrafficVolume(primaryData, stations);
         readHourlyTrafficVolume(motorwayData, stations);
 
+        clean(stations);
+
         log.info("+++++++ Map aggregated traffic volumes to count stations +++++++");
         Counts<Link> counts = new Counts<>();
-        stations.values().stream()
-                .filter(station -> station.getMatchedLink() != null)
-                .forEach(station -> mapTrafficVolumeToCount(station, counts));
+        stations.values().forEach(station -> mapTrafficVolumeToCount(station, counts));
 
         counts.setYear(year);
 
@@ -104,10 +95,50 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         return 0;
     }
 
+    private void clean(Map<String, BAStCountStation> stations){
+
+        log.info("+++++++ Check stations for duplicates and missing link ids +++++++");
+
+        List<Link> uniqueIds = stations.values().stream()
+                .filter(BAStCountStation::hasMatchedLink)
+                .filter(BAStCountStation::hasOppLink)
+                .map(station -> List.of(station.getMatchedLink(), station.getOppLink()))
+                .flatMap(Collection::stream)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> remove = new ArrayList<>();
+        for(BAStCountStation station: stations.values()){
+
+            if(!station.hasMatchedLink() && !station.hasOppLink()){
+                remove.add(station.getName());
+                continue;
+            }
+
+            var matched = station.getMatchedLink();
+            var opp = station.getOppLink();
+
+            if(matched.equals(opp)){
+                remove.add(station.getName());
+                continue;
+            }
+
+            if (uniqueIds.contains(matched) && uniqueIds.contains(opp)){
+                uniqueIds.remove(matched);
+                uniqueIds.remove(opp);
+            } else {
+                remove.add(station.getName());
+            }
+        }
+
+        for(String toRemove: remove) stations.remove(toRemove);
+        log.info("+++++++ Removed {} stations +++++++", remove.size());
+    }
+
     private void mapTrafficVolumeToCount(BAStCountStation station, Counts<Link> counts){
 
         if(station.getTrafficVolume1().isEmpty()) {
-            log.info("+++++++ No traffic counts available for station {} +++++++", station.getName());
+            log.warn("No traffic counts available for station {}", station.getName());
             return;
         }
 
@@ -178,7 +209,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                         })
                         .collect(Collectors.toList());
 
-                if(preFilteredRecords.isEmpty()) log.info("Records read from {} don't contain the stations ... ", pathToDisaggregatedData);
+                if(preFilteredRecords.isEmpty()) log.warn("Records read from {} don't contain the stations ... ", pathToDisaggregatedData);
             }
 
             log.info("+++++++ Start aggregation of traffic volume data +++++++");
@@ -204,6 +235,11 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                                     .filter(record -> record.get("Stunde").replace("\"", "")
                                             .equals(hour))
                                     .collect(Collectors.toList());
+
+                            if(hourlyTrafficVolumes.isEmpty()) {
+                                log.warn("No volume for station {} at hour {}", station.getName(), hour);
+                                continue;
+                            }
 
                             double divisor = hourlyTrafficVolumes.size();
                             Double sum1 = hourlyTrafficVolumes.stream()
@@ -239,7 +275,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
             matched = index.query(station);
             if(matched == null) {
                 station.setHasNoMatchedLink();
-                log.info("+++++++ Could not match station {}  +++++++", station.getName());
+                log.warn("Could not match station {}", station.getName());
                 return;
             }
         }
@@ -252,7 +288,7 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         if(opp == null) {
             opp = index.query(station);
             if (opp == null) {
-                log.info("+++++++ Could not match station {} to an opposite link +++++++", station.getName());
+                log.warn("Could not match station {} to an opposite link", station.getName());
                 station.setHasNoOppLink();
                 return;
             }
