@@ -58,8 +58,11 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
     @CommandLine.Option(names = "--year", description = "Year of counts", required = true)
     private int year;
 
-    @CommandLine.Option(names = "--output", description = "output counts path", defaultValue = "counts-from-bast.xml.gz")
-    private String output;
+    @CommandLine.Option(names = "--carOutput", description = "output car counts path", defaultValue = "car-counts-from-bast.xml.gz")
+    private String carOutput;
+
+    @CommandLine.Option(names = "--freightOutput", description = "output freight counts path", defaultValue = "freight-counts-from-bast.xml.gz")
+    private String freightOutput;
 
     @CommandLine.Mixin
     private ShpOptions shp = new ShpOptions();
@@ -85,13 +88,16 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         clean(stations);
 
         log.info("+++++++ Map aggregated traffic volumes to count stations +++++++");
-        Counts<Link> counts = new Counts<>();
-        stations.values().forEach(station -> mapTrafficVolumeToCount(station, counts));
+        Counts<Link> miv = new Counts<>();
+        Counts<Link> freight = new Counts<>();
+        stations.values().forEach(station -> mapTrafficVolumeToCount(station, miv, freight));
 
-        counts.setYear(year);
+        miv.setYear(year);
+        freight.setYear(year);
 
-        log.info("+++++++ Write MATSim counts to {} +++++++", output);
-        new CountsWriter(counts).write(output);
+        log.info("+++++++ Write MATSim counts to {} and {} +++++++", carOutput, freightOutput);
+        new CountsWriter(miv).write(carOutput);
+        new CountsWriter(freight).write(freightOutput);
         return 0;
     }
 
@@ -135,30 +141,34 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
         log.info("+++++++ Removed {} stations +++++++", remove.size());
     }
 
-    private void mapTrafficVolumeToCount(BAStCountStation station, Counts<Link> counts){
+    private void mapTrafficVolumeToCount(BAStCountStation station, Counts<Link> miv, Counts<Link> freight){
 
-        if(station.getTrafficVolume1().isEmpty()) {
+        if(station.getMivTrafficVolume1().isEmpty()) {
             log.warn("No traffic counts available for station {}", station.getName());
             return;
         }
 
-        Count<Link> count = counts.createAndAddCount(station.getMatchedLink().getId(), station.getName());
-        Count<Link> countOpp = null;
+        Count<Link> mivCount = miv.createAndAddCount(station.getMatchedLink().getId(), station.getName());
+        Count<Link> mivCountOpp = miv.createAndAddCount(station.getOppLink().getId(), station.getName());
 
-        if(station.hasOppLink()) countOpp = counts.createAndAddCount(station.getOppLink().getId(), station.getName());
+        Count<Link> freightCount = freight.createAndAddCount(station.getMatchedLink().getId(), station.getName());
+        Count<Link> freightCountOpp = freight.createAndAddCount(station.getOppLink().getId(), station.getName());
 
-        var trafficVolumes = station.getTrafficVolume1();
-        var trafficVolumesOpp = station.getTrafficVolume2();
+        var mivTrafficVolumes = station.getMivTrafficVolume1();
+        var mivTrafficVolumesOpp = station.getMivTrafficVolume2();
 
-        for (String hour: trafficVolumes.keySet()){
+        var freightTrafficVolumes = station.getFreightTrafficVolume1();
+        var freightTrafficVolumesOpp = station.getFreightTrafficVolume2();
+
+        for (String hour: mivTrafficVolumes.keySet()){
 
             if(hour.startsWith("0")) hour.replace("0", "");
             int h = Integer.parseInt(hour);
-            count.createVolume(h, trafficVolumes.get(hour));
+            mivCount.createVolume(h, mivTrafficVolumes.get(hour));
+            mivCountOpp.createVolume(h, mivTrafficVolumesOpp.get(hour));
 
-            if(countOpp != null){
-                countOpp.createVolume(h, trafficVolumesOpp.get(hour));
-            }
+            freightCount.createVolume(h, freightTrafficVolumes.get(hour));
+            freightCountOpp.createVolume(h, freightTrafficVolumesOpp.get(hour));
         }
     }
 
@@ -223,6 +233,11 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                         String direction1 = station.getMatchedDir();
                         String direction2 = station.getOppDir();
 
+                        String mivCol1 = "KFZ_" + direction1;
+                        String mivCol2 = "KFZ_" + direction2;
+                        String freightCol1 = "Lkw_" + direction1;
+                        String freightCol2 = "Lkw_" + direction2;
+
                         log.info("Process data for count station {}", station.getName());
 
                         var allEntriesOfStation = preFilteredRecords.stream()
@@ -242,21 +257,38 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
                             }
 
                             double divisor = hourlyTrafficVolumes.size();
-                            Double sum1 = hourlyTrafficVolumes.stream()
-                                    .map(record -> Double.parseDouble(record.get(direction1)))
+                            Double sumMiv1 = hourlyTrafficVolumes.stream()
+                                    .map(record -> Double.parseDouble(record.get(mivCol1)))
                                     .reduce(Double::sum)
                                     .get();
 
-                            Double sum2 = hourlyTrafficVolumes.stream()
-                                    .map(record -> Double.parseDouble(record.get(direction2)))
+                            Double sumMiv2 = hourlyTrafficVolumes.stream()
+                                    .map(record -> Double.parseDouble(record.get(mivCol2)))
                                     .reduce(Double::sum)
                                     .get();
 
-                            double mean1 = sum1 / divisor;
-                            double mean2 = sum2 / divisor;
+                            double meanMiv1 = sumMiv1 / divisor;
+                            double meanMiv2 = sumMiv2 / divisor;
 
-                            station.getTrafficVolume1().put(hour, mean1);
-                            station.getTrafficVolume2().put(hour, mean2);
+                            station.getMivTrafficVolume1().put(hour, meanMiv1);
+                            station.getMivTrafficVolume2().put(hour, meanMiv2);
+
+                            //Same procedure for freight
+                            Double sumFreight1 = hourlyTrafficVolumes.stream()
+                                    .map(record -> Double.parseDouble(record.get(freightCol1)))
+                                    .reduce(Double::sum)
+                                    .get();
+
+                            Double sumFreight2 = hourlyTrafficVolumes.stream()
+                                    .map(record -> Double.parseDouble(record.get(freightCol2)))
+                                    .reduce(Double::sum)
+                                    .get();
+
+                            double meanFreight1 = sumFreight1 / divisor;
+                            double meanFreight2 = sumFreight2 / divisor;
+
+                            station.getFreightTrafficVolume1().put(hour, meanFreight1);
+                            station.getFreightTrafficVolume2().put(hour, meanFreight2);
                         }
                     });
 
