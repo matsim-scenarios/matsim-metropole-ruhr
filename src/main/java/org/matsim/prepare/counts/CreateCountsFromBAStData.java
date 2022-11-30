@@ -24,14 +24,19 @@ import org.matsim.counts.Counts;
 import org.matsim.counts.CountsWriter;
 import picocli.CommandLine;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -204,7 +209,26 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 		}
 
 		List<CSVRecord> preFilteredRecords = null;
-		try (FileReader reader = new FileReader(pathToDisaggregatedData.toFile())) {
+
+		Path input = pathToDisaggregatedData;
+		FileSystem fs = null;
+
+		// Try to use file inside zip file
+		if (input.getFileName().toString().endsWith(".zip")) {
+			try {
+				fs = FileSystems.newFileSystem(input, ClassLoader.getSystemClassLoader());
+				try (Stream<Path> stream = Files.walk(fs.getPath("/"))) {
+					Optional<Path> opt = stream.filter(p -> !p.toString().equals("/")).findFirst();
+					if (opt.isPresent())
+						input = opt.get();
+				}
+			} catch (IOException e) {
+				log.warn("Error processing zip file", e);
+			}
+		}
+
+		try (BufferedReader reader = Files.newBufferedReader(input, StandardCharsets.ISO_8859_1);
+		     FileSystem f = fs) {
 			CSVParser records = CSVFormat
 					.newFormat(';')
 					.withAllowMissingColumnNames()
@@ -223,7 +247,6 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 					.collect(Collectors.toList());
 		} catch (IOException e) {
 			log.error("Error reading hourly volumes", e);
-
 		}
 
 		if (preFilteredRecords == null || preFilteredRecords.isEmpty()) {
@@ -368,7 +391,8 @@ public class CreateCountsFromBAStData implements MATSimAppCommand {
 
 		List<BAStCountStation> stations = new ArrayList<>();
 
-		try (FileReader reader = new FileReader(pathToAggregatedData.toFile())) {
+		// The original bast file has windows encoding
+		try (BufferedReader reader = Files.newBufferedReader(pathToAggregatedData, StandardCharsets.ISO_8859_1)) {
 
 			CSVParser records = CSVFormat
 					.newFormat(';')
