@@ -13,10 +13,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -37,7 +34,6 @@ public final class CountsOption {
 	private Map<String, Id<Link>> manualMatchedCounts = null;
 
 	public CountsOption() {
-
 	}
 
 	public CountsOption(@Nullable Path ignored, @Nullable Path manual) {
@@ -67,6 +63,11 @@ public final class CountsOption {
 		if (manualMatchedCounts != null)
 			return;
 
+		if (manual == null) {
+			manualMatchedCounts = new HashMap<>();
+			return;
+		}
+
 		try (var reader = Files.newBufferedReader(manual)) {
 			List<CSVRecord> records = CSVFormat.DEFAULT
 					.withAllowMissingColumnNames()
@@ -91,6 +92,11 @@ public final class CountsOption {
 		// Already read the counts
 		if (ignoredCounts != null)
 			return;
+
+		if (ignored == null) {
+			ignoredCounts = new HashSet<>();
+			return;
+		}
 
 		try {
 			ignoredCounts = new HashSet<>(Files.readAllLines(ignored));
