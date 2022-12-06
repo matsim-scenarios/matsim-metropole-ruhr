@@ -4,7 +4,11 @@ import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.network.Link;
 
 import java.util.HashMap;
+import java.util.Map;
 
+/**
+ * Holds data for one bast counting station.
+ */
 class BAStCountStation {
 
     private final String name;
@@ -22,9 +26,11 @@ class BAStCountStation {
 
     private final Coord coord;
 
-    private final HashMap<String, Double> trafficVolume1 = new HashMap<>();
-    private final HashMap<String, Double> trafficVolume2 = new HashMap<>();
+    private final Map<String, Double> mivTrafficVolume1 = new HashMap<>();
+    private final Map<String, Double> mivTrafficVolume2 = new HashMap<>();
 
+    private final Map<String, Double> freightTrafficVolume1 = new HashMap<>();
+    private final Map<String, Double> freightTrafficVolume2 = new HashMap<>();
 
     BAStCountStation(String id, String name, String dir1, String dir2, Coord coord) {
 
@@ -42,12 +48,20 @@ class BAStCountStation {
         return id;
     }
 
-    public HashMap<String, Double> getTrafficVolume1() {
-        return trafficVolume1;
+    public Map<String, Double> getMivTrafficVolume1() {
+        return mivTrafficVolume1;
     }
 
-    public HashMap<String, Double> getTrafficVolume2() {
-        return trafficVolume2;
+    public Map<String, Double> getMivTrafficVolume2() {
+        return mivTrafficVolume2;
+    }
+
+    public Map<String, Double> getFreightTrafficVolume1() {
+        return freightTrafficVolume1;
+    }
+
+    public Map<String, Double> getFreightTrafficVolume2() {
+        return freightTrafficVolume2;
     }
 
     public Coord getCoord() {
@@ -104,8 +118,8 @@ class BAStCountStation {
     private void matchDirection(Link link, String bastDirection) {
         String direction = getLinkDirection(link);
 
-        matchedDir = direction.contains(bastDirection) ? "KFZ_R1" : "KFZ_R2";
-        oppDir = matchedDir.equals("KFZ_R1") ? "KFZ_R2": "KFZ_R1";
+        this.matchedDir = direction.contains(bastDirection) ? "R1": "R2";
+        this.oppDir = matchedDir.equals("R1") ? "R2": "R1";
     }
 
     public String getLinkDirection(Link link) {
