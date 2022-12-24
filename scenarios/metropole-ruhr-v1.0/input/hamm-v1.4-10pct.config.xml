@@ -8,7 +8,7 @@
 		<param name="lastIteration" value="500"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
 		<param name="runId" value="hamm-v1.4-3pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_hamm-v1.4-25pct/"/>
+		<param name="outputDirectory" value="./scenarios/output/output_hamm-v1.4-10pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -24,7 +24,7 @@
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="./hamm-v1.4-25pct.plans.xml.gz"/>
+			   value="./hamm-v1.4-10pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="false"/>
 	</module>
 	<module name="vehicles">
@@ -57,8 +57,8 @@
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.25" />
-		<param name="flowCapacityFactor" value="0.25"/>
+		<param name="storageCapacityFactor" value="0.1" />
+		<param name="flowCapacityFactor" value="0.1"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>

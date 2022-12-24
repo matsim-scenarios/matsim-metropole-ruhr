@@ -65,6 +65,7 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -133,29 +134,22 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 			// remove config options
 			SubtourModeChoiceConfigGroup subtourModeChoice = config.subtourModeChoice();
-			String[] modes = subtourModeChoice.getModes();
-			String[] modesWOIntermodal = new String[modes.length - 1];
-			int j = 0;
-			for (String mode : modes) {
-				if (!mode.equals("pt_intermodal_allowed")) {
-					modesWOIntermodal[j] = mode;
-					j++;
-				}
-			}
-			subtourModeChoice.setModes(modesWOIntermodal);
+
 			// intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
+			subtourModeChoice.setModes(
+					Arrays.stream(subtourModeChoice.getModes())
+					.filter(s -> !s.equals("pt_intermodal_allowed"))
+					.toArray(String[]::new)
+			);
+
 
 			ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
-			modes = changeModeConfigGroup.getModes();
-			modesWOIntermodal = new String[modes.length - 1];
-			j = 0;
-			for (String mode : modes) {
-				if (!mode.equals("pt_intermodal_allowed")) {
-					modesWOIntermodal[j] = mode;
-					j++;
-				}
-			}
-			changeModeConfigGroup.setModes(modesWOIntermodal);
+			changeModeConfigGroup.setModes(
+					Arrays.stream(changeModeConfigGroup.getModes())
+							.filter(s -> !s.equals("pt_intermodal_allowed"))
+							.toArray(String[]::new)
+			);
+
 
 			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
 			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
