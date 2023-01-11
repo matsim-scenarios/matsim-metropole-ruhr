@@ -4,7 +4,8 @@ library(matsim)
 
 FILE_DIR <-  "C:/Users/ACER/Desktop/Uni/VSP/Ruhrgebiet/"
 LINKSTATS <- paste0(FILE_DIR, "linkstats.tsv.gz")
-COUNTS <- paste0(FILE_DIR, "counts-from-bast.xml.gz")
+COUNTS <- paste0(FILE_DIR, "car-counts-ruhr-2019.xml.gz")
+NETWORK <- paste0(FILE_DIR, "009.output_network.xml.gz")
 
 
 # NOTE:
@@ -23,7 +24,8 @@ linkStats <- list(linkstats)
 
 counts <- readCounts(file = COUNTS)
 
-join <- mergeCountsAndLinks(counts = counts, network = network, linkStats = linkStats, aggr_to = "day")
+join <- mergeCountsAndLinks(counts = counts, network = network, linkStats = linkStats, aggr_to = "day") %>%
+  replace_na(list(type = "motorway"))
 
 #####
 createCountScatterPlot(joinedFrame = join, ll = ~x * 0.8 - 200) + coord_cartesian(ylim = c(1000, 100000), xlim = c(3000, 60000))
