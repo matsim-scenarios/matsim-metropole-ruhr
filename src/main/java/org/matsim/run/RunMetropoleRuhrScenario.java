@@ -259,6 +259,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 					+ "Should only be used for testing or car-focused studies with fixed modal split.");
 
 		controler.addOverridingModule(new SwissRailRaptorModule());
+		controler.addOverridingModule(new RuhrPtFareModule());
 
 		// intermodal pt
 		controler.addOverridingModule(new AbstractModule() {
