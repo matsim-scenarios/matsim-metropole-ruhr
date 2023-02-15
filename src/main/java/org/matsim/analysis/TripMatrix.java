@@ -25,10 +25,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
-;
-
 @SuppressWarnings("unused")
-@CommandLine.Command( name = "trip-matrix")
+@CommandLine.Command(name = "trip-matrix")
 public class TripMatrix implements MATSimAppCommand {
 
 	private static final Logger log = LogManager.getLogger(TripMatrix.class);
@@ -46,7 +44,10 @@ public class TripMatrix implements MATSimAppCommand {
 	@CommandLine.Mixin
 	private ShpOptions shp = new ShpOptions();
 
-	public static void main(String[] args) { System.exit(new CommandLine(new TripMatrix()).execute(args)); }
+	public static void main(String[] args) {
+		System.exit(new CommandLine(new TripMatrix()).execute(args));
+	}
+
 	@Override
 	public Integer call() throws Exception {
 
@@ -55,7 +56,7 @@ public class TripMatrix implements MATSimAppCommand {
 
 		var preparedFactory = new PreparedGeometryFactory();
 		Map<String, PreparedGeometry> preparedFeatures = shp.readFeatures().stream()
-				.collect(Collectors.toMap(f -> (String)f.getAttribute(attrName), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
+				.collect(Collectors.toMap(f -> (String) f.getAttribute(attrName), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
 
 		var tripsFile = ApplicationUtils.globFile(runDirectory, runId + "*trips*");
 		var factory = new GeometryFactory();
@@ -67,7 +68,7 @@ public class TripMatrix implements MATSimAppCommand {
 
 			for (CSVRecord record : parser) {
 				var startX = Double.parseDouble(record.get("start_x"));
-				var startY =Double.parseDouble( record.get("start_y"));
+				var startY = Double.parseDouble(record.get("start_y"));
 				var endX = Double.parseDouble(record.get("end_x"));
 				var endY = Double.parseDouble(record.get("end_y"));
 				var endActivity = record.get("end_activity_type");
@@ -115,5 +116,6 @@ public class TripMatrix implements MATSimAppCommand {
 		return new InputStreamReader(gzipStream);
 	}
 
-	static record MatrixEntry(String fromKey, String toKey, String endActivity) {}
+	record MatrixEntry(String fromKey, String toKey, String endActivity) {
+	}
 }
