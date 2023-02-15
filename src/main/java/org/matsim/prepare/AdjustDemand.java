@@ -82,6 +82,17 @@ public class AdjustDemand implements MATSimAppCommand {
 		var spatialIndex = new SpatialIndex(population);
 
 		// no go through all the cells and adjust the population according to the values in adjust table
+		adjust(population, preparedFeatures, spatialIndex, adjustmentValues);
+
+		PopulationUtils.writePopulation(population, "pop-test.xml.gz");
+
+		return 0;
+	}
+
+	/**
+	 * This method mutates the population
+	 */
+	static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, SpatialIndex spatialIndex, Object2DoubleMap<String> adjustmentValues) {
 		var rand = new Random();
 		for (var cell : preparedFeatures.entrySet()) {
 
@@ -89,17 +100,23 @@ public class AdjustDemand implements MATSimAppCommand {
 			var personsInCell = spatialIndex.query(cell.getValue());
 			// get the adjustment factor
 			var factor = adjustmentValues.getDouble(cell.getKey());
+
+			if (factor < 0 || factor > 2) {
+				throw new RuntimeException("Adjustment factors are expected to be betweeen [0.0, 2.0]. The value for cell " + cell.getKey() + " was: " + factor);
+			}
+
+			var growth = factor - 1;
 			// draw that amount of persons
 			var drawnPersons = personsInCell.stream()
-					.filter(id -> rand.nextDouble() <= factor)
+					.filter(id -> rand.nextDouble() <= Math.abs(growth))
 					.collect(Collectors.toSet());
 
-			if (factor > 0) {
+			if (growth > 0) {
 				// the cell grows clone the persons
 				for (var id : drawnPersons) {
 					var person = population.getPersons().get(id);
 					var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + "_cloned"));
-					cloned.setSelectedPlan(person.getSelectedPlan());
+					cloned.addPlan(person.getSelectedPlan());
 					population.addPerson(cloned);
 				}
 			} else {
@@ -109,13 +126,9 @@ public class AdjustDemand implements MATSimAppCommand {
 				}
 			}
 		}
-
-		PopulationUtils.writePopulation(population, "pop-test.xml.gz");
-
-		return 0;
 	}
 
-	private static class SpatialIndex {
+	static class SpatialIndex {
 
 		private final Quadtree index = new Quadtree();
 
