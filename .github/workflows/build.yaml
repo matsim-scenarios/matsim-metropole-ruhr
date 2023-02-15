@@ -21,6 +21,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
           architecture: x64
+          distribution: zulu
 
       - name: Cache Maven packages
         uses: actions/cache@v3
