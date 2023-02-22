@@ -5,17 +5,16 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.analysis.TripMatrix;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.population.Activity;
-import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.Population;
+import org.matsim.api.core.v01.population.*;
 import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
@@ -33,7 +32,8 @@ import java.util.stream.Collectors;
 @CommandLine.Command(name = "adjust-demand")
 public class AdjustDemand implements MATSimAppCommand {
 
-	private static final Logger log = LogManager.getLogger(AdjustDemand.class);
+	public static final String PERSON_ID_SUFFIX = "_cloned";
+	private static final Random rand = new Random();
 
 	@CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Input run directory")
 	private Path runDirectory;
@@ -47,6 +47,7 @@ public class AdjustDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--attr-name", defaultValue = "id")
 	private String attrName;
 
+	@SuppressWarnings("FieldMayBeFinal")
 	@CommandLine.Mixin
 	private ShpOptions shp = new ShpOptions();
 
@@ -93,7 +94,6 @@ public class AdjustDemand implements MATSimAppCommand {
 	 * This method mutates the population
 	 */
 	static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, SpatialIndex spatialIndex, Object2DoubleMap<String> adjustmentValues) {
-		var rand = new Random();
 		for (var cell : preparedFeatures.entrySet()) {
 
 			// get all the people inside the cell
@@ -107,16 +107,20 @@ public class AdjustDemand implements MATSimAppCommand {
 
 			var growth = factor - 1;
 			// draw that amount of persons
+
 			var drawnPersons = personsInCell.stream()
-					.filter(id -> rand.nextDouble() <= Math.abs(growth))
+					// shuffle persons. Previously we had Stream::filter(id -> rand.nextDouble() <= Math.abs(growth)) but, that was not accurate
+					.sorted((o1, o2) -> rand.nextInt())
+					.limit((long) (Math.abs(growth) * personsInCell.size()))
 					.collect(Collectors.toSet());
 
 			if (growth > 0) {
 				// the cell grows clone the persons
 				for (var id : drawnPersons) {
 					var person = population.getPersons().get(id);
-					var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + "_cloned"));
-					cloned.addPlan(person.getSelectedPlan());
+					var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
+					var clonedPlan = clonePlan(person.getSelectedPlan(), cell.getValue(), population.getFactory());
+					cloned.addPlan(clonedPlan);
 					population.addPerson(cloned);
 				}
 			} else {
@@ -126,6 +130,37 @@ public class AdjustDemand implements MATSimAppCommand {
 				}
 			}
 		}
+	}
+
+	static Plan clonePlan(Plan plan, PreparedGeometry bounds, PopulationFactory factory) {
+
+		var result = factory.createPlan();
+
+		for (var element : plan.getPlanElements()) {
+			if (element instanceof Leg leg) {
+				result.addLeg(leg);
+			} else if (element instanceof Activity act) {
+				var newCoord = createRandomCoord(act.getCoord(), bounds);
+				var clonedAct = factory.createActivityFromCoord(act.getType(), newCoord);
+				result.addActivity(clonedAct);
+			} else {
+				throw new RuntimeException("Unexpected Type");
+			}
+		}
+		return result;
+	}
+
+	static Coord createRandomCoord(Coord originalCoord, PreparedGeometry bounds) {
+
+		double x, y;
+		Point point;
+		do {
+			x = rand.nextGaussian(originalCoord.getX(), 0.0001);
+			y = rand.nextGaussian(originalCoord.getY(), 0.0001);
+			point = bounds.getGeometry().getFactory().createPoint(new Coordinate(x, y));
+		} while (point == null || !bounds.covers(point));
+
+		return new Coord(x, y);
 	}
 
 	static class SpatialIndex {

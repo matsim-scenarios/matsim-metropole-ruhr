@@ -9,32 +9,36 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.Activity;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.utils.collections.Tuple;
+import org.matsim.core.utils.geometry.geotools.MGC;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class AdjustDemandTest {
 
 	@Test
-	public void testRemove() {
+	public void testGrowthRates() {
 
 		var cells = createCells();
 		var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 		for (var cell : cells.entrySet()) {
-			addPersonsForCell(population, cell.getValue().getGeometry(), cell.getKey(), 100);
+			addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
 		}
 		Object2DoubleMap<String> adjustments = new Object2DoubleArrayMap<>(
-				Map.of("1", 2., "2", 1., "3", 1., "4", 1.)
+				Map.of("1", 2., "2", 0.5, "3", 1., "4", 1.)
 		);
 		var index = new AdjustDemand.SpatialIndex(population);
 
@@ -50,6 +54,134 @@ public class AdjustDemandTest {
 
 			assertEquals(numberOfPersonsBefore.size() * factor, numberOfPersonsAfter.size(), 0.000001);
 		}
+	}
+
+	@Test
+	public void testClonedActivities() {
+
+		var cells = createCells();
+		var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
+		var rand = new Random();
+		for (var cell : cells.entrySet()) {
+			var randomNumber = rand.nextInt(1, 5);
+			addPersonsForCell(population, cell.getValue().getGeometry(), cells.get(Integer.toString(randomNumber)).getGeometry(), cell.getKey(), 100);
+		}
+		Object2DoubleMap<String> adjustments = new Object2DoubleArrayMap<>(
+				Map.of("1", 2., "2", 0.5, "3", 1., "4", 1.)
+		);
+		var populationIndex = new AdjustDemand.SpatialIndex(population);
+
+		AdjustDemand.adjust(population, cells, populationIndex, adjustments);
+
+
+		var cellIndex = createCellIndex(cells.values());
+
+		population.getPersons().values().stream()
+				.filter(person -> person.getId().toString().endsWith(AdjustDemand.PERSON_ID_SUFFIX))
+				.map(person -> {
+					var originalId = Id.createPersonId(person.getId().toString().split(AdjustDemand.PERSON_ID_SUFFIX)[0]);
+					var originalPerson = population.getPersons().get(originalId);
+					return Tuple.of(originalPerson, person);
+				})
+				.flatMap(couple -> mergeActivities(couple.getFirst(), couple.getSecond()).stream())
+				.forEach(activityTuple -> {
+					// make sure types are equal
+					assertEquals(activityTuple.getFirst().getType(), activityTuple.getSecond().getType());
+
+					// make sure coords are not the same
+					assertNotEquals(activityTuple.getFirst().getCoord(), activityTuple.getSecond().getCoord());
+
+					// make sure coords are within same cell
+					var expectedCell = cellIndex.allCover(MGC.coord2Point(activityTuple.getFirst().getCoord()));
+					assertEquals(1, expectedCell.size());
+					var actualCell = cellIndex.allCover(MGC.coord2Point(activityTuple.getSecond().getCoord()));
+					assertEquals(1, actualCell.size());
+					assertEquals(expectedCell.iterator().next(), actualCell.iterator().next());
+				});
+	}
+
+	private static QuadTree<PreparedGeometry> createCellIndex(Collection<PreparedGeometry> cells) {
+
+		var tree = new QuadTree<PreparedGeometry>();
+		for (var cell : cells) {
+			tree.insert(cell.getGeometry(), cell);
+		}
+		return tree;
+	}
+
+	private static class QuadTree<T> {
+
+		private final Quadtree index = new Quadtree();
+
+		public void insert(Geometry geometry, T item) {
+			index.insert(geometry.getEnvelopeInternal(), new IndexItem<>(geometry, item));
+		}
+
+		public Set<T> coveredBy(PreparedGeometry geometry) {
+			Set<T> result = new HashSet<>();
+			index.query(geometry.getGeometry().getEnvelopeInternal(), entry -> {
+				@SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+				IndexItem<T> indexItem = (IndexItem<T>) entry;
+				if (geometry.covers(indexItem.geom())) {
+					result.add(indexItem.item());
+				}
+			});
+			return result;
+		}
+
+		/**
+		 * '
+		 * Return all items that are covered by the geometry supplied as argument
+		 *
+		 * @param geometry the spatial filter by which items in the index are filtered
+		 * @return all covered items
+		 */
+		public Set<T> coveredBy(Geometry geometry) {
+
+			Set<T> result = new HashSet<>();
+			index.query(geometry.getEnvelopeInternal(), entry -> {
+				@SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+				IndexItem<T> indexItem = (IndexItem<T>) entry;
+				if (geometry.covers(indexItem.geom())) {
+					result.add(indexItem.item());
+				}
+			});
+			return result;
+		}
+
+		/**
+		 * Inverse of {@link #coveredBy(Geometry)}
+		 * Finds items which cover the supplied geometry.
+		 */
+		public Set<T> allCover(Geometry geometry) {
+			Set<T> result = new HashSet<>();
+			index.query(geometry.getEnvelopeInternal(), entry -> {
+				@SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+				IndexItem<T> indexItem = (IndexItem<T>) entry;
+				if (indexItem.geom().covers(geometry)) {
+					result.add(indexItem.item());
+				}
+			});
+			return result;
+		}
+
+		private record IndexItem<T>(Geometry geom, T item) {
+		}
+	}
+
+	private static Collection<Tuple<Activity, Activity>> mergeActivities(Person person1, Person person2) {
+
+		var acts1 = TripStructureUtils.getActivities(person1.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
+		var acts2 = TripStructureUtils.getActivities(person2.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
+
+		Collection<Tuple<Activity, Activity>> result = new ArrayList<>();
+		for (var i = 0; i < acts1.size(); i++) {
+			var act1 = acts1.get(i);
+			var act2 = acts2.get(i);
+			result.add(Tuple.of(act1, act2));
+		}
+
+		return result;
 	}
 
 	/**
@@ -98,9 +230,7 @@ public class AdjustDemandTest {
 		return result;
 	}
 
-	private static void addPersonsForCell(Population population, Geometry cell, String idPrefix, int size) {
-
-		var envelope = cell.getEnvelopeInternal();
+	private static void addPersonsForCell(Population population, Geometry homeCell, Geometry workCell, String idPrefix, int size) {
 		var rand = new Random();
 
 		for (int i = 0; i < size; i++) {
@@ -108,13 +238,13 @@ public class AdjustDemandTest {
 			var person = population.getFactory().createPerson(Id.createPersonId(idPrefix + "_" + i));
 			var plan = population.getFactory().createPlan();
 
-			var home = createAct("home_bla", envelope, population.getFactory(), rand);
+			var home = createAct("home_bla", homeCell.getEnvelopeInternal(), population.getFactory(), rand);
 			plan.addActivity(home);
 
 			var leg = population.getFactory().createLeg("some-mode");
 			plan.addLeg(leg);
 
-			var other = createAct("other_activity_home", envelope, population.getFactory(), rand);
+			var other = createAct("other_activity_home", workCell.getEnvelopeInternal(), population.getFactory(), rand);
 			plan.addActivity(other);
 
 			person.addPlan(plan);
