@@ -15,6 +15,7 @@ import org.matsim.application.MATSimApplication;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.population.PersonUtils;
 import org.matsim.core.population.io.PopulationReader;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -123,7 +124,7 @@ public class TestBicycleRouting {
             plan.addActivity(other);
             var person = factory.createPerson(personId);
             person.addPlan(plan);
-            person.getAttributes().putAttribute(IncomeDependentUtilityOfMoneyPersonScoringParameters.PERSONAL_INCOME_ATTRIBUTE_NAME, 1.0);
+            PersonUtils.setIncome(person, 1);
             scenario.getPopulation().addPerson(person);
 
             // filter the network
