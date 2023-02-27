@@ -1,13 +1,9 @@
 package org.matsim.prepare;
 
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.index.quadtree.Quadtree;
@@ -32,171 +28,249 @@ import java.util.stream.Collectors;
 @CommandLine.Command(name = "adjust-demand")
 public class AdjustDemand implements MATSimAppCommand {
 
-	public static final String PERSON_ID_SUFFIX = "_cloned";
-	private static final Random rand = new Random();
+    public static final String PERSON_ID_SUFFIX = "_cloned";
+    private static final Random rand = new Random();
 
-	@CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Input run directory")
-	private Path runDirectory;
+    @CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Input run directory")
+    private Path runDirectory;
 
-	@CommandLine.Option(names = "--run-id", defaultValue = "*", description = "Pattern used to match runId", required = true)
-	private String runId;
+    @CommandLine.Option(names = "--run-id", defaultValue = "*", description = "Pattern used to match runId", required = true)
+    private String runId;
 
-	@CommandLine.Option(names = "--adjustments", description = "CSV-File with adjustments parameters for the cells within the provided shape file", required = true)
-	private String adjustments;
+    @CommandLine.Option(names = "--adjustments", description = "CSV-File with adjustments parameters for the cells within the provided shape file", required = true)
+    private String adjustments;
 
-	@CommandLine.Option(names = "--attr-name", defaultValue = "id")
-	private String attrName;
+    @CommandLine.Option(names = "--attr-name", defaultValue = "id")
+    private String attrName;
 
-	@SuppressWarnings("FieldMayBeFinal")
-	@CommandLine.Mixin
-	private ShpOptions shp = new ShpOptions();
+    @SuppressWarnings("FieldMayBeFinal")
+    @CommandLine.Mixin
+    private ShpOptions shp = new ShpOptions();
 
-	public static void main(String[] args) {
-		System.exit(new CommandLine(new TripMatrix()).execute(args));
-	}
+    public static void main(String[] args) {
+        System.exit(new CommandLine(new TripMatrix()).execute(args));
+    }
 
-	@Override
-	public Integer call() throws Exception {
+    @Override
+    public Integer call() throws Exception {
 
-		// first check if shapefile was provided
-		if (!shp.isDefined()) throw new RuntimeException("Shapefile must be defined!");
+        // first check if shapefile was provided
+        if (!shp.isDefined()) throw new RuntimeException("Shapefile must be defined!");
 
-		// read cells
-		var preparedFactory = new PreparedGeometryFactory();
-		Map<String, PreparedGeometry> preparedFeatures = shp.readFeatures().stream()
-				.collect(Collectors.toMap(f -> (String) f.getAttribute(attrName), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
+        // read cells
+        var preparedFactory = new PreparedGeometryFactory();
+        Map<String, PreparedGeometry> preparedFeatures = shp.readFeatures().stream()
+                .collect(Collectors.toMap(f -> (String) f.getAttribute(attrName), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
 
-		// read adjustments
-		Object2DoubleMap<String> adjustmentValues = new Object2DoubleOpenHashMap<>();
-		try (var bufReader = Files.newBufferedReader(Paths.get(adjustments)); var csvParser = CSVParser.parse(bufReader, CSVFormat.DEFAULT.withHeader(attrName, "value"))) {
+        // read adjustments
+        Map<String, Adjustments> filteredAdjustments = new HashMap<>();
+        try (var bufReader = Files.newBufferedReader(Paths.get(adjustments)); var csvParser = CSVParser.parse(bufReader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
 
-			for (CSVRecord record : csvParser) {
-				var value = Double.parseDouble(record.get("value"));
-				var key = record.get(attrName);
-				adjustmentValues.put(key, value);
-			}
-		}
+            List<String> filterColumns = csvParser.getHeaderMap().keySet().stream()
+                    .filter(header -> !header.equals(attrName) && !header.equals("value"))
+                    .toList();
 
-		// read population
-		var populationFile = ApplicationUtils.globFile(runDirectory, "*plans*");
-		var population = PopulationUtils.readPopulation(populationFile.toString());
-		var spatialIndex = new SpatialIndex(population);
+            for (CSVRecord record : csvParser) {
+                var value = Double.parseDouble(record.get("value"));
+                var key = record.get(attrName);
+                var filters = filterColumns.stream()
+                        .map(record::get)
+                        .map(AdjustDemand::parseFilter)
+                        .toList();
 
-		// no go through all the cells and adjust the population according to the values in adjust table
-		adjust(population, preparedFeatures, spatialIndex, adjustmentValues);
+                var adjustments = filteredAdjustments.computeIfAbsent(key, k -> new Adjustments(filterColumns, new ArrayList<>()));
+                adjustments.adjustments.add(new Adjustment(filters, value));
+            }
+        }
 
-		PopulationUtils.writePopulation(population, "pop-test.xml.gz");
+        // read population
+        var populationFile = ApplicationUtils.globFile(runDirectory, "*plans*");
+        var population = PopulationUtils.readPopulation(populationFile.toString());
+        var spatialIndex = new SpatialIndex(population);
 
-		return 0;
-	}
+        // no go through all the cells and adjust the population according to the values in adjust table
+        adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
-	/**
-	 * This method mutates the population
-	 */
-	static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, SpatialIndex spatialIndex, Object2DoubleMap<String> adjustmentValues) {
-		for (var cell : preparedFeatures.entrySet()) {
+        PopulationUtils.writePopulation(population, "pop-test.xml.gz");
 
-			// get all the people inside the cell
-			var personsInCell = spatialIndex.query(cell.getValue());
-			// get the adjustment factor
-			var factor = adjustmentValues.getDouble(cell.getKey());
+        return 0;
+    }
 
-			if (factor < 0 || factor > 2) {
-				throw new RuntimeException("Adjustment factors are expected to be betweeen [0.0, 2.0]. The value for cell " + cell.getKey() + " was: " + factor);
-			}
+    /**
+     * This method mutates the population
+     * <p>
+     * Notes from last meeting: Exception if no/too few persons are found for filter criteria
+     */
+    static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, SpatialIndex spatialIndex, Map<String, Adjustments> adjustmentData) {
+        for (var cell : preparedFeatures.entrySet()) {
 
-			var growth = factor - 1;
-			// draw that amount of persons
+            // get all the people inside the cell
+            var personsInCell = spatialIndex.query(cell.getValue());
+            // get the adjustment and filter
+            var adjustmentsForCell = adjustmentData.get(cell.getKey());
 
-			var drawnPersons = personsInCell.stream()
-					// shuffle persons. Previously we had Stream::filter(id -> rand.nextDouble() <= Math.abs(growth)) but, that was not accurate
-					.sorted((o1, o2) -> rand.nextInt())
-					.limit((long) (Math.abs(growth) * personsInCell.size()))
-					.collect(Collectors.toSet());
+            for (var adjustmentWithFilter : adjustmentsForCell.adjustments) {
+                // get the adjustment factor
+                var factor = adjustmentWithFilter.value();
+                if (factor < 0 || factor > 2) {
+                    throw new RuntimeException("Adjustment factors are expected to be betweeen [0.0, 2.0]. The value for cell " + cell.getKey() + " was: " + factor);
+                }
 
-			if (growth > 0) {
-				// the cell grows clone the persons
-				for (var id : drawnPersons) {
-					var person = population.getPersons().get(id);
-					var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
-					var clonedPlan = clonePlan(person.getSelectedPlan(), cell.getValue(), population.getFactory());
-					cloned.addPlan(clonedPlan);
-					population.addPerson(cloned);
-				}
-			} else {
-				// the cell shrinks delete the persons
-				for (var id : drawnPersons) {
-					population.removePerson(id);
-				}
-			}
-		}
-	}
+                var growth = factor - 1;
+                // draw that amount of persons
+                var drawnPersons = personsInCell.stream()
+                        .filter(id -> {
+                            var person = population.getPersons().get(id);
+                            return applyAdjustmentFilter(adjustmentsForCell, adjustmentWithFilter, person);
+                        })
+                        // shuffle persons. Previously we had Stream::filter(id -> rand.nextDouble() <= Math.abs(growth)) but, that was not accurate
+                        .sorted((o1, o2) -> rand.nextInt())
+                        .limit((long) (Math.abs(growth) * personsInCell.size()))
+                        .collect(Collectors.toSet());
 
-	static Plan clonePlan(Plan plan, PreparedGeometry bounds, PopulationFactory factory) {
+                if (growth > 0) {
+                    // the cell grows clone the persons
+                    for (var id : drawnPersons) {
+                        var person = population.getPersons().get(id);
+                        var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
+                        var clonedPlan = clonePlan(person.getSelectedPlan(), population.getFactory());
+                        cloned.addPlan(clonedPlan);
+                        population.addPerson(cloned);
+                    }
+                } else {
+                    // the cell shrinks delete the persons
+                    for (var id : drawnPersons) {
+                        population.removePerson(id);
+                    }
+                }
+            }
+        }
+    }
 
-		var result = factory.createPlan();
+    private static boolean applyAdjustmentFilter(Adjustments adjustmentsForCell, Adjustment adjustmentWithFilter, Person person) {
+        for (var i = 0; i < adjustmentsForCell.columns.size(); i++) {
+            var key = adjustmentsForCell.columns.get(i);
+            var criteria = adjustmentWithFilter.filters().get(i);
 
-		for (var element : plan.getPlanElements()) {
-			if (element instanceof Leg leg) {
-				result.addLeg(leg);
-			} else if (element instanceof Activity act) {
-				var newCoord = createRandomCoord(act.getCoord(), bounds);
-				var clonedAct = factory.createActivityFromCoord(act.getType(), newCoord);
-				result.addActivity(clonedAct);
-			} else {
-				throw new RuntimeException("Unexpected Type");
-			}
-		}
-		return result;
-	}
+            if (!criteria.test(person.getAttributes().getAttribute(key)))
+                return false;
+        }
+        return true;
+    }
 
-	static Coord createRandomCoord(Coord originalCoord, PreparedGeometry bounds) {
+    static Plan clonePlan(Plan plan, PopulationFactory factory) {
 
-		double x, y;
-		Point point;
-		do {
-			x = rand.nextGaussian(originalCoord.getX(), 0.0001);
-			y = rand.nextGaussian(originalCoord.getY(), 0.0001);
-			point = bounds.getGeometry().getFactory().createPoint(new Coordinate(x, y));
-		} while (point == null || !bounds.covers(point));
+        var result = factory.createPlan();
 
-		return new Coord(x, y);
-	}
+        for (var element : plan.getPlanElements()) {
+            if (element instanceof Leg leg) {
+                result.addLeg(leg);
+            } else if (element instanceof Activity act) {
+                var newCoord = createRandomCoord(act.getCoord());
+                var clonedAct = factory.createActivityFromCoord(act.getType(), newCoord);
+                result.addActivity(clonedAct);
+            } else {
+                throw new RuntimeException("Unexpected Type");
+            }
+        }
+        return result;
+    }
 
-	static class SpatialIndex {
+    static Coord createRandomCoord(Coord originalCoord) {
 
-		private final Quadtree index = new Quadtree();
+        var x = rand.nextGaussian(originalCoord.getX(), 1);
+        var y = rand.nextGaussian(originalCoord.getY(), 1);
+        return new Coord(x, y);
+    }
 
-		SpatialIndex(Population population) {
+    static Filter parseFilter(String recordValue) {
 
-			for (var person : population.getPersons().values()) {
-				var activities = TripStructureUtils.getActivities(person.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
-				var homeAct = findHomeAct(activities);
-				var homePoint = MGC.coord2Point(homeAct.getCoord());
-				var indexItem = new IndexItem(homePoint, person.getId());
-				index.insert(homePoint.getEnvelopeInternal(), indexItem);
-			}
-		}
+        if (recordValue.contains(" bis unter ")) {
+            var split = recordValue.split("/(?: bis unter | Jahre )");
+            var lowerBound = Double.parseDouble(split[0]);
+            var upperBound = Double.parseDouble(split[1]);
+            return new Range(lowerBound, upperBound);
+        } else {
+            return new Exact(recordValue);
+        }
+    }
 
-		Set<Id<Person>> query(PreparedGeometry geometry) {
+    static class SpatialIndex {
 
-			Set<Id<Person>> result = new HashSet<>();
-			index.query(geometry.getGeometry().getEnvelopeInternal(), entry -> {
+        private final Quadtree index = new Quadtree();
 
-				var indexItem = (IndexItem) entry;
-				var homePoint = indexItem.homePoint();
-				if (geometry.covers(homePoint)) {
-					result.add(indexItem.personId());
-				}
-			});
-			return result;
-		}
-	}
+        SpatialIndex(Population population) {
 
-	private static Activity findHomeAct(Collection<Activity> activities) {
-		return activities.stream().filter(act -> act.getType().startsWith("home")).findAny().orElseThrow();
-	}
+            for (var person : population.getPersons().values()) {
+                var activities = TripStructureUtils.getActivities(person.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
+                var homeAct = findHomeAct(activities);
+                var homePoint = MGC.coord2Point(homeAct.getCoord());
+                var indexItem = new IndexItem(homePoint, person.getId());
+                index.insert(homePoint.getEnvelopeInternal(), indexItem);
+            }
+        }
 
-	record IndexItem(Geometry homePoint, Id<Person> personId) {
-	}
+        Set<Id<Person>> query(PreparedGeometry geometry) {
+
+            Set<Id<Person>> result = new HashSet<>();
+            index.query(geometry.getGeometry().getEnvelopeInternal(), entry -> {
+
+                var indexItem = (IndexItem) entry;
+                var homePoint = indexItem.homePoint();
+                if (geometry.covers(homePoint)) {
+                    result.add(indexItem.personId());
+                }
+            });
+            return result;
+        }
+    }
+
+    static class Adjustments {
+        public Adjustments(List<String> columns, List<Adjustment> adjustments) {
+            this.columns = columns;
+            this.adjustments = adjustments;
+        }
+
+        private final List<String> columns;
+        private final List<Adjustment> adjustments;
+    }
+
+    record Adjustment(List<Filter> filters, double value) {
+    }
+
+    record Range(Number lowerBound, Number upperBound) implements Filter {
+
+        boolean isWithin(Number value) {
+            return lowerBound.doubleValue() <= value.doubleValue() && value.doubleValue() <= upperBound.doubleValue();
+        }
+
+        @Override
+        public boolean test(Object value) {
+            if (value instanceof Number number) {
+                return isWithin(number);
+            }
+            throw new IllegalArgumentException("Range Filter can only test against numbers. Supplied value was: " + value.getClass());
+        }
+    }
+
+    record Exact(String filter) implements Filter {
+
+        @Override
+        public boolean test(Object value) {
+            return filter.equals(value);
+        }
+    }
+
+    @FunctionalInterface
+    interface Filter {
+        boolean test(Object value);
+    }
+
+    private static Activity findHomeAct(Collection<Activity> activities) {
+        return activities.stream().filter(act -> act.getType().startsWith("home")).findAny().orElseThrow();
+    }
+
+    record IndexItem(Geometry homePoint, Id<Person> personId) {
+    }
 }
+
