@@ -1,10 +1,12 @@
 package org.matsim.prepare;
 
+import org.apache.commons.csv.CSVFormat;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.geotools.referencing.CRS;
+import org.junit.Rule;
 import org.junit.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Envelope;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.*;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.index.quadtree.Quadtree;
@@ -18,14 +20,25 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.collections.Tuple;
+import org.matsim.core.utils.gis.ShapeFileWriter;
+import org.matsim.testcases.MatsimTestUtils;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.FactoryException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class AdjustDemandTest {
 
-    /*
+    @Rule
+    public MatsimTestUtils testUtils = new MatsimTestUtils();
+
     @Test
     public void testGrowthRates() {
 
@@ -35,24 +48,32 @@ public class AdjustDemandTest {
             addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
         }
         var index = new AdjustDemand.SpatialIndex(population);
-        Map<String, AdjustDemand.Adjustment> adjustments = Map.of(
-                "1", new AdjustDemand.Adjustment(List.of(), List.of(), 2.0),
-                "2", new AdjustDemand.Adjustment(List.of(), List.of(), 0.5),
-                "3", new AdjustDemand.Adjustment(List.of(), List.of(), 1.0),
-                "4", new AdjustDemand.Adjustment(List.of(), List.of(), 1.0)
+        Map<String, AdjustDemand.Adjustments> adjustments = Map.of(
+                "1", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 2.0))),
+                "2", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 0.5))),
+                "3", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0))),
+                "4", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0)))
         );
 
-        AdjustDemand.adjust(population, cells, index, adjustments);
+        for (int i = 0; i < 1000; i++) {
+            var cloned = PopulationUtils.createPopulation(ConfigUtils.createConfig());
+            for (var person : population.getPersons().values()) {
+                cloned.addPerson(person);
+            }
+            AdjustDemand.adjust(cloned, cells, index, adjustments);
 
-        var resultIndex = new AdjustDemand.SpatialIndex(population);
+            var resultIndex = new AdjustDemand.SpatialIndex(cloned);
 
-        for (var cell : cells.entrySet()) {
+            for (var cell : cells.entrySet()) {
 
-            var numberOfPersonsBefore = index.query(cell.getValue());
-            var numberOfPersonsAfter = resultIndex.query(cell.getValue());
-            var factor = adjustments.get(cell.getKey()).value();
+                var numberOfPersonsBefore = index.query(cell.getValue());
+                var numberOfPersonsAfter = resultIndex.query(cell.getValue());
+                var factor = adjustments.get(cell.getKey()).adjustments().get(0).value();
 
-            assertEquals(numberOfPersonsBefore.size() * factor, numberOfPersonsAfter.size(), 0.000001);
+                // give this test a lot of slack, because we draw persons by using a random number generator and this test operates on
+                // relatively small numbers the results vary in the range of 10%
+                assertEquals(numberOfPersonsBefore.size() * factor, numberOfPersonsAfter.size(), numberOfPersonsBefore.size() * factor * 1.1);
+            }
         }
     }
 
@@ -66,11 +87,11 @@ public class AdjustDemandTest {
             var randomNumber = rand.nextInt(1, 5);
             addPersonsForCell(population, cell.getValue().getGeometry(), cells.get(Integer.toString(randomNumber)).getGeometry(), cell.getKey(), 100);
         }
-        Map<String, AdjustDemand.Adjustment> adjustments = Map.of(
-                "1", new AdjustDemand.Adjustment(List.of(), List.of(), 2.0),
-                "2", new AdjustDemand.Adjustment(List.of(), List.of(), 0.5),
-                "3", new AdjustDemand.Adjustment(List.of(), List.of(), 1.0),
-                "4", new AdjustDemand.Adjustment(List.of(), List.of(), 1.0)
+        Map<String, AdjustDemand.Adjustments> adjustments = Map.of(
+                "1", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 2.0))),
+                "2", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 0.5))),
+                "3", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0))),
+                "4", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0)))
         );
         var populationIndex = new AdjustDemand.SpatialIndex(population);
 
@@ -93,10 +114,8 @@ public class AdjustDemandTest {
                 });
     }
 
-     */
-
     @Test
-    public void testAttributeFilter() {
+    public void testExactAttributeFilter() {
         var cells = createCells();
         var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
         var rand = new Random();
@@ -121,9 +140,124 @@ public class AdjustDemandTest {
         );
         var populationIndex = new AdjustDemand.SpatialIndex(population);
 
+        var numberOfPersonsBefore = population.getPersons().size();
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
 
-        assertEquals(402, population.getPersons().size());
+        // we expect only the special person to be cloned.
+        assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
+    }
+
+    @Test
+    public void testRangeAttributeFilter() {
+        var cells = createCells();
+        var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
+        var rand = new Random();
+        for (var cell : cells.entrySet()) {
+            var randomNumber = rand.nextInt(1, 5);
+            addPersonsForCell(population, cell.getValue().getGeometry(), cells.get(Integer.toString(randomNumber)).getGeometry(), cell.getKey(), 100);
+
+            // add a special person with filterable attribute
+            if (cell.getKey().equals("1")) {
+                addPersonsForCell(population, cell.getValue().getGeometry(), cells.get(Integer.toString(randomNumber)).getGeometry(), "special", 1);
+                var specialPerson = population.getPersons().get(Id.createPersonId("special_0"));
+                specialPerson.getAttributes().putAttribute("age", 42);
+            }
+        }
+
+        var filterNames = List.of("age");
+        Map<String, AdjustDemand.Adjustments> adjustments = Map.of(
+                "1", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(40, 50)), 2.0))),
+                "2", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(Double.NaN, Double.NaN)), 0.5))),
+                "3", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(Double.NaN, Double.NaN)), 1.0))),
+                "4", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(Double.NaN, Double.NaN)), 1.0)))
+        );
+        var populationIndex = new AdjustDemand.SpatialIndex(population);
+
+        var numberOfPersonsBefore = population.getPersons().size();
+        AdjustDemand.adjust(population, cells, populationIndex, adjustments);
+
+        // we expect only the special person to be cloned.
+        assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
+    }
+
+    @Test
+    public void testGrowthRatesWithFiles() throws FactoryException {
+
+        var cells = createCells();
+        writeCells(cells, testUtils.getOutputDirectory() + "cells.shp");
+
+        var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
+        for (var cell : cells.entrySet()) {
+            addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
+        }
+        PopulationUtils.writePopulation(population, testUtils.getOutputDirectory() + "plans.xml.gz");
+
+        try (var writer = Files.newBufferedWriter(Paths.get(testUtils.getOutputDirectory()).resolve("adjustments.csv")); var printer = CSVFormat.DEFAULT.withHeader("id", "value").print(writer)) {
+            for (var cell : cells.entrySet()) {
+
+                var value = cell.getKey().equals("1") ? 2.0 : 1.0;
+                printer.printRecord(cell.getKey(), value);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        new AdjustDemand().execute(testUtils.getOutputDirectory(), "--adjustments", testUtils.getOutputDirectory() + "adjustments.csv",
+                "--shp", testUtils.getOutputDirectory() + "cells.shp");
+
+
+        var outPop = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "plans-adjusted.xml.gz");
+        assertEquals(500, outPop.getPersons().size());
+    }
+
+    @Test
+    public void testFilterWithFiles() {
+
+        var population = PopulationUtils.readPopulation(testUtils.getClassInputDirectory() + "plans.xml.gz");
+        for (var person : population.getPersons().values()) {
+
+            var sex = Math.random() <= 0.5 ? "male" : "female";
+            var age = Math.random() * 100;
+            var anyFilter = Math.random() <= 0.9 ? "foo" : "bar";
+
+            person.getAttributes().putAttribute("sex", sex);
+            person.getAttributes().putAttribute("age", age);
+            person.getAttributes().putAttribute("any-filter-name", anyFilter);
+        }
+        PopulationUtils.writePopulation(population, testUtils.getOutputDirectory() + "plans-with-filter.xml.gz");
+
+        new AdjustDemand().execute(testUtils.getOutputDirectory(),
+                "--adjustments", testUtils.getInputDirectory() + "adjustments-with-filter.csv",
+                "--shp", testUtils.getClassInputDirectory() + "cells.shp");
+
+        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "plans-adjusted.xml.gz");
+        System.out.println("Population before: " + population.getPersons().size() + " Population after: " + result.getPersons().size());
+    }
+
+    private static SimpleFeatureType createCellType() {
+        var builder = new SimpleFeatureTypeBuilder();
+        builder.setName("cell");
+        try {
+            builder.setCRS(CRS.decode("EPSG:25833"));
+        } catch (FactoryException e) {
+            throw new RuntimeException(e);
+        }
+        builder.add("the_geom", Polygon.class);
+        builder.add("id", String.class);
+        return builder.buildFeatureType();
+    }
+
+    private void writeCells(Map<String, PreparedGeometry> cells, String filename) {
+        var featureType = createCellType();
+        var featureBuilder = new SimpleFeatureBuilder(featureType);
+        var simpleFeatures = cells.entrySet().stream()
+                .map(e -> {
+                    featureBuilder.add(e.getValue().getGeometry());
+                    featureBuilder.set("id", e.getKey());
+                    return featureBuilder.buildFeature(null);
+                })
+                .collect(Collectors.toList());
+        ShapeFileWriter.writeGeometries(simpleFeatures, filename);
     }
 
     private static class QuadTree<T> {

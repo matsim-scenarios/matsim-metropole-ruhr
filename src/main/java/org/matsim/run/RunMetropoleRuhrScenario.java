@@ -58,6 +58,7 @@ import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTri
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
+import org.matsim.prepare.AdjustDemand;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
@@ -75,237 +76,238 @@ import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgre
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
-		TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
+        TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
 })
+@MATSimApplication.Prepare({AdjustDemand.class})
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v1.4";
+    public static final String VERSION = "v1.4";
 
-	private static final Logger log = LogManager.getLogger(RunMetropoleRuhrScenario.class);
+    private static final Logger log = LogManager.getLogger(RunMetropoleRuhrScenario.class);
 
-	public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
+    public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
 
-	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
+    @CommandLine.Mixin
+    private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
 
-	@CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
-	private boolean zeroBikePCU;
+    @CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
+    private boolean zeroBikePCU;
 
-	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
-	private boolean download;
+    @CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
+    private boolean download;
 
-	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
-	protected boolean intermodal;
+    @CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
+    protected boolean intermodal;
 
-	/**
-	 * Constructor for extending scenarios.
-	 */
-	protected RunMetropoleRuhrScenario(String defaultScenario) {
-		super(defaultScenario);
-	}
+    /**
+     * Constructor for extending scenarios.
+     */
+    protected RunMetropoleRuhrScenario(String defaultScenario) {
+        super(defaultScenario);
+    }
 
-	public RunMetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
-	}
+    public RunMetropoleRuhrScenario() {
+        super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-" + VERSION + "-3pct.config.xml");
+    }
 
-	/**
-	 * Have this here for unit testing, the other constructor doesn't seem to work for that 🤷‍♀️
-	 */
-	RunMetropoleRuhrScenario(Config config) {
-		super(config);
-	}
+    /**
+     * Have this here for unit testing, the other constructor doesn't seem to work for that 🤷‍♀️
+     */
+    RunMetropoleRuhrScenario(Config config) {
+        super(config);
+    }
 
-	public static void main(String[] args) {
-		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
-	}
+    public static void main(String[] args) {
+        MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
+    }
 
-	@Override
-	protected Config prepareConfig(Config config) {
-		// avoid unmaterialized config group exceptions in general for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
-		// avoid unmaterialized config group exceptions in tests for PtIntermodalRoutingModesConfigGroup, SwissRailRaptorConfigGroup
-		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
-		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
-		PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
-		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
+    @Override
+    protected Config prepareConfig(Config config) {
+        // avoid unmaterialized config group exceptions in general for PtExtensionsConfigGroup, IntermodalTripFareCompensatorsConfigGroup
+        // avoid unmaterialized config group exceptions in tests for PtIntermodalRoutingModesConfigGroup, SwissRailRaptorConfigGroup
+        PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
+        IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
+        PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
+        SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
 
-		if (!intermodal) {
+        if (!intermodal) {
 
-			log.info("Disabling intermodal config...");
+            log.info("Disabling intermodal config...");
 
-			// remove config options
-			SubtourModeChoiceConfigGroup subtourModeChoice = config.subtourModeChoice();
+            // remove config options
+            SubtourModeChoiceConfigGroup subtourModeChoice = config.subtourModeChoice();
 
-			// intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
-			subtourModeChoice.setModes(
-					Arrays.stream(subtourModeChoice.getModes())
-					.filter(s -> !s.equals("pt_intermodal_allowed"))
-					.toArray(String[]::new)
-			);
-
-
-			ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
-			changeModeConfigGroup.setModes(
-					Arrays.stream(changeModeConfigGroup.getModes())
-							.filter(s -> !s.equals("pt_intermodal_allowed"))
-							.toArray(String[]::new)
-			);
+            // intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
+            subtourModeChoice.setModes(
+                    Arrays.stream(subtourModeChoice.getModes())
+                            .filter(s -> !s.equals("pt_intermodal_allowed"))
+                            .toArray(String[]::new)
+            );
 
 
-			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
-			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
-					swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
-			intermodalAccessEgressParameterSets.clear();
+            ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
+            changeModeConfigGroup.setModes(
+                    Arrays.stream(changeModeConfigGroup.getModes())
+                            .filter(s -> !s.equals("pt_intermodal_allowed"))
+                            .toArray(String[]::new)
+            );
 
-			PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
-					ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
-							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
-			for (PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization intermodalAccessEgressModeUtilityRandomization : intermodalAccessEgressModeUtilityRandomizationArray) {
-				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalAccessEgressModeUtilityRandomization);
-			}
 
-			IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
-					intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
-							toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
-			for (IntermodalTripFareCompensatorConfigGroup intermodalTripFareCompensatorConfigGroup : intermodalTripFareCompensatorConfigGroupArray) {
-				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroup);
-			}
+            swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
+            List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
+                    swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
+            intermodalAccessEgressParameterSets.clear();
 
-			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
-					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
-							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
-			for (PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet ptIntermodalRoutingModeParameterArray : ptIntermodalRoutingModeParameterArrays) {
-				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArray);
-			}
-		}
+            PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
+                    ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
+                            toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
+            for (PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization intermodalAccessEgressModeUtilityRandomization : intermodalAccessEgressModeUtilityRandomizationArray) {
+                intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalAccessEgressModeUtilityRandomization);
+            }
 
-		OutputDirectoryLogging.catchLogEntries();
+            IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
+                    intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
+                            toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
+            for (IntermodalTripFareCompensatorConfigGroup intermodalTripFareCompensatorConfigGroup : intermodalTripFareCompensatorConfigGroupArray) {
+                intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroup);
+            }
 
-		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
-		bikeConfigGroup.setBicycleMode(TransportMode.bike);
+            PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
+                    ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
+                            toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
+            for (PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet ptIntermodalRoutingModeParameterArray : ptIntermodalRoutingModeParameterArrays) {
+                ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArray);
+            }
+        }
 
-		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
-		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName("oneHourPCost");
-		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName("extraHourPCost");
-		parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName("maxDailyPCost");
-		parkingCostConfigGroup.setMaxParkingDurationAttributeName("maxPTime");
-		parkingCostConfigGroup.setParkingPenaltyAttributeName("pFine");
-		parkingCostConfigGroup.setResidentialParkingFeeAttributeName("resPCosts");
+        OutputDirectoryLogging.catchLogEntries();
 
-		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
-		log.info("using accessEgressModeToLinkPlusTimeConstant");
-		config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
-		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
-		config.qsim().setUsePersonIdForMissingVehicleId(false);
-		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
+        BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
+        bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-		if (sample.isSet()) {
-			config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
-			config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
-			config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
+        ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
+        parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName("oneHourPCost");
+        parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName("extraHourPCost");
+        parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName("maxDailyPCost");
+        parkingCostConfigGroup.setMaxParkingDurationAttributeName("maxPTime");
+        parkingCostConfigGroup.setParkingPenaltyAttributeName("pFine");
+        parkingCostConfigGroup.setResidentialParkingFeeAttributeName("resPCosts");
 
-			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
-			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
-		}
+        //config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
+        log.info("using accessEgressModeToLinkPlusTimeConstant");
+        config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
+        config.qsim().setUsingTravelTimeCheckInTeleportation(true);
+        config.qsim().setUsePersonIdForMissingVehicleId(false);
+        config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
 
-		if (download) {
-			adjustURL(config.network()::getInputFile, config.network()::setInputFile);
-			adjustURL(config.plans()::getInputFile, config.plans()::setInputFile);
-			adjustURL(config.vehicles()::getVehiclesFile, config.vehicles()::setVehiclesFile);
-			adjustURL(config.transit()::getVehiclesFile, config.transit()::setVehiclesFile);
-			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
-		}
+        if (sample.isSet()) {
+            config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
+            config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
+            config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 
-		for (long ii = 600; ii <= 86400; ii += 600) {
+            config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
+            config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+        }
 
-			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
-					"educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
-				config.planCalcScore()
-						.addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams(act + "_" + ii).setTypicalDuration(ii));
-			}
+        if (download) {
+            adjustURL(config.network()::getInputFile, config.network()::setInputFile);
+            adjustURL(config.plans()::getInputFile, config.plans()::setInputFile);
+            adjustURL(config.vehicles()::getVehiclesFile, config.vehicles()::setVehiclesFile);
+            adjustURL(config.transit()::getVehiclesFile, config.transit()::setVehiclesFile);
+            adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
+        }
 
-			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("work_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("business_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("leisure_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(9. * 3600.).setClosingTime(27. * 3600.));
+        for (long ii = 600; ii <= 86400; ii += 600) {
 
-			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_daily_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
-			config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_other_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
-		}
+            for (String act : List.of("home", "restaurant", "other", "visit", "errands",
+                    "educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
+                config.planCalcScore()
+                        .addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams(act + "_" + ii).setTypicalDuration(ii));
+            }
 
-		return config;
-	}
+            config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("work_" + ii).setTypicalDuration(ii)
+                    .setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
+            config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("business_" + ii).setTypicalDuration(ii)
+                    .setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
+            config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("leisure_" + ii).setTypicalDuration(ii)
+                    .setOpeningTime(9. * 3600.).setClosingTime(27. * 3600.));
 
-	@Override
-	protected void prepareScenario(Scenario scenario) {
+            config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_daily_" + ii).setTypicalDuration(ii)
+                    .setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
+            config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("shop_other_" + ii).setTypicalDuration(ii)
+                    .setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
+        }
 
-		if (zeroBikePCU) {
-			Id<VehicleType> key = Id.create("bike", VehicleType.class);
-			VehicleType bike = scenario.getVehicles().getVehicleTypes().get(key);
-			bike.setPcuEquivalents(0);
-		}
+        return config;
+    }
 
-	}
+    @Override
+    protected void prepareScenario(Scenario scenario) {
 
-	@Override
-	protected void prepareControler(Controler controler) {
+        if (zeroBikePCU) {
+            Id<VehicleType> key = Id.create("bike", VehicleType.class);
+            VehicleType bike = scenario.getVehicles().getVehicleTypes().get(key);
+            bike.setPcuEquivalents(0);
+        }
 
-		if (!controler.getConfig().transit().isUsingTransitInMobsim())
-			log.error("Public transit will be teleported and not simulated in the mobsim! "
-					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
-					+ "Should only be used for testing or car-focused studies with fixed modal split.");
+    }
 
-		controler.addOverridingModule(new SwissRailRaptorModule());
+    @Override
+    protected void prepareControler(Controler controler) {
 
-		// intermodal pt
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
-				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
-			}
-		});
+        if (!controler.getConfig().transit().isUsingTransitInMobsim())
+            log.error("Public transit will be teleported and not simulated in the mobsim! "
+                    + "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
+                    + "Should only be used for testing or car-focused studies with fixed modal split.");
 
-		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
-		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
+        controler.addOverridingModule(new SwissRailRaptorModule());
 
-		// analysis
-		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
-		controler.addOverridingModule(new PtStop2StopAnalysisModule());
+        // intermodal pt
+        controler.addOverridingModule(new AbstractModule() {
+            @Override
+            public void install() {
+                bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
+                bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
+            }
+        });
 
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
-			}
-		});
+        controler.addOverridingModule(new PtIntermodalRoutingModesModule());
+        controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
-		// use the (congested) car travel time for the teleported ride mode
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
-				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
+        // analysis
+        controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+        controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
-				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
+        controler.addOverridingModule(new AbstractModule() {
+            @Override
+            public void install() {
+                bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+            }
+        });
+
+        // use the (congested) car travel time for the teleported ride mode
+        controler.addOverridingModule(new AbstractModule() {
+            @Override
+            public void install() {
+                addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
+                addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
+
+                addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
 
 //				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
 
-				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
+                addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
 
-				// Configure mode-choice strategy
-				addControlerListenerBinding().to(StrategyWeightFadeout.class).in(Singleton.class);
-				Multibinder<StrategyWeightFadeout.Schedule> schedules = Multibinder.newSetBinder(binder(), StrategyWeightFadeout.Schedule.class);
-				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice, "person", 0.75, 0.85));
-				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute, "person", 0.78));
+                // Configure mode-choice strategy
+                addControlerListenerBinding().to(StrategyWeightFadeout.class).in(Singleton.class);
+                Multibinder<StrategyWeightFadeout.Schedule> schedules = Multibinder.newSetBinder(binder(), StrategyWeightFadeout.Schedule.class);
+                schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice, "person", 0.75, 0.85));
+                schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute, "person", 0.78));
 
 
-			}
-		});
+            }
+        });
 
 		/*log.info("Adding parking cost");
 		controler.addOverridingModule(new AbstractModule() {
@@ -315,34 +317,33 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			}
 		});*/
 
-		log.info("Adding money event analysis");
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				//analyse PersonMoneyEvents
-				install(new PersonMoneyEventsAnalysisModule());
-			}
-		});
+        log.info("Adding money event analysis");
+        controler.addOverridingModule(new AbstractModule() {
+            @Override
+            public void install() {
+                //analyse PersonMoneyEvents
+                install(new PersonMoneyEventsAnalysisModule());
+            }
+        });
 
-		controler.addOverridingModule(new ParkingCostModule());
+        controler.addOverridingModule(new ParkingCostModule());
 
 
+        Bicycles.addAsOverridingModule(controler);
+    }
 
-		Bicycles.addAsOverridingModule(controler);
-	}
+    /**
+     * Appends url to download a resource if not present.
+     */
+    private void adjustURL(Supplier<String> getter, Consumer<String> setter) {
 
-	/**
-	 * Appends url to download a resource if not present.
-	 */
-	private void adjustURL(Supplier<String> getter, Consumer<String> setter) {
+        String input = getter.get();
+        if (input.startsWith("http"))
+            return;
 
-		String input = getter.get();
-		if (input.startsWith("http"))
-			return;
+        String name = new File(input).getName();
 
-		String name = new File(input).getName();
-
-		setter.accept(URL + name);
-	}
+        setter.accept(URL + name);
+    }
 
 }

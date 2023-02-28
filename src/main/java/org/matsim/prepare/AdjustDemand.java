@@ -7,7 +7,6 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.index.quadtree.Quadtree;
-import org.matsim.analysis.TripMatrix;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.*;
@@ -34,9 +33,6 @@ public class AdjustDemand implements MATSimAppCommand {
     @CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Input run directory")
     private Path runDirectory;
 
-    @CommandLine.Option(names = "--run-id", defaultValue = "*", description = "Pattern used to match runId", required = true)
-    private String runId;
-
     @CommandLine.Option(names = "--adjustments", description = "CSV-File with adjustments parameters for the cells within the provided shape file", required = true)
     private String adjustments;
 
@@ -48,7 +44,7 @@ public class AdjustDemand implements MATSimAppCommand {
     private ShpOptions shp = new ShpOptions();
 
     public static void main(String[] args) {
-        System.exit(new CommandLine(new TripMatrix()).execute(args));
+        System.exit(new CommandLine(new AdjustDemand()).execute(args));
     }
 
     @Override
@@ -91,7 +87,7 @@ public class AdjustDemand implements MATSimAppCommand {
         // no go through all the cells and adjust the population according to the values in adjust table
         adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
-        PopulationUtils.writePopulation(population, "pop-test.xml.gz");
+        PopulationUtils.writePopulation(population, runDirectory.resolve("plans-adjusted.xml.gz").toString());
 
         return 0;
     }
@@ -123,10 +119,11 @@ public class AdjustDemand implements MATSimAppCommand {
                             var person = population.getPersons().get(id);
                             return applyAdjustmentFilter(adjustmentsForCell, adjustmentWithFilter, person);
                         })
-                        // shuffle persons. Previously we had Stream::filter(id -> rand.nextDouble() <= Math.abs(growth)) but, that was not accurate
-                        .sorted((o1, o2) -> rand.nextInt())
+                        .filter(id -> rand.nextDouble() <= Math.abs(growth))
                         .limit((long) (Math.abs(growth) * personsInCell.size()))
                         .collect(Collectors.toSet());
+
+                System.out.println("Growth rate: " + Math.abs(growth) * personsInCell.size() + " drawn: " + drawnPersons.size());
 
                 if (growth > 0) {
                     // the cell grows clone the persons
@@ -178,15 +175,16 @@ public class AdjustDemand implements MATSimAppCommand {
 
     static Coord createRandomCoord(Coord originalCoord) {
 
-        var x = rand.nextGaussian(originalCoord.getX(), 1);
-        var y = rand.nextGaussian(originalCoord.getY(), 1);
+        var x = rand.nextGaussian(originalCoord.getX(), 100);
+        var y = rand.nextGaussian(originalCoord.getY(), 100);
         return new Coord(x, y);
     }
 
     static Filter parseFilter(String recordValue) {
 
-        if (recordValue.contains(" bis unter ")) {
-            var split = recordValue.split("/(?: bis unter | Jahre )");
+        if (recordValue.isBlank()) return new YesFilter();
+        else if (recordValue.contains(" bis unter ")) {
+            var split = recordValue.split("bis unter | Jahre");
             var lowerBound = Double.parseDouble(split[0]);
             var upperBound = Double.parseDouble(split[1]);
             return new Range(lowerBound, upperBound);
@@ -225,14 +223,7 @@ public class AdjustDemand implements MATSimAppCommand {
         }
     }
 
-    static class Adjustments {
-        public Adjustments(List<String> columns, List<Adjustment> adjustments) {
-            this.columns = columns;
-            this.adjustments = adjustments;
-        }
-
-        private final List<String> columns;
-        private final List<Adjustment> adjustments;
+    record Adjustments(List<String> columns, List<Adjustment> adjustments) {
     }
 
     record Adjustment(List<Filter> filters, double value) {
@@ -249,7 +240,7 @@ public class AdjustDemand implements MATSimAppCommand {
             if (value instanceof Number number) {
                 return isWithin(number);
             }
-            throw new IllegalArgumentException("Range Filter can only test against numbers. Supplied value was: " + value.getClass());
+            return false;
         }
     }
 
@@ -258,6 +249,14 @@ public class AdjustDemand implements MATSimAppCommand {
         @Override
         public boolean test(Object value) {
             return filter.equals(value);
+        }
+    }
+
+    record YesFilter() implements Filter {
+
+        @Override
+        public boolean test(Object value) {
+            return true;
         }
     }
 
