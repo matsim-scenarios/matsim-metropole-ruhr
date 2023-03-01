@@ -256,6 +256,47 @@ public class AdjustDemandTest {
     }
 
     @Test
+    public void testAgeFilter() {
+
+        // we have different things we need to parse in the age filter
+        // unter x everything smaller than x
+        // x bis unter y everyting >= x and < y
+        // x Jahre und mehr everyting >= x
+
+        var population = PopulationUtils.readPopulation(testUtils.getClassInputDirectory() + "input_plans.xml.gz");
+        for (var person : population.getPersons().values()) {
+            var age = (int) (Math.random() * 100);
+            person.getAttributes().putAttribute("age", age);
+        }
+        PopulationUtils.writePopulation(population, testUtils.getOutputDirectory() + "plans-with-age-filter.xml.gz");
+
+        new AdjustDemand().execute(
+                "--plans", testUtils.getOutputDirectory() + "plans-with-age-filter.xml.gz",
+                "--adjustments", testUtils.getInputDirectory() + "adjustments-with-age-filter.csv",
+                "--shp", testUtils.getClassInputDirectory() + "cells.shp",
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+        );
+
+        var cells = createCells();
+        var cell1 = cells.get("1");
+        var matchingFilter = population.getPersons().values().stream()
+                .filter(person -> {
+                    var age = (Integer) person.getAttributes().getAttribute("age");
+                    var firstAct = (Activity) person.getSelectedPlan().getPlanElements().get(0); // assuming  first one is home activity
+
+                    // we want everybody from cell1 who is not between 30 and 60
+                    return (age < 30 || 60 <= age) && cell1.covers(MGC.coord2Point(firstAct.getCoord()));
+                })
+                .count();
+        var expectedNumberOfPersons = population.getPersons().size() + 2 * 100 + matchingFilter;
+        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
+        System.out.println("Expected number: " + expectedNumberOfPersons);
+        System.out.println("Population before: " + population.getPersons().size() + " Population after: " + result.getPersons().size());
+        assertEquals(expectedNumberOfPersons, result.getPersons().size());
+
+    }
+
+    @Test
     public void testMissingLines() {
         new AdjustDemand().execute(
                 "--plans", testUtils.getClassInputDirectory() + "input_plans.xml.gz",
@@ -272,7 +313,6 @@ public class AdjustDemandTest {
                 .filter(person -> person.getId().toString().startsWith("1_"))
                 .count();
         assertEquals(100, clonedNumber);
-
     }
 
     private static SimpleFeatureType createCellType() {

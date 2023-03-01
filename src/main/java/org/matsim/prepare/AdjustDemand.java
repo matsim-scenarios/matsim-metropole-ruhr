@@ -187,10 +187,21 @@ public class AdjustDemand implements MATSimAppCommand {
     static Filter parseFilter(String recordValue) {
 
         if (recordValue.isBlank()) return new YesFilter();
+            // the following is kinda brittle, but will work if the input is absolutely correct 😬
         else if (recordValue.contains(" bis unter ")) {
             var split = recordValue.split("bis unter | Jahre");
             var lowerBound = Double.parseDouble(split[0]);
             var upperBound = Double.parseDouble(split[1]);
+            return new Range(lowerBound, upperBound);
+        } else if (recordValue.contains("unter") && recordValue.contains("Jahre")) {
+            var split = recordValue.split("unter | Jahre");
+            var upperBound = Double.parseDouble(split[1]);
+            var lowerBound = Double.NEGATIVE_INFINITY;
+            return new Range(lowerBound, upperBound);
+        } else if (recordValue.contains("Jahre und mehr")) {
+            var split = recordValue.split("Jahre und mehr");
+            var lowerBound = Double.parseDouble(split[0]);
+            var upperBound = Double.POSITIVE_INFINITY;
             return new Range(lowerBound, upperBound);
         } else {
             return new Exact(recordValue);
