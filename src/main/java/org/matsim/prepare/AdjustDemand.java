@@ -10,7 +10,6 @@ import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.*;
-import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.population.PopulationUtils;
@@ -30,8 +29,10 @@ public class AdjustDemand implements MATSimAppCommand {
     public static final String PERSON_ID_SUFFIX = "_cloned";
     private static final Random rand = new Random();
 
-    @CommandLine.Parameters(arity = "1", paramLabel = "INPUT", description = "Input run directory")
-    private Path runDirectory;
+    @CommandLine.Option(names = "--plans", required = true)
+    private Path inputFile;
+    @CommandLine.Option(names = "--output", required = true)
+    private Path outputFile;
 
     @CommandLine.Option(names = "--adjustments", description = "CSV-File with adjustments parameters for the cells within the provided shape file", required = true)
     private String adjustments;
@@ -80,14 +81,13 @@ public class AdjustDemand implements MATSimAppCommand {
         }
 
         // read population
-        var populationFile = ApplicationUtils.globFile(runDirectory, "*plans*");
-        var population = PopulationUtils.readPopulation(populationFile.toString());
+        var population = PopulationUtils.readPopulation(inputFile.toString());
         var spatialIndex = new SpatialIndex(population);
 
         // no go through all the cells and adjust the population according to the values in adjust table
         adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
-        PopulationUtils.writePopulation(population, runDirectory.resolve("plans-adjusted.xml.gz").toString());
+        PopulationUtils.writePopulation(population, outputFile.toString());
 
         return 0;
     }
@@ -102,8 +102,8 @@ public class AdjustDemand implements MATSimAppCommand {
 
             // get all the people inside the cell
             var personsInCell = spatialIndex.query(cell.getValue());
-            // get the adjustment and filter
-            var adjustmentsForCell = adjustmentData.get(cell.getKey());
+            // get the adjustment and filter or empty adjustment, to avoid extra condition
+            var adjustmentsForCell = adjustmentData.computeIfAbsent(cell.getKey(), k -> new Adjustments(List.of(), List.of()));
 
             for (var adjustmentWithFilter : adjustmentsForCell.adjustments) {
                 // get the adjustment factor
@@ -132,7 +132,11 @@ public class AdjustDemand implements MATSimAppCommand {
                         var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
                         var clonedPlan = clonePlan(person.getSelectedPlan(), population.getFactory());
                         cloned.addPlan(clonedPlan);
-                        population.addPerson(cloned);
+                        try {
+                            population.addPerson(cloned);
+                        } catch (Exception e) {
+                            System.out.println("bla");
+                        }
                     }
                 } else {
                     // the cell shrinks delete the persons
@@ -229,10 +233,16 @@ public class AdjustDemand implements MATSimAppCommand {
     record Adjustment(List<Filter> filters, double value) {
     }
 
+    /**
+     * A range tests whether a number is within its bounds
+     *
+     * @param lowerBound is included
+     * @param upperBound is excluded
+     */
     record Range(Number lowerBound, Number upperBound) implements Filter {
 
         boolean isWithin(Number value) {
-            return lowerBound.doubleValue() <= value.doubleValue() && value.doubleValue() <= upperBound.doubleValue();
+            return lowerBound.doubleValue() <= value.doubleValue() && value.doubleValue() < upperBound.doubleValue();
         }
 
         @Override

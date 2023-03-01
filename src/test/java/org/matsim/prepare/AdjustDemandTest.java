@@ -1,6 +1,5 @@
 package org.matsim.prepare;
 
-import org.apache.commons.csv.CSVFormat;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.referencing.CRS;
@@ -20,14 +19,12 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.collections.Tuple;
+import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.gis.ShapeFileWriter;
 import org.matsim.testcases.MatsimTestUtils;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -181,43 +178,43 @@ public class AdjustDemandTest {
     }
 
     @Test
-    public void testGrowthRatesWithFiles() throws FactoryException {
-
+    public void write() {
         var cells = createCells();
-        writeCells(cells, testUtils.getOutputDirectory() + "cells.shp");
-
         var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
         for (var cell : cells.entrySet()) {
             addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
         }
-        PopulationUtils.writePopulation(population, testUtils.getOutputDirectory() + "plans.xml.gz");
+        PopulationUtils.writePopulation(population, testUtils.getClassInputDirectory() + "input_plans.xml.gz");
+    }
 
-        try (var writer = Files.newBufferedWriter(Paths.get(testUtils.getOutputDirectory()).resolve("adjustments.csv")); var printer = CSVFormat.DEFAULT.withHeader("id", "value").print(writer)) {
-            for (var cell : cells.entrySet()) {
+    @Test
+    public void testGrowthRatesWithFiles() {
 
-                var value = cell.getKey().equals("1") ? 2.0 : 1.0;
-                printer.printRecord(cell.getKey(), value);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        new AdjustDemand().execute(
+                "--plans", testUtils.getClassInputDirectory() + "input_plans.xml.gz",
+                "--adjustments", testUtils.getInputDirectory() + "adjustments.csv",
+                "--shp", testUtils.getClassInputDirectory() + "cells.shp",
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+        );
 
-        new AdjustDemand().execute(testUtils.getOutputDirectory(), "--adjustments", testUtils.getOutputDirectory() + "adjustments.csv",
-                "--shp", testUtils.getOutputDirectory() + "cells.shp");
-
-
-        var outPop = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "plans-adjusted.xml.gz");
-        assertEquals(500, outPop.getPersons().size());
+        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
+        assertEquals(500, result.getPersons().size());
+        // make sure only people from cell 1 are cloned
+        var clonedNumber = result.getPersons().values().stream()
+                .filter(person -> person.getId().toString().endsWith("cloned"))
+                .filter(person -> person.getId().toString().startsWith("1_"))
+                .count();
+        assertEquals(100, clonedNumber);
     }
 
     @Test
     public void testFilterWithFiles() {
 
-        var population = PopulationUtils.readPopulation(testUtils.getClassInputDirectory() + "plans.xml.gz");
+        var population = PopulationUtils.readPopulation(testUtils.getClassInputDirectory() + "input_plans.xml.gz");
         for (var person : population.getPersons().values()) {
 
             var sex = Math.random() <= 0.5 ? "male" : "female";
-            var age = Math.random() * 100;
+            var age = (int) (Math.random() * 100);
             var anyFilter = Math.random() <= 0.9 ? "foo" : "bar";
 
             person.getAttributes().putAttribute("sex", sex);
@@ -226,12 +223,56 @@ public class AdjustDemandTest {
         }
         PopulationUtils.writePopulation(population, testUtils.getOutputDirectory() + "plans-with-filter.xml.gz");
 
-        new AdjustDemand().execute(testUtils.getOutputDirectory(),
+        new AdjustDemand().execute(
+                "--plans", testUtils.getOutputDirectory() + "plans-with-filter.xml.gz",
                 "--adjustments", testUtils.getInputDirectory() + "adjustments-with-filter.csv",
-                "--shp", testUtils.getClassInputDirectory() + "cells.shp");
+                "--shp", testUtils.getClassInputDirectory() + "cells.shp",
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+        );
 
-        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "plans-adjusted.xml.gz");
+        // count persons with filter criteria the file has
+        // cell 1 with 0-30 years, male, foo, 2.0
+        // cell 1 with 30-60 years, male, foo, 2.0
+        // 2 cells with no filter and 2.0
+        // 1 cell with no filter and 1.0
+        var cells = createCells();
+        var cell1 = cells.get("1");
+        var matchingFilter = population.getPersons().values().stream()
+                .filter(person -> {
+                    var age = (Integer) person.getAttributes().getAttribute("age");
+                    var sex = (String) person.getAttributes().getAttribute("sex");
+                    var anyFilter = (String) person.getAttributes().getAttribute("any-filter-name");
+                    var firstAct = (Activity) person.getSelectedPlan().getPlanElements().get(0); // assuming  first one is home activity
+
+                    return 0 <= age && age < 60 && "male".equals(sex) && "foo".equals(anyFilter) && cell1.covers(MGC.coord2Point(firstAct.getCoord()));
+                })
+                .count();
+        var expectedNumberOfPersons = population.getPersons().size() + 2 * 100 + matchingFilter;
+
+        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
+        System.out.println("Expected number: " + expectedNumberOfPersons);
         System.out.println("Population before: " + population.getPersons().size() + " Population after: " + result.getPersons().size());
+        assertEquals(expectedNumberOfPersons, result.getPersons().size());
+    }
+
+    @Test
+    public void testMissingLines() {
+        new AdjustDemand().execute(
+                "--plans", testUtils.getClassInputDirectory() + "input_plans.xml.gz",
+                "--adjustments", testUtils.getInputDirectory() + "adjustments-missing-lines.csv",
+                "--shp", testUtils.getClassInputDirectory() + "cells.shp",
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+        );
+
+        var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
+        assertEquals(500, result.getPersons().size());
+        // make sure only people from cell 1 are cloned
+        var clonedNumber = result.getPersons().values().stream()
+                .filter(person -> person.getId().toString().endsWith("cloned"))
+                .filter(person -> person.getId().toString().startsWith("1_"))
+                .count();
+        assertEquals(100, clonedNumber);
+
     }
 
     private static SimpleFeatureType createCellType() {
