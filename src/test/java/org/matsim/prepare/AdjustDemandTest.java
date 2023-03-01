@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
-import org.locationtech.jts.index.quadtree.Quadtree;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.Activity;
@@ -44,7 +43,7 @@ public class AdjustDemandTest {
         for (var cell : cells.entrySet()) {
             addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
         }
-        var index = new AdjustDemand.SpatialIndex(population);
+        var index = AdjustDemand.createSpatialIndex(population);
         Map<String, AdjustDemand.Adjustments> adjustments = Map.of(
                 "1", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 2.0))),
                 "2", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 0.5))),
@@ -59,12 +58,12 @@ public class AdjustDemandTest {
             }
             AdjustDemand.adjust(cloned, cells, index, adjustments);
 
-            var resultIndex = new AdjustDemand.SpatialIndex(cloned);
+            var resultIndex = AdjustDemand.createSpatialIndex(cloned);
 
             for (var cell : cells.entrySet()) {
 
-                var numberOfPersonsBefore = index.query(cell.getValue());
-                var numberOfPersonsAfter = resultIndex.query(cell.getValue());
+                var numberOfPersonsBefore = index.coveredBy(cell.getValue());
+                var numberOfPersonsAfter = resultIndex.coveredBy(cell.getValue());
                 var factor = adjustments.get(cell.getKey()).adjustments().get(0).value();
 
                 // give this test a lot of slack, because we draw persons by using a random number generator and this test operates on
@@ -90,7 +89,7 @@ public class AdjustDemandTest {
                 "3", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0))),
                 "4", new AdjustDemand.Adjustments(List.of(), List.of(new AdjustDemand.Adjustment(List.of(), 1.0)))
         );
-        var populationIndex = new AdjustDemand.SpatialIndex(population);
+        var populationIndex = AdjustDemand.createSpatialIndex(population);
 
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
 
@@ -135,7 +134,7 @@ public class AdjustDemandTest {
                 "3", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Exact("yes!")), 1.0))),
                 "4", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Exact("yes!")), 1.0)))
         );
-        var populationIndex = new AdjustDemand.SpatialIndex(population);
+        var populationIndex = AdjustDemand.createSpatialIndex(population);
 
         var numberOfPersonsBefore = population.getPersons().size();
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
@@ -168,23 +167,13 @@ public class AdjustDemandTest {
                 "3", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(Double.NaN, Double.NaN)), 1.0))),
                 "4", new AdjustDemand.Adjustments(filterNames, List.of(new AdjustDemand.Adjustment(List.of(new AdjustDemand.Range(Double.NaN, Double.NaN)), 1.0)))
         );
-        var populationIndex = new AdjustDemand.SpatialIndex(population);
+        var populationIndex = AdjustDemand.createSpatialIndex(population);
 
         var numberOfPersonsBefore = population.getPersons().size();
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
 
         // we expect only the special person to be cloned.
         assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
-    }
-
-    @Test
-    public void write() {
-        var cells = createCells();
-        var population = PopulationUtils.createPopulation(ConfigUtils.createConfig());
-        for (var cell : cells.entrySet()) {
-            addPersonsForCell(population, cell.getValue().getGeometry(), cell.getValue().getGeometry(), cell.getKey(), 100);
-        }
-        PopulationUtils.writePopulation(population, testUtils.getClassInputDirectory() + "input_plans.xml.gz");
     }
 
     @Test
@@ -341,65 +330,6 @@ public class AdjustDemandTest {
         ShapeFileWriter.writeGeometries(simpleFeatures, filename);
     }
 
-    private static class QuadTree<T> {
-
-        private final Quadtree index = new Quadtree();
-
-        public void insert(Geometry geometry, T item) {
-            index.insert(geometry.getEnvelopeInternal(), new IndexItem<>(geometry, item));
-        }
-
-        public Set<T> coveredBy(PreparedGeometry geometry) {
-            Set<T> result = new HashSet<>();
-            index.query(geometry.getGeometry().getEnvelopeInternal(), entry -> {
-                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
-                IndexItem<T> indexItem = (IndexItem<T>) entry;
-                if (geometry.covers(indexItem.geom())) {
-                    result.add(indexItem.item());
-                }
-            });
-            return result;
-        }
-
-        /**
-         * '
-         * Return all items that are covered by the geometry supplied as argument
-         *
-         * @param geometry the spatial filter by which items in the index are filtered
-         * @return all covered items
-         */
-        public Set<T> coveredBy(Geometry geometry) {
-
-            Set<T> result = new HashSet<>();
-            index.query(geometry.getEnvelopeInternal(), entry -> {
-                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
-                IndexItem<T> indexItem = (IndexItem<T>) entry;
-                if (geometry.covers(indexItem.geom())) {
-                    result.add(indexItem.item());
-                }
-            });
-            return result;
-        }
-
-        /**
-         * Inverse of {@link #coveredBy(Geometry)}
-         * Finds items which cover the supplied geometry.
-         */
-        public Set<T> allCover(Geometry geometry) {
-            Set<T> result = new HashSet<>();
-            index.query(geometry.getEnvelopeInternal(), entry -> {
-                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
-                IndexItem<T> indexItem = (IndexItem<T>) entry;
-                if (indexItem.geom().covers(geometry)) {
-                    result.add(indexItem.item());
-                }
-            });
-            return result;
-        }
-
-        private record IndexItem<T>(Geometry geom, T item) {
-        }
-    }
 
     private static Collection<Tuple<Activity, Activity>> mergeActivities(Person person1, Person person2) {
 

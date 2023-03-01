@@ -28,6 +28,7 @@ public class AdjustDemand implements MATSimAppCommand {
 
     public static final String PERSON_ID_SUFFIX = "_cloned";
     private static final Random rand = new Random();
+    private static final Adjustments EMPTY_ADJUSTMENTS = new Adjustments(List.of(), List.of());
 
     @CommandLine.Option(names = "--plans", required = true)
     private Path inputFile;
@@ -82,8 +83,7 @@ public class AdjustDemand implements MATSimAppCommand {
 
         // read population
         var population = PopulationUtils.readPopulation(inputFile.toString());
-        var spatialIndex = new SpatialIndex(population);
-
+        QuadTree<Id<Person>> spatialIndex = createSpatialIndex(population);
         // no go through all the cells and adjust the population according to the values in adjust table
         adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
@@ -97,13 +97,13 @@ public class AdjustDemand implements MATSimAppCommand {
      * <p>
      * Notes from last meeting: Exception if no/too few persons are found for filter criteria
      */
-    static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, SpatialIndex spatialIndex, Map<String, Adjustments> adjustmentData) {
+    static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, QuadTree<Id<Person>> spatialIndex, Map<String, Adjustments> adjustmentData) {
         for (var cell : preparedFeatures.entrySet()) {
 
             // get all the people inside the cell
-            var personsInCell = spatialIndex.query(cell.getValue());
+            var personsInCell = spatialIndex.coveredBy(cell.getValue());
             // get the adjustment and filter or empty adjustment, to avoid extra condition
-            var adjustmentsForCell = adjustmentData.computeIfAbsent(cell.getKey(), k -> new Adjustments(List.of(), List.of()));
+            var adjustmentsForCell = adjustmentData.getOrDefault(cell.getKey(), EMPTY_ADJUSTMENTS);
 
             for (var adjustmentWithFilter : adjustmentsForCell.adjustments) {
                 // get the adjustment factor
@@ -132,11 +132,7 @@ public class AdjustDemand implements MATSimAppCommand {
                         var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
                         var clonedPlan = clonePlan(person.getSelectedPlan(), population.getFactory());
                         cloned.addPlan(clonedPlan);
-                        try {
-                            population.addPerson(cloned);
-                        } catch (Exception e) {
-                            System.out.println("bla");
-                        }
+                        population.addPerson(cloned);
                     }
                 } else {
                     // the cell shrinks delete the persons
@@ -208,33 +204,75 @@ public class AdjustDemand implements MATSimAppCommand {
         }
     }
 
-    static class SpatialIndex {
+    static QuadTree<Id<Person>> createSpatialIndex(Population population) {
+
+        QuadTree<Id<Person>> result = new QuadTree<>();
+        for (var person : population.getPersons().values()) {
+            var activities = TripStructureUtils.getActivities(person.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
+            var homeAct = findHomeAct(activities);
+            var homePoint = MGC.coord2Point(homeAct.getCoord());
+            result.insert(homePoint, person.getId());
+        }
+        return result;
+    }
+
+    static class QuadTree<T> {
 
         private final Quadtree index = new Quadtree();
 
-        SpatialIndex(Population population) {
-
-            for (var person : population.getPersons().values()) {
-                var activities = TripStructureUtils.getActivities(person.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
-                var homeAct = findHomeAct(activities);
-                var homePoint = MGC.coord2Point(homeAct.getCoord());
-                var indexItem = new IndexItem(homePoint, person.getId());
-                index.insert(homePoint.getEnvelopeInternal(), indexItem);
-            }
+        public void insert(Geometry geometry, T item) {
+            index.insert(geometry.getEnvelopeInternal(), new IndexItem<>(geometry, item));
         }
 
-        Set<Id<Person>> query(PreparedGeometry geometry) {
-
-            Set<Id<Person>> result = new HashSet<>();
+        public Set<T> coveredBy(PreparedGeometry geometry) {
+            Set<T> result = new HashSet<>();
             index.query(geometry.getGeometry().getEnvelopeInternal(), entry -> {
-
-                var indexItem = (IndexItem) entry;
-                var homePoint = indexItem.homePoint();
-                if (geometry.covers(homePoint)) {
-                    result.add(indexItem.personId());
+                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+                IndexItem<T> indexItem = (IndexItem<T>) entry;
+                if (geometry.covers(indexItem.geom())) {
+                    result.add(indexItem.item());
                 }
             });
             return result;
+        }
+
+        /**
+         * '
+         * Return all items that are covered by the geometry supplied as argument
+         *
+         * @param geometry the spatial filter by which items in the index are filtered
+         * @return all covered items
+         */
+        public Set<T> coveredBy(Geometry geometry) {
+
+            Set<T> result = new HashSet<>();
+            index.query(geometry.getEnvelopeInternal(), entry -> {
+                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+                IndexItem<T> indexItem = (IndexItem<T>) entry;
+                if (geometry.covers(indexItem.geom())) {
+                    result.add(indexItem.item());
+                }
+            });
+            return result;
+        }
+
+        /**
+         * Inverse of {@link #coveredBy(Geometry)}
+         * Finds items which cover the supplied geometry.
+         */
+        public Set<T> allCover(Geometry geometry) {
+            Set<T> result = new HashSet<>();
+            index.query(geometry.getEnvelopeInternal(), entry -> {
+                @SuppressWarnings("unchecked") // suppress warning, since we know that entry is an IndexItem<T>
+                IndexItem<T> indexItem = (IndexItem<T>) entry;
+                if (indexItem.geom().covers(geometry)) {
+                    result.add(indexItem.item());
+                }
+            });
+            return result;
+        }
+
+        private record IndexItem<T>(Geometry geom, T item) {
         }
     }
 
@@ -288,9 +326,6 @@ public class AdjustDemand implements MATSimAppCommand {
 
     private static Activity findHomeAct(Collection<Activity> activities) {
         return activities.stream().filter(act -> act.getType().startsWith("home")).findAny().orElseThrow();
-    }
-
-    record IndexItem(Geometry homePoint, Id<Person> personId) {
     }
 }
 
