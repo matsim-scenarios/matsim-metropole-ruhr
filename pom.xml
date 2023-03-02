@@ -134,8 +134,14 @@
 		</dependency>
 		<dependency>
             <groupId>com.github.matsim-org</groupId>
-            <artifactId>GTFS2MATSim</artifactId>
-            <version>11.1</version>
+            <artifactId>gtfs2matsim</artifactId>
+			<version>master-33809c4f0f-1</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.matsim</groupId>
+					<artifactId>matsim</artifactId>
+				</exclusion>
+			</exclusions>
         </dependency>
 
         <dependency>
@@ -153,7 +159,7 @@
 		<dependency>
 			<groupId>com.github.matsim-vsp</groupId>
 			<artifactId>pt-extensions</artifactId>
-			<version>662c5ace49</version>
+			<version>ceef00ef6e</version>
 		</dependency>
 
 	</dependencies>
