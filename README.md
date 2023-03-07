@@ -24,6 +24,8 @@ The **MATSim input files, output files, analysis data and visualizations** are l
 
 Handling of large files within git is not without problems (git lfs files are not included in the zip download; we have to pay; ...).  In consequence, large files, both on the input and on the output side, reside at https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/ .  
 
+Furthermore we don't have licenses to make all input data publicly available. Vsp members and RVR can find the non-public input files (e.g. the plans files) at https://svn.vsp.tu-berlin.de/repos/shared-svn/projects/matsim-metropole-ruhr/ .
+
 ### Simple things (without installing/running MATSim)
 
 <!--
