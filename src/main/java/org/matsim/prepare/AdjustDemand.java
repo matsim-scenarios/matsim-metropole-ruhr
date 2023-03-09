@@ -3,6 +3,8 @@ package org.matsim.prepare;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -20,12 +22,15 @@ import picocli.CommandLine;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.NumberFormat;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(name = "adjust-demand")
 public class AdjustDemand implements MATSimAppCommand {
 
+    private static final Logger log = LogManager.getLogger(MATSimAppCommand.class);
     public static final String PERSON_ID_SUFFIX = "_cloned";
     private static final Random rand = new Random();
     private static final Adjustments EMPTY_ADJUSTMENTS = new Adjustments(List.of(), List.of());
@@ -37,6 +42,12 @@ public class AdjustDemand implements MATSimAppCommand {
 
     @CommandLine.Option(names = "--adjustments", description = "CSV-File with adjustments parameters for the cells within the provided shape file", required = true)
     private String adjustments;
+
+    @CommandLine.Option(names = "--locale", description = "Which number format to expect. For de-DE 100.000,05, for en-EN 100,000.05 is expected ")
+    private String localeIdentifier = "de-DE";
+
+    @CommandLine.Option(names = {"--filter", "--f"}, description = "Column Name of property filter. To filter for age and sex provide `--f age --f sex` for example. By default all columns which are not --attr-name or `value' are used.")
+    private List<String> filterColumns = List.of();
 
     @CommandLine.Option(names = "--attr-name", defaultValue = "id")
     private String attrName;
@@ -55,21 +66,22 @@ public class AdjustDemand implements MATSimAppCommand {
         // first check if shapefile was provided
         if (!shp.isDefined()) throw new RuntimeException("Shapefile must be defined!");
 
+        // prepare number format
+        NumberFormat numberFormat = NumberFormat.getInstance(Locale.forLanguageTag(localeIdentifier));
+
         // read cells
         var preparedFactory = new PreparedGeometryFactory();
         Map<String, PreparedGeometry> preparedFeatures = shp.readFeatures().stream()
-                .collect(Collectors.toMap(f -> (String) f.getAttribute(attrName), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
+                .collect(Collectors.toMap(f -> f.getAttribute(attrName).toString(), f -> preparedFactory.create((Geometry) f.getDefaultGeometry())));
 
         // read adjustments
         Map<String, Adjustments> filteredAdjustments = new HashMap<>();
-        try (var bufReader = Files.newBufferedReader(Paths.get(adjustments)); var csvParser = CSVParser.parse(bufReader, CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
+        try (var bufReader = Files.newBufferedReader(Paths.get(adjustments)); var csvParser = CSVParser.parse(bufReader, CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
 
-            List<String> filterColumns = csvParser.getHeaderMap().keySet().stream()
-                    .filter(header -> !header.equals(attrName) && !header.equals("value"))
-                    .toList();
+            List<String> filterColumns = getFilterColumns(csvParser);
 
             for (CSVRecord record : csvParser) {
-                var value = Double.parseDouble(record.get("value"));
+                var value = numberFormat.parse(record.get("value")).doubleValue();
                 var key = record.get(attrName);
                 var filters = filterColumns.stream()
                         .map(record::get)
@@ -100,6 +112,9 @@ public class AdjustDemand implements MATSimAppCommand {
     static void adjust(Population population, Map<String, PreparedGeometry> preparedFeatures, QuadTree<Id<Person>> spatialIndex, Map<String, Adjustments> adjustmentData) {
         for (var cell : preparedFeatures.entrySet()) {
 
+            var personsAdded = new AtomicInteger();
+            var personsRemoved = new AtomicInteger();
+
             // get all the people inside the cell
             var personsInCell = spatialIndex.coveredBy(cell.getValue());
             // get the adjustment and filter or empty adjustment, to avoid extra condition
@@ -108,39 +123,49 @@ public class AdjustDemand implements MATSimAppCommand {
             for (var adjustmentWithFilter : adjustmentsForCell.adjustments) {
                 // get the adjustment factor
                 var factor = adjustmentWithFilter.value();
-                if (factor < 0 || factor > 2) {
+
+                if (factor < 0) {
                     throw new RuntimeException("Adjustment factors are expected to be betweeen [0.0, 2.0]. The value for cell " + cell.getKey() + " was: " + factor);
+                }
+                if (factor > 2) {
+                    log.warn("Growth factor was " + factor + ". We don't know what to do here. Using max growth factor of 2.0");
+                    factor = 2;
                 }
 
                 var growth = factor - 1;
                 // draw that amount of persons
                 var drawnPersons = personsInCell.stream()
-                        .filter(id -> {
-                            var person = population.getPersons().get(id);
-                            return applyAdjustmentFilter(adjustmentsForCell, adjustmentWithFilter, person);
-                        })
+                        // filter for deleted people. The spatial index is not updated, so if there are a lot of categories
+                        // for a single cell a person id, which is still in the spatial index might in fact be removed from the
+                        // population. Chose to do it like this because it seems easier than updating the spatial index.
+                        .filter(id -> population.getPersons().containsKey(id))
+                        .map(id -> population.getPersons().get(id))
+                        .filter(person -> applyAdjustmentFilter(adjustmentsForCell, adjustmentWithFilter, person))
                         .filter(id -> rand.nextDouble() <= Math.abs(growth))
                         .limit((long) (Math.abs(growth) * personsInCell.size()))
+                        .map(Person::getId)
                         .collect(Collectors.toSet());
-
-                System.out.println("Growth rate: " + Math.abs(growth) * personsInCell.size() + " drawn: " + drawnPersons.size());
 
                 if (growth > 0) {
                     // the cell grows clone the persons
                     for (var id : drawnPersons) {
                         var person = population.getPersons().get(id);
-                        var cloned = population.getFactory().createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
+                        var cloned = clonePerson(person, population.getFactory());
                         var clonedPlan = clonePlan(person.getSelectedPlan(), population.getFactory());
                         cloned.addPlan(clonedPlan);
                         population.addPerson(cloned);
+                        personsAdded.incrementAndGet();
                     }
                 } else {
                     // the cell shrinks delete the persons
                     for (var id : drawnPersons) {
                         population.removePerson(id);
+                        personsRemoved.incrementAndGet();
                     }
                 }
             }
+
+            log.info("Finished cell: " + cell.getKey() + ". Added: " + personsAdded.get() + ", Removed: " + personsRemoved.get());
         }
     }
 
@@ -155,6 +180,15 @@ public class AdjustDemand implements MATSimAppCommand {
         return true;
     }
 
+    static Person clonePerson(Person person, PopulationFactory factory) {
+
+        var cloned = factory.createPerson(Id.createPersonId(person.getId().toString() + PERSON_ID_SUFFIX));
+        for (var attr : person.getAttributes().getAsMap().entrySet()) {
+            cloned.getAttributes().putAttribute(attr.getKey(), attr.getValue());
+        }
+        return cloned;
+    }
+
     static Plan clonePlan(Plan plan, PopulationFactory factory) {
 
         var result = factory.createPlan();
@@ -165,6 +199,15 @@ public class AdjustDemand implements MATSimAppCommand {
             } else if (element instanceof Activity act) {
                 var newCoord = createRandomCoord(act.getCoord());
                 var clonedAct = factory.createActivityFromCoord(act.getType(), newCoord);
+                if (act.getEndTime().isDefined()) {
+                    clonedAct.setEndTime(act.getEndTime().seconds());
+                }
+                if (act.getStartTime().isDefined()) {
+                    clonedAct.setStartTime(act.getStartTime().seconds());
+                }
+                if (act.getMaximumDuration().isDefined()) {
+                    clonedAct.setMaximumDuration(act.getMaximumDuration().seconds());
+                }
                 result.addActivity(clonedAct);
             } else {
                 throw new RuntimeException("Unexpected Type");
@@ -172,6 +215,7 @@ public class AdjustDemand implements MATSimAppCommand {
         }
         return result;
     }
+
 
     static Coord createRandomCoord(Coord originalCoord) {
 
@@ -189,8 +233,8 @@ public class AdjustDemand implements MATSimAppCommand {
             var lowerBound = Double.parseDouble(split[0]);
             var upperBound = Double.parseDouble(split[1]);
             return new Range(lowerBound, upperBound);
-        } else if (recordValue.contains("unter") && recordValue.contains("Jahre")) {
-            var split = recordValue.split("unter | Jahre");
+        } else if (recordValue.contains("unter") && (recordValue.contains("Jahre") || recordValue.contains("Jahr"))) {
+            var split = recordValue.split("unter | Jahre | Jahr");
             var upperBound = Double.parseDouble(split[1]);
             var lowerBound = Double.NEGATIVE_INFINITY;
             return new Range(lowerBound, upperBound);
@@ -202,6 +246,16 @@ public class AdjustDemand implements MATSimAppCommand {
         } else {
             return new Exact(recordValue);
         }
+    }
+
+    private List<String> getFilterColumns(CSVParser csvParser) {
+
+        if (this.filterColumns.isEmpty())
+            return csvParser.getHeaderMap().keySet().stream()
+                    .filter(header -> !header.equals(attrName) && !header.equals("value"))
+                    .toList();
+
+        return this.filterColumns;
     }
 
     static QuadTree<Id<Person>> createSpatialIndex(Population population) {

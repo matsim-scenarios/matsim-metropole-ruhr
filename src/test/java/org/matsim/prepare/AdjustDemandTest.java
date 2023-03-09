@@ -183,7 +183,8 @@ public class AdjustDemandTest {
                 "--plans", testUtils.getClassInputDirectory() + "input_plans.xml.gz",
                 "--adjustments", testUtils.getInputDirectory() + "adjustments.csv",
                 "--shp", testUtils.getClassInputDirectory() + "cells.shp",
-                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz",
+                "--locale", "en-EN"
         );
 
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
@@ -216,7 +217,8 @@ public class AdjustDemandTest {
                 "--plans", testUtils.getOutputDirectory() + "plans-with-filter.xml.gz",
                 "--adjustments", testUtils.getInputDirectory() + "adjustments-with-filter.csv",
                 "--shp", testUtils.getClassInputDirectory() + "cells.shp",
-                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz",
+                "--locale", "en-EN"
         );
 
         // count persons with filter criteria the file has
@@ -263,7 +265,8 @@ public class AdjustDemandTest {
                 "--plans", testUtils.getOutputDirectory() + "plans-with-age-filter.xml.gz",
                 "--adjustments", testUtils.getInputDirectory() + "adjustments-with-age-filter.csv",
                 "--shp", testUtils.getClassInputDirectory() + "cells.shp",
-                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz",
+                "--locale", "en-EN"
         );
 
         var cells = createCells();
@@ -291,7 +294,8 @@ public class AdjustDemandTest {
                 "--plans", testUtils.getClassInputDirectory() + "input_plans.xml.gz",
                 "--adjustments", testUtils.getInputDirectory() + "adjustments-missing-lines.csv",
                 "--shp", testUtils.getClassInputDirectory() + "cells.shp",
-                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz"
+                "--output", testUtils.getOutputDirectory() + "output_plans.xml.gz",
+                "--locale", "en-EN"
         );
 
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
