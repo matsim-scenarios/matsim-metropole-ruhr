@@ -96,7 +96,7 @@ public class AdjustDemand implements MATSimAppCommand {
         // read population
         var population = PopulationUtils.readPopulation(inputFile.toString());
         QuadTree<Id<Person>> spatialIndex = createSpatialIndex(population);
-        // no go through all the cells and adjust the population according to the values in adjust table
+        // now go through all the cells and adjust the population according to the values in adjust table
         adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
         PopulationUtils.writePopulation(population, outputFile.toString());
@@ -192,28 +192,46 @@ public class AdjustDemand implements MATSimAppCommand {
     static Plan clonePlan(Plan plan, PopulationFactory factory) {
 
         var result = factory.createPlan();
+        Coord clonedHomeCoord = null;
 
-        for (var element : plan.getPlanElements()) {
-            if (element instanceof Leg leg) {
-                result.addLeg(leg);
-            } else if (element instanceof Activity act) {
-                var newCoord = createRandomCoord(act.getCoord());
-                var clonedAct = factory.createActivityFromCoord(act.getType(), newCoord);
-                if (act.getEndTime().isDefined()) {
-                    clonedAct.setEndTime(act.getEndTime().seconds());
+        var planIterator = plan.getPlanElements().iterator();
+
+        while (planIterator.hasNext()) {
+            var element = planIterator.next();
+
+            if (element instanceof Activity act && !TripStructureUtils.isStageActivityType(act.getType())) {
+                if (clonedHomeCoord == null && act.getType().startsWith("home")) {
+                    clonedHomeCoord = createRandomCoord(act.getCoord());
                 }
-                if (act.getStartTime().isDefined()) {
-                    clonedAct.setStartTime(act.getStartTime().seconds());
-                }
-                if (act.getMaximumDuration().isDefined()) {
-                    clonedAct.setMaximumDuration(act.getMaximumDuration().seconds());
-                }
+                var newCoord = act.getType().startsWith("home") ? clonedHomeCoord : createRandomCoord(act.getCoord());
+                var clonedAct = cloneActivity(act, newCoord, factory);
                 result.addActivity(clonedAct);
-            } else {
-                throw new RuntimeException("Unexpected Type");
+
+                if (planIterator.hasNext()) {
+                    var leg = (Leg) planIterator.next();
+                    var routingModeAttribute = (String) leg.getAttributes().getAttribute("routingMode");
+                    var routingMode = routingModeAttribute == null ? leg.getMode() : routingModeAttribute;
+                    var clonedLeg = factory.createLeg(routingMode);
+                    result.addLeg(clonedLeg);
+                }
             }
         }
         return result;
+    }
+
+    static Activity cloneActivity(Activity act, Coord actCoord, PopulationFactory factory) {
+
+        var clonedAct = factory.createActivityFromCoord(act.getType(), actCoord);
+        if (act.getEndTime().isDefined()) {
+            clonedAct.setEndTime(act.getEndTime().seconds());
+        }
+        if (act.getStartTime().isDefined()) {
+            clonedAct.setStartTime(act.getStartTime().seconds());
+        }
+        if (act.getMaximumDuration().isDefined()) {
+            clonedAct.setMaximumDuration(act.getMaximumDuration().seconds());
+        }
+        return clonedAct;
     }
 
 
