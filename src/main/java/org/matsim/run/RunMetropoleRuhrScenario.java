@@ -116,6 +116,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public static void main(String[] args) {
+//		args = new String [] {
+//				"--1pct"
+//				, "--config:controler.lastIteration", "0"
+//				, "run"
+//		};
 		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
 	}
 
