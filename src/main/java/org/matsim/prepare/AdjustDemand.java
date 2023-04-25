@@ -49,6 +49,10 @@ public class AdjustDemand implements MATSimAppCommand {
     @CommandLine.Option(names = {"--filter", "--f"}, description = "Column Name of property filter. To filter for age and sex provide `--f age --f sex` for example. By default all columns which are not --attr-name or `value' are used.")
     private List<String> filterColumns = List.of();
 
+    @CommandLine.Option(names = {"--ignore-filter", "--if"})
+    private boolean ignoreFilter = false;
+
+
     @CommandLine.Option(names = "--attr-name", defaultValue = "id")
     private String attrName;
 
@@ -171,6 +175,7 @@ public class AdjustDemand implements MATSimAppCommand {
     }
 
     private static boolean applyAdjustmentFilter(Adjustments adjustmentsForCell, Adjustment adjustmentWithFilter, Person person) {
+
         for (var i = 0; i < adjustmentsForCell.columns.size(); i++) {
             var key = adjustmentsForCell.columns.get(i);
             var criteria = adjustmentWithFilter.filters().get(i);
@@ -277,6 +282,8 @@ public class AdjustDemand implements MATSimAppCommand {
     }
 
     private List<String> getFilterColumns(CSVParser csvParser) {
+
+        if (ignoreFilter) return List.of();
 
         if (this.filterColumns.isEmpty())
             return csvParser.getHeaderMap().keySet().stream()
