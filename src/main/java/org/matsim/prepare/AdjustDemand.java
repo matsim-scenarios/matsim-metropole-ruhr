@@ -82,9 +82,10 @@ public class AdjustDemand implements MATSimAppCommand {
 
             for (CSVRecord record : csvParser) {
                 var value = numberFormat.parse(record.get("value")).doubleValue();
-                var key = record.get(attrName);
+                var key = record.get(attrName).trim();
                 var filters = filterColumns.stream()
                         .map(record::get)
+                        .map(String::trim)
                         .map(AdjustDemand::parseFilter)
                         .toList();
 
@@ -251,6 +252,11 @@ public class AdjustDemand implements MATSimAppCommand {
             var lowerBound = Double.parseDouble(split[0]);
             var upperBound = Double.parseDouble(split[1]);
             return new Range(lowerBound, upperBound);
+        } else if (recordValue.contains(" bis ")) {
+            var split = recordValue.split("bis | Jahre");
+            var lowerBound = Double.parseDouble(split[0]);
+            var upperBound = Double.parseDouble(split[1]);
+            return new Range(lowerBound, upperBound);
         } else if (recordValue.contains("unter") && (recordValue.contains("Jahre") || recordValue.contains("Jahr"))) {
             var split = recordValue.split("unter | Jahre | Jahr");
             var upperBound = Double.parseDouble(split[1]);
@@ -261,6 +267,10 @@ public class AdjustDemand implements MATSimAppCommand {
             var lowerBound = Double.parseDouble(split[0]);
             var upperBound = Double.POSITIVE_INFINITY;
             return new Range(lowerBound, upperBound);
+        } else if (recordValue.contains("männlich")) {
+            return new Exact("m");
+        } else if (recordValue.contains("weiblich")) {
+            return new Exact("f");
         } else {
             return new Exact(recordValue);
         }
