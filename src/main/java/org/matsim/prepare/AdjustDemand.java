@@ -2,6 +2,7 @@ package org.matsim.prepare;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -104,7 +105,21 @@ public class AdjustDemand implements MATSimAppCommand {
         // now go through all the cells and adjust the population according to the values in adjust table
         adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
 
+        QuadTree<Id<Person>> spatialIndexAdjusted = createSpatialIndex(population);
+
         PopulationUtils.writePopulation(population, outputFile.toString());
+
+        // write accumulated numbers
+        try (var writer = Files.newBufferedWriter(outputFile.getParent().resolve("acc.csv")); var printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("feature-id", "population-before", "population-after"))) {
+            for (var feature : preparedFeatures.entrySet()) {
+
+                var personsInFeatureBefore = spatialIndex.coveredBy(feature.getValue());
+                var personsInFeatureAfter = spatialIndexAdjusted.coveredBy(feature.getValue());
+                var featureId = feature.getKey();
+
+                printer.printRecord(featureId, personsInFeatureBefore.size(), personsInFeatureAfter.size());
+            }
+        }
 
         return 0;
     }
