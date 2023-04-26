@@ -1,0 +1,6 @@
+id;age;sex;any-filter-name;value
+1;0 bis unter 30 Jahre;male;foo;2.0
+1;30 bis unter 60 Jahre;male;foo;2.0
+2;;;;2.0
+3;;;;1.0
+4;;;;2.0

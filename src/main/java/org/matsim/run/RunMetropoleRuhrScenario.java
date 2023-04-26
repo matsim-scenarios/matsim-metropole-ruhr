@@ -58,6 +58,7 @@ import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTri
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
+import org.matsim.prepare.AdjustDemand;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
@@ -77,6 +78,7 @@ import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgre
 @MATSimApplication.Analysis({
 		TravelTimeAnalysis.class, LinkStats.class, TripMatrix.class
 })
+@MATSimApplication.Prepare({AdjustDemand.class})
 public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	public static final String VERSION = "v1.4";
