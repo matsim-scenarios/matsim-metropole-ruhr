@@ -59,6 +59,8 @@ import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
+import org.matsim.prepare.CreateSupply;
+import org.matsim.prepare.RuhrUtils;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
@@ -191,12 +193,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
-		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName("oneHourPCost");
-		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName("extraHourPCost");
-		parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName("maxDailyPCost");
-		parkingCostConfigGroup.setMaxParkingDurationAttributeName("maxPTime");
-		parkingCostConfigGroup.setParkingPenaltyAttributeName("pFine");
-		parkingCostConfigGroup.setResidentialParkingFeeAttributeName("resPCosts");
+		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName(RuhrUtils.ONE_HOUR_P_COST);
+		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName(RuhrUtils.EXTRA_HOUR_P_COST);
+		parkingCostConfigGroup.setMaxDailyParkingCostLinkAttributeName(RuhrUtils.MAX_DAILY_P_COST);
+		parkingCostConfigGroup.setMaxParkingDurationAttributeName(RuhrUtils.MAX_P_TIME);
+		parkingCostConfigGroup.setParkingPenaltyAttributeName(RuhrUtils.P_FINE);
+		parkingCostConfigGroup.setResidentialParkingFeeAttributeName(RuhrUtils.RES_P_COSTS);
 
 		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		log.info("using accessEgressModeToLinkPlusTimeConstant");

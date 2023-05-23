@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.matsim.prepare.RuhrUtils.*;
+
 public class CreateSupply {
 
 	public enum NetworkResolution {Low, Medium, High}
@@ -244,14 +246,15 @@ public class CreateSupply {
 					}
 				}
 
-				link.getAttributes().putAttribute("oneHourPCost", oneHourPCost);
-				link.getAttributes().putAttribute("extraHourPCost", extraHourPCost);
-				link.getAttributes().putAttribute("maxDailyPCost", maxDailyPCost);
-				link.getAttributes().putAttribute("maxPTime", maxParkingTime);
-				link.getAttributes().putAttribute("pFine", pFine);
-				link.getAttributes().putAttribute("resPCosts", resPCosts);
-				link.getAttributes().putAttribute("zoneName", zoneName);
-				link.getAttributes().putAttribute("zoneGroup", zoneGroup);
+				link.getAttributes().putAttribute(ONE_HOUR_P_COST, oneHourPCost);
+				link.getAttributes().putAttribute(EXTRA_HOUR_P_COST, extraHourPCost);
+				link.getAttributes().putAttribute(MAX_DAILY_P_COST, maxDailyPCost);
+				link.getAttributes().putAttribute(MAX_P_TIME, maxParkingTime);
+				link.getAttributes().putAttribute(P_FINE, pFine);
+				link.getAttributes().putAttribute(RES_P_COSTS, resPCosts);
+				link.getAttributes().putAttribute(ZONE_NAME, zoneName);
+				link.getAttributes().putAttribute(ZONE_GROUP, zoneGroup);
+
 				NetworkUtils.setLinkAccessTime(link, TransportMode.car, accesstime);
 				NetworkUtils.setLinkEgressTime(link, TransportMode.car, egresstime);
 				NetworkUtils.setLinkAccessTime(link, TransportMode.pt, 0.0);
