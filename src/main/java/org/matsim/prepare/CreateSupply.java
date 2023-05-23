@@ -18,6 +18,7 @@ import org.matsim.contrib.osm.networkReader.LinkProperties;
 import org.matsim.contrib.osm.networkReader.OsmBicycleReader;
 import org.matsim.contrib.osm.networkReader.OsmTags;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
@@ -251,14 +252,14 @@ public class CreateSupply {
 				link.getAttributes().putAttribute("resPCosts", resPCosts);
 				link.getAttributes().putAttribute("zoneName", zoneName);
 				link.getAttributes().putAttribute("zoneGroup", zoneGroup);
-				link.getAttributes().putAttribute("accesstime_car", accesstime);
-				link.getAttributes().putAttribute("egresstime_car", egresstime);
-				link.getAttributes().putAttribute("accesstime_pt", 0.0);
-				link.getAttributes().putAttribute("egresstime_pt", 0.0);
-				link.getAttributes().putAttribute("accesstime_bike", 0.0);
-				link.getAttributes().putAttribute("egresstime_bike", 0.0);
-				link.getAttributes().putAttribute("accesstime_ride", 0.0);
-				link.getAttributes().putAttribute("egresstime_ride", 0.0);
+				NetworkUtils.setLinkAccessTime(link, TransportMode.car, accesstime);
+				NetworkUtils.setLinkEgressTime(link, TransportMode.car, egresstime);
+				NetworkUtils.setLinkAccessTime(link, TransportMode.pt, 0.0);
+				NetworkUtils.setLinkEgressTime(link, TransportMode.pt, 0.0);
+				NetworkUtils.setLinkAccessTime(link, TransportMode.bike, 0.0);
+				NetworkUtils.setLinkEgressTime(link, TransportMode.bike, 0.0);
+				NetworkUtils.setLinkAccessTime(link, TransportMode.ride, 0.0);
+				NetworkUtils.setLinkEgressTime(link, TransportMode.ride, 0.0);
 			}
 		}
 
