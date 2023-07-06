@@ -144,6 +144,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		// because vsp default reasons
 		config.facilities().setFacilitiesSource(FacilitiesConfigGroup.FacilitiesSource.onePerActivityLinkInPlansFile);
 
+		// someone wished to have an easy option to remove all intermodal functionality, so remove it from config or switch off
 		if (!intermodal) {
 
 			log.info("Disabling intermodal config...");
@@ -268,11 +269,12 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		controler.addOverridingModule(new SimWrapperModule());
 
-		//TODO ask Gregor L.
+		// allow for separate pt routing modes (pure walk+pt, bike+walk+pt, car+walk+pt, ...)
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
+		// throw additional score or money events if pt is combined with bike or car in the same trip
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
-		// analysis
+		// additional analysis output
 		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
@@ -286,8 +288,9 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
-				// intermodal pt
+				// calculate access/egress leg generalized cost correctly for intermodal pt routing
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
+				// separate pure walk+pt from intermodal pt in mode stats etc.
 				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
 
 				// for income dependent scoring --> this works with the bicycle contrib as we don´t use the scoring in the bicycle contrib
