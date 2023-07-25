@@ -227,7 +227,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
 			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
 
-			simWrapperConfigGroup.defaultParams().sampleSize = String.valueOf(sample.getSample());
+			simWrapperConfigGroup.defaultParams().sampleSize = Double.valueOf(String.valueOf(sample.getSample()));
 		}
 
 		// changes so that input is downloaded
@@ -255,6 +255,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			bike.setPcuEquivalents(0);
 		}
 
+		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
+		bike.setNetworkMode(TransportMode.bike);
 	}
 
 	@Override
