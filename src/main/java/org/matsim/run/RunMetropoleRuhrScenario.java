@@ -249,11 +249,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	protected void prepareScenario(Scenario scenario) {
 
 		//TODO ask Janek if he has no idea --> delete
-		if (zeroBikePCU) {
+	/*	if (zeroBikePCU) {
 			Id<VehicleType> key = Id.create("bike", VehicleType.class);
 			VehicleType bike = scenario.getVehicles().getVehicleTypes().get(key);
 			bike.setPcuEquivalents(0);
-		}
+		} */
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
@@ -277,7 +277,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
 		// additional analysis output
-		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+		//controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
 		controler.addOverridingModule(new AbstractModule() {
