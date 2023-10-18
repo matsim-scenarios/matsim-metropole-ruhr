@@ -17,10 +17,10 @@ import java.util.List;
 
 public class CreateDemand {
 
-	private static final Path rootFolder = Paths.get("../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
+	private static final Path rootFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
 	private static final Path heightData = rootFolder.resolve("./original-data/2021-05-29_RVR_Grid_10m.tif");
 
-	private static final Path outputFolder = Paths.get("../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input");
+	private static final Path outputFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input");
 
 	public static void main(String[] args) {
 
@@ -35,18 +35,18 @@ public class CreateDemand {
 		if (openModel)
 			input = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20230918_OpenData_Ruhr_300m/populaton.xml.gz";
 		else
-			input = "../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz";
+			input = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz";
 
 		String[] argsForRemoveRoutesFromPlans = new String[]{
 				"--plans=" + input,
 				"--keep-selected=true",
-				"--output=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
+				"--output=../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
 		};
 
 		new RemoveRoutesFromPlans().execute(argsForRemoveRoutesFromPlans);
 
 		new CloseTrajectories().execute(
-				"../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
+				"../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population-without-routes.xml.gz",
 				"--output=" + outputPlans,
 				"--min-duration=0",
 				"--act-duration=" + 30 * 60
@@ -56,15 +56,15 @@ public class CreateDemand {
 				"--name=prepare",
 				"--sample-size=0.25",
 				"--population=" + outputPlans,
-				"--attributes=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz", // TODO adapt for open scenario,
-				"--output=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/"
+				"--attributes=../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/personAttributes.xml.gz", // TODO adapt for open scenario,
+				"--output=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/"
 		);
 
 		if (openModel) {
 			new ResolveGridCoordinates().execute(
-					"../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
-					"--output=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
-					"--network=../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
+					"../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
+					"--output=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
+					"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
 					"--shp=../../shared-svn/projects/matsim-germany/landuse/landuse.shp",
 					"--grid-resolution", "300"
 			);
@@ -72,9 +72,9 @@ public class CreateDemand {
 
 		String tmp = outputPlans.replace("25pct", "tmp");
 		new GenerateShortDistanceTrips().execute(
-				"--population=../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
+				"--population=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
 				"--input-crs=EPSG:25832",
-				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
+				"--shp=../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832",
 				"--num-trips=551000",
 				"--output=" + tmp
@@ -83,7 +83,7 @@ public class CreateDemand {
 		new XYToLinks().execute(
 				"--input=" + tmp,
 				"--output=" + tmp,
-				"--network=../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
+				"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
 				"--car-only"
 		);
 
@@ -131,7 +131,7 @@ public class CreateDemand {
 
 		new CheckPopulation().execute(outputPlans,
 				"--input-crs=EPSG:25832",
-				"--shp=../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
+				"--shp=../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 				"--shp-crs=EPSG:25832"
 		);
 
