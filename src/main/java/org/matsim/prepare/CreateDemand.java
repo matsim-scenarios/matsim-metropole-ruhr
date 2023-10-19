@@ -24,6 +24,7 @@ public class CreateDemand {
 
 	public static void main(String[] args) {
 
+		// If true is given as argument, this class will build the open population
 		boolean openModel = args.length > 0 && args[0].equalsIgnoreCase("True");
 
 		String outputPlans = outputFolder.resolve("metropole-ruhr-" + RunMetropoleRuhrScenario.VERSION + "-25pct.plans.xml.gz").toString();
@@ -63,9 +64,9 @@ public class CreateDemand {
 		if (openModel) {
 			new ResolveGridCoordinates().execute(
 					"../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
+					"--input-crs=EPSG:25832",
 					"--output=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/prepare-25pct.plans.xml.gz",
-					"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
-					"--shp=../../shared-svn/projects/matsim-germany/landuse/landuse.shp",
+					"--landuse=../../shared-svn/projects/matsim-germany/landuse/landuse.shp",
 					"--grid-resolution", "300"
 			);
 		}
