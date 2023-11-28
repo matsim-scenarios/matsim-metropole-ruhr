@@ -120,11 +120,16 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public static void main(String[] args) {
-//		args = new String [] {
-//				"--1pct"
-//				, "--config:controler.lastIteration", "0"
-//				, "run"
-//		};
+		if ( args==null || args.length==0 || args[0]==null || args[0].isEmpty() ){
+			args = new String[]{
+					"--config:controler.lastIteration", "0"
+//				, "--download-input"
+					, "--config:plans.inputPlansFile=../../../../../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.plans.xml.gz"
+//				,"--config:network.inputNetworkFile=../../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz"
+					, "--1pct"
+					, "run"
+			};
+		}
 		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
 	}
 
