@@ -87,16 +87,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = LogManager.getLogger(RunMetropoleRuhrScenario.class);
 
-	public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
-
 	@CommandLine.Mixin
 	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
 
 	@CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
 	private boolean zeroBikePCU;
-
-	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
-	private boolean download;
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
@@ -216,14 +211,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
 		}
 
-		if (download) {
-			adjustURL(config.network()::getInputFile, config.network()::setInputFile);
-			adjustURL(config.plans()::getInputFile, config.plans()::setInputFile);
-			adjustURL(config.vehicles()::getVehiclesFile, config.vehicles()::setVehiclesFile);
-			adjustURL(config.transit()::getVehiclesFile, config.transit()::setVehiclesFile);
-			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
-		}
-
 		for (long ii = 600; ii <= 86400; ii += 600) {
 
 			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
@@ -338,20 +325,6 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 
 		Bicycles.addAsOverridingModule(controler);
-	}
-
-	/**
-	 * Appends url to download a resource if not present.
-	 */
-	private void adjustURL(Supplier<String> getter, Consumer<String> setter) {
-
-		String input = getter.get();
-		if (input.startsWith("http"))
-			return;
-
-		String name = new File(input).getName();
-
-		setter.accept(URL + name);
 	}
 
 }
