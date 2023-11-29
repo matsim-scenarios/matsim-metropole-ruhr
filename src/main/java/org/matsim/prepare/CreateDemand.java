@@ -27,7 +27,8 @@ public class CreateDemand {
 		// If true is given as argument, this class will build the open population
 		boolean openModel = args.length > 0 && args[0].equalsIgnoreCase("True");
 
-		String outputPlans = outputFolder.resolve("metropole-ruhr-" + RunMetropoleRuhrScenario.VERSION + "-25pct.plans.xml.gz").toString();
+		String name = openModel ? "open-plans" : "plans";
+		String outputPlans = outputFolder.resolve("metropole-ruhr-" + RunMetropoleRuhrScenario.VERSION + "-25pct." + name + ".xml.gz").toString();
 
 		if (openModel)
 			outputPlans = outputPlans.replace(".plans", ".open-plans");
