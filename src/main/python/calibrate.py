@@ -55,6 +55,8 @@ region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp"
 
 
 def f(persons):
+    persons = gpd.GeoDataFrame(persons, geometry=gpd.points_from_xy(persons.home_x, persons.home_y))
+
     df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", op="intersects")
     return df
 
