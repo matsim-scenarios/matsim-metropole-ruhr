@@ -122,6 +122,7 @@ public class CreateDemand {
 		//----------------------
 
 		new ExtractHomeCoordinates().execute(outputPlans,
+				"--output="+outputPlans,
 				"--csv="+ outputPlans.replace(".xml.gz", "-homes.csv")
 		);
 

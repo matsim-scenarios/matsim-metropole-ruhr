@@ -20,7 +20,7 @@
 		<!-- <matsim.version>13.0-2020w51-SNAPSHOT</matsim.version>  -->
 
 		<!-- PR release -->
-		<matsim.version>16.0-PR2693</matsim.version>
+		<matsim.version>16.0-PR2895</matsim.version>
 		
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -172,7 +172,7 @@
 				<configuration>
 					<forkMode>once</forkMode>
 					<!-- avoid out of memory errors: -->
-					<argLine>-Xmx9500m -Djava.awt.headless=true -Dmatsim.preferLocalDtds=true</argLine>
+					<argLine>-Xmx6500m -Djava.awt.headless=true -Dmatsim.preferLocalDtds=true</argLine>
 					<!--necessary in tu berlin gitlab. BUT not good in other places, so solve by command line switch only where needed.  kai, nov'18-->
 					<!--<useSystemClassLoader>false</useSystemClassLoader>-->
 				</configuration>

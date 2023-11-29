@@ -21,14 +21,11 @@ package org.matsim.run;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
-import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
-import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
@@ -39,18 +36,15 @@ import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
-import org.matsim.contrib.bicycle.Bicycles;
 import org.matsim.contrib.vsp.scenario.SnzActivities;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ChangeModeConfigGroup;
 import org.matsim.core.config.groups.FacilitiesConfigGroup;
-import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.SubtourModeChoiceConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
@@ -61,7 +55,6 @@ import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
-import org.matsim.prepare.CreateSupply;
 import org.matsim.prepare.RuhrUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
@@ -71,13 +64,10 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
+import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION, showDefaultValues = true)
@@ -204,7 +194,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		log.info("using accessEgressModeToLinkPlusTimeConstant");
 		// we do this to model parking search traffic, as on some links car agents have additional travel time
-		config.plansCalcRoute().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
+		config.routing().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
 
@@ -212,17 +202,17 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		// adjust if sample size specific parameters
 		if (sample.isSet()) {
-			config.controler().setRunId(sample.adjustName(config.controler().getRunId()));
-			config.controler().setOutputDirectory(sample.adjustName(config.controler().getOutputDirectory()));
+			config.controller().setRunId(sample.adjustName(config.controller().getRunId()));
+			config.controller().setOutputDirectory(sample.adjustName(config.controller().getOutputDirectory()));
 			config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 
-			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
-			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+			config.qsim().setFlowCapFactor(sample.getSample());
+			config.qsim().setStorageCapFactor(sample.getSample());
 
-			simWrapperConfigGroup.defaultParams().sampleSize = Double.valueOf(String.valueOf(sample.getSample()));
+			simWrapperConfigGroup.defaultParams().sampleSize = sample.getSample();
 		}
 
-		// snz activtiy types that are always the same, Differentiated by typical duration
+		// snz activity types that are always the same, Differentiated by typical duration
 		SnzActivities.addScoringParams(config);
 
 		return config;
