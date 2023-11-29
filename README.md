@@ -20,15 +20,14 @@ The **MATSim input files, output files, analysis data and visualizations** are l
 
 [//]: # (**Other data files**, in particular in `original-input-data`, have their own individual licenses that need to be individually clarified with the copyright holders.)
 
-### Note
+> [!NOTE]
+> Handling of large files within git is not without problems (git lfs files are not included in the zip download; we have to pay; ...).  In consequence, large files, both on the input and on the output side, reside at https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/ .  
 
-Handling of large files within git is not without problems (git lfs files are not included in the zip download; we have to pay; ...).  In consequence, large files, both on the input and on the output side, reside at https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/ .  
+> [!NOTE]
+> ~~We do not have licenses to make all input data publicly available. VSP members and RVR can find the non-public input files (e.g. the plans files) at https://svn.vsp.tu-berlin.de/repos/shared-svn/projects/matsim-metropole-ruhr/ .~~  (By now (Nov'23), this only concerns data that is not strictly necessary to make the model run, but we still need to finalize making the model available.)
 
-Furthermore, we do not have licenses to make all input data publicly available. VSP members and RVR can find the non-public input files (e.g. the plans files) at https://svn.vsp.tu-berlin.de/repos/shared-svn/projects/matsim-metropole-ruhr/ .  (By now (Nov'23), this only concerns data that is not strictly necessary to make the model run, but we still need to calibrate the model.)
-
-<mark>
-The following is not yet fully plugged together.  Things work in general _roughly_ as described, but the details are not yet consistent.  Sorry.
-</mark>
+> [!CAUTION]
+> The following is not yet fully plugged together.  Things work in general _roughly_ as described, but the details are not yet consistent.  Sorry.
 
 ### Simple things (without installing/running MATSim)
 
