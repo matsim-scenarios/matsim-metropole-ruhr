@@ -168,13 +168,33 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M5</version>
+				<version>3.0.0-M9</version>
 				<configuration>
-					<forkMode>once</forkMode>
+					<forkCount>1</forkCount>
+					<reuseForks>false</reuseForks>
 					<!-- avoid out of memory errors: -->
-					<argLine>-Xmx6500m -Djava.awt.headless=true -Dmatsim.preferLocalDtds=true</argLine>
+					<argLine>@{argLine} -Xmx6500m -Djava.awt.headless=true -Dmatsim.preferLocalDtds=true</argLine>
 					<!--necessary in tu berlin gitlab. BUT not good in other places, so solve by command line switch only where needed.  kai, nov'18-->
 					<!--<useSystemClassLoader>false</useSystemClassLoader>-->
+				</configuration>
+			</plugin>
+
+			<!-- Fetch Git information	-->
+			<plugin>
+				<groupId>io.github.git-commit-id</groupId>
+				<artifactId>git-commit-id-maven-plugin</artifactId>
+				<version>5.0.0</version>
+				<executions>
+					<execution>
+						<id>get-the-git-infos</id>
+						<goals>
+							<goal>revision</goal>
+						</goals>
+						<phase>validate</phase>
+					</execution>
+				</executions>
+				<configuration>
+					<failOnNoGitDirectory>false</failOnNoGitDirectory>
 				</configuration>
 			</plugin>
 
@@ -190,6 +210,7 @@
 						</goals>
 						<configuration>
 							<outputFile>${project.basedir}/${project.build.finalName}.jar</outputFile>
+
 							<transformers>
 								<!-- This bit sets the main class for the executable jar as you otherwise would with the assembly plugin -->
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
@@ -198,6 +219,7 @@
 										<Specification-Vendor>org.matsim</Specification-Vendor>
 										<Implementation-Vendor>org.matsim</Implementation-Vendor>
 										<Implementation-Version>${project.version}</Implementation-Version>
+										<SCM-Revision>${git.commit.id.describe-short}</SCM-Revision>
 										<Multi-Release>true</Multi-Release>
 									</manifestEntries>
 								</transformer>
