@@ -26,8 +26,9 @@ Handling of large files within git is not without problems (git lfs files are no
 
 Furthermore, we do not have licenses to make all input data publicly available. VSP members and RVR can find the non-public input files (e.g. the plans files) at https://svn.vsp.tu-berlin.de/repos/shared-svn/projects/matsim-metropole-ruhr/ .  (By now (Nov'23), this only concerns data that is not strictly necessary to make the model run, but we still need to calibrate the model.)
 
-[!CAUTION]
+==
 The following is not yet fully plugged together.  Things work in general _roughly_ as described, but the details are not yet consistent.  Sorry.
+==
 
 ### Simple things (without installing/running MATSim)
 
