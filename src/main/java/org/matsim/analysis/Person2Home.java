@@ -23,8 +23,6 @@ import java.util.Collection;
         name = "analyze-population",
         description = "Extract the home location of the persons in the population file and write it into a csv"
 )
-
-
 public class Person2Home {
 
     public static void main(String[] args) throws IOException {
@@ -37,6 +35,10 @@ public class Person2Home {
     private static void analyzeHomeLocation(Population population, Collection<SimpleFeature> analyzedArea) throws IOException {
         CSVPrinter csvWriter = new CSVPrinter(new FileWriter("persons-home-locations.csv"), CSVFormat.TDF);
         csvWriter.printRecord("person", "home_x", "home_y", "home_location");
+
+        // TODO: a similar functionality is already implemented in ExtractHomeCoordinates
+        // this class will become obsolete, but a newer MATSim version is needed
+
         for (SimpleFeature feature : analyzedArea) {
             Geometry defaultGeometry = (Geometry) feature.getDefaultGeometry();
 
