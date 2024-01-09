@@ -106,11 +106,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public static void main(String[] args) {
-//		args = new String [] {
-//				"--1pct"
-//				, "--config:controler.lastIteration", "0"
-//				, "run"
-//		};
+		// (a (presumably crappy) way to give args from java instead of from the command line See KNRunMetropoleRuhrScenario)
+
 		MATSimApplication.run(RunMetropoleRuhrScenario.class, args);
 	}
 
