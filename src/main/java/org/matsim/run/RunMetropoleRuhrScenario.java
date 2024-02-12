@@ -39,6 +39,7 @@ import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.analysis.traffic.traveltime.SampleValidationRoutes;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
+import org.matsim.contrib.bicycle.BicycleModule;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ChangeModeConfigGroup;
@@ -330,9 +331,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		controler.addOverridingModule(new ParkingCostModule());
 
-
-		// TODO
-		//Bicycles.addAsOverridingModule(controler);
+		controler.addOverridingModule(new BicycleModule());
 	}
 
 	/**
