@@ -21,6 +21,7 @@ import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.testcases.MatsimTestUtils;
+import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
 import java.util.stream.Collectors;
@@ -144,6 +145,8 @@ public class TestBicycleRouting {
                             node.setCoord(coord);
                         });
             }
+            // this is necessary to get the test to work, the default networkMode of the bicycle vehicle type was set to "car"
+            scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class)).setNetworkMode("bike");
         }
     }
 
