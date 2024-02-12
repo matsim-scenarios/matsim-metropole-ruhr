@@ -1,11 +1,14 @@
 package org.matsim.prepare.commercial;
 
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.population.*;
+import org.matsim.api.core.v01.population.Activity;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
+import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.application.prepare.freight.tripGeneration.DefaultDepartureTimeCalculator;
 import org.matsim.application.prepare.freight.tripGeneration.DefaultNumberOfTripsCalculator;
 import org.matsim.core.population.PopulationUtils;
-import org.matsim.core.utils.geometry.geotools.MGC;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,23 +34,18 @@ public class CommercialAgentGeneratorForRVR {
             Plan plan = populationFactory.createPlan();
             double departureTime = departureTimeCalculator.getDepartureTime();
 
-            Activity startAct = populationFactory.createActivityFromCoord("commercial_start",
-                    MGC.point2Coord(MGC.xy2Point(tripRelation.getOriginX(), tripRelation.getOriginY())));
+            Activity startAct = populationFactory.createActivityFromCoord("commercial_start", new Coord(tripRelation.getOriginX(), tripRelation.getOriginY()));
             //TODO location not on motorway
             startAct.setEndTime(departureTime);
             startAct.setMaximumDuration(30 * 60);
 
             plan.addActivity(startAct);
 
-//            Leg leg = populationFactory.createLeg("freight");
-            Leg leg = populationFactory.createLeg("car");
+            //TODO later change mode to vehicle class
+            PopulationUtils.createAndAddLeg(plan, "car");
 
-            plan.addLeg(leg);
-
-            Activity endAct = populationFactory.createActivityFromCoord("commercial_end",
-                    MGC.point2Coord(MGC.xy2Point(tripRelation.getDestinationX(), tripRelation.getDestinationY())));
-            endAct.setMaximumDuration(30 * 60);
-            plan.addActivity(endAct);
+            PopulationUtils.createAndAddActivityFromCoord(plan, "commercial_end",
+                    new Coord(tripRelation.getDestinationX(), tripRelation.getDestinationY())).setMaximumDuration(30 * 60);
 
             person.addPlan(plan);
             writeCommonAttributes(person, tripRelation, tripRelationId, numOfTrips);
