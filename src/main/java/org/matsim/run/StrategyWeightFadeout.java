@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 import org.matsim.core.config.Config;
-import org.matsim.core.config.groups.StrategyConfigGroup;
+import org.matsim.core.config.groups.ReplanningConfigGroup;
 import org.matsim.core.controler.events.IterationStartsEvent;
 import org.matsim.core.controler.listener.IterationStartsListener;
 import org.matsim.core.replanning.GenericPlanStrategy;
@@ -47,7 +47,7 @@ public final class StrategyWeightFadeout implements IterationStartsListener {
 	private final Logger log = LogManager.getLogger(StrategyWeightFadeout.class);
 
 	@Inject
-	private Map<StrategyConfigGroup.StrategySettings, PlanStrategy> planStrategies;
+	private Map<ReplanningConfigGroup.StrategySettings, PlanStrategy> planStrategies;
 
 	@Inject
 	private Config config;
@@ -63,9 +63,9 @@ public final class StrategyWeightFadeout implements IterationStartsListener {
 
 		for (Schedule s : schedules) {
 
-			StrategyConfigGroup.StrategySettings settings = null;
+			ReplanningConfigGroup.StrategySettings settings = null;
 
-			for (StrategyConfigGroup.StrategySettings strategySettings : planStrategies.keySet()) {
+			for (ReplanningConfigGroup.StrategySettings strategySettings : planStrategies.keySet()) {
 				if (strategySettings.getStrategyName().equals(s.name) && strategySettings.getSubpopulation().equals(s.subpopulation)) {
 					settings = strategySettings;
 					break;
@@ -81,16 +81,16 @@ public final class StrategyWeightFadeout implements IterationStartsListener {
 
 			if (Double.isNaN(s.initialWeight)) {
 				s.initialWeight = settings.getWeight();
-				s.startIteration = (int) (config.controler().getLastIteration() * s.startAt);
-				double disable = config.strategy().getFractionOfIterationsToDisableInnovation();
+				s.startIteration = (int) (config.controller().getLastIteration() * s.startAt);
+				double disable = config.replanning().getFractionOfIterationsToDisableInnovation();
 
 				// use disable after if it is set
 				if (!Double.isNaN(s.endAt))
-					s.endIteration = (int) (config.controler().getLastIteration() * s.endAt);
+					s.endIteration = (int) (config.controller().getLastIteration() * s.endAt);
 				else if (settings.getDisableAfter() > 0 && settings.getDisableAfter() < Integer.MAX_VALUE && settings.getDisableAfter() <= disable)
 					s.endIteration = settings.getDisableAfter();
 				else if (Double.isFinite(disable) && disable < Integer.MAX_VALUE)
-					s.endIteration = (int) (config.controler().getLastIteration() * disable);
+					s.endIteration = (int) (config.controller().getLastIteration() * disable);
 				else
 					s.endIteration = settings.getDisableAfter();
 
