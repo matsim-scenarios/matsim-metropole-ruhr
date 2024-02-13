@@ -68,7 +68,7 @@ public class CreateFreightPlans implements MATSimAppCommand {
     @CommandLine.Option(names = "--sample", defaultValue = "1", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
 
-    @CommandLine.Option(names = "--nameOutputPopulation", defaultValue = "1", description = "Name of the output Population")
+    @CommandLine.Option(names = "--nameOutputPopulation", defaultValue = "", description = "Name of the output Population")
     private String nameOutputPopulation;
 
     private Random rnd;
@@ -109,7 +109,7 @@ public class CreateFreightPlans implements MATSimAppCommand {
             Files.createDirectory(output);
         }
         String outputPlansPath;
-        if (nameOutputPopulation == null)
+        if (nameOutputPopulation == null || nameOutputPopulation.isEmpty())
             outputPlansPath = output.toString() + "/rvrCommercial." + (int) sample * 100 + "pct.plans.xml.gz";
         else
             outputPlansPath = output.toString() + "/" + nameOutputPopulation;
