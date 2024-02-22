@@ -11,6 +11,7 @@ public class DeleteRoutesFromPlans {
                 "--plans=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.plans.xml.gz",
                 "--output=../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.plans-withoutRoutes.xml.gz",
                 "--remove-routes=true",
+                "--remove-unselected-plans=true",
                 "--remove-activity-location=true"
         };
         new CleanPopulation().execute(argsForRemoveRoutesFromPlans);
