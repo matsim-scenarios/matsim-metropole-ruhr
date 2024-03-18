@@ -2,22 +2,11 @@ package org.matsim.analysis;
 
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
-import org.apache.commons.collections.CollectionUtils;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.core.population.PopulationUtils;
-import org.matsim.core.router.TripStructureUtils;
-import org.matsim.utils.objectattributes.attributable.Attributes;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class AttributeAnalysis {
@@ -31,9 +20,6 @@ public class AttributeAnalysis {
         Population closedPopulation = PopulationUtils.readPopulation(oldPopulationPath);
         Population openPopulation = PopulationUtils.readPopulation(openPopulationPath);
 
-        List<MapDifference> differenceAttributes = new ArrayList<>();
-        List<List> differenceActivities = new ArrayList<>();
-
         for (Person personClosed: closedPopulation.getPersons().values()) {
             for(Person personOpen: openPopulation.getPersons().values()) {
                 if (personClosed.getId().equals(personOpen.getId())) {
@@ -41,10 +27,7 @@ public class AttributeAnalysis {
                     Map<String, Object> personClosedAttributes = personClosed.getAttributes().getAsMap();
                     Map<String, Object> personOpenAttributes = personOpen.getAttributes().getAsMap();
                     MapDifference<String, Object> diff = Maps.difference(personClosedAttributes, personOpenAttributes);
-                    System.out.println(diff.toString());
-                    if (diff.equals(false)) {
-                        System.out.println("This is not supposed to happen");
-                    }
+                    System.out.println(diff);
 
                 /*    //second activities
                     List<Activity> openActivities = PopulationUtils.getActivities(personClosed.getSelectedPlan(), TripStructureUtils.StageActivityHandling.ExcludeStageActivities);
