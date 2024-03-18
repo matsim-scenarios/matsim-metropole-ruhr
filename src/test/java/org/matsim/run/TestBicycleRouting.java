@@ -88,8 +88,8 @@ public class TestBicycleRouting {
             preparedConfig.global().setNumberOfThreads(1);
             preparedConfig.qsim().setNumberOfThreads(1);
             preparedConfig.plans().setInputFile(null);
-            preparedConfig.controler().setLastIteration(0);
-            preparedConfig.controler().setRunId(RUN_ID);
+            preparedConfig.controller().setLastIteration(0);
+            preparedConfig.controller().setRunId(RUN_ID);
 
             // Disable PT
             preparedConfig.transit().setVehiclesFile(null);
