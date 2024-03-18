@@ -23,15 +23,13 @@ import java.util.Map;
 public class AttributeAnalysis {
 
 
-    public static void main (String args []) throws IOException {
+    public static void main (String[] args) throws IOException {
 
         String openPopulationPath = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20230918_OpenData_Ruhr_300m/populaton.xml.gz";
         String oldPopulationPath = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz";
-        String processedPopulationPath = "../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.plans.xml.gz";
 
         Population closedPopulation = PopulationUtils.readPopulation(oldPopulationPath);
         Population openPopulation = PopulationUtils.readPopulation(openPopulationPath);
-        //PopulationUtils.readPopulation(processedPopulationPath);
 
         List<MapDifference> differenceAttributes = new ArrayList<>();
         List<List> differenceActivities = new ArrayList<>();
