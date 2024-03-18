@@ -1,19 +1,13 @@
 package org.matsim.analysis;
 
-import org.matsim.application.MATSimAppCommand;
-import org.matsim.application.MATSimApplication;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.application.analysis.CheckPopulation;
 import org.matsim.application.analysis.population.PopulationAttributeAnalysis;
 import org.matsim.application.analysis.population.SubTourAnalysis;
-import org.matsim.application.options.CrsOptions;
-import org.matsim.application.options.ShpOptions;
-import picocli.CommandLine;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 
 public class PopulationComparison  {
-
 
     private static final Logger log = LogManager.getLogger(PopulationComparison.class);
 
@@ -33,7 +27,7 @@ public class PopulationComparison  {
                 "--shp-crs", "EPSG:25832"
         };
 
-        //checkPopulation.execute(argsNewPopulation);
+        checkPopulation.execute(argsNewPopulation);
         log.info("---------------");
         log.info("start check population analysis of old population");
         log.info("---------------");
@@ -44,7 +38,7 @@ public class PopulationComparison  {
                 "--input-crs", "EPSG:25832",
                 "--shp-crs", "EPSG:25832"
         };
-        //checkPopulation.execute(argsOldPopulation);
+        checkPopulation.execute(argsOldPopulation);
 
         log.info("---------------");
         log.info("start check population analysis of processed population");
@@ -58,9 +52,9 @@ public class PopulationComparison  {
         };
         checkPopulation.execute(argsProcessedPopulation);
 
-        //new PopulationAttributeAnalysis().execute("--population", openPopulation);
+        new PopulationAttributeAnalysis().execute("--population", openPopulation);
 
-        //new SubTourAnalysis().execute("--population", openPopulation);
+        new SubTourAnalysis().execute("--population", openPopulation);
 
 
     }
