@@ -195,7 +195,7 @@ public class RvrTripRelation {
 
         for (File file : inputFiles) {
             try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(file.toPath(), StandardCharsets.ISO_8859_1),
-                    CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter(',').setHeader().setSkipHeaderRecord(true).build())) {
+                    CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
                 for (CSVRecord record : parser) {
                     Builder builder = new Builder();
                     // Read locations
