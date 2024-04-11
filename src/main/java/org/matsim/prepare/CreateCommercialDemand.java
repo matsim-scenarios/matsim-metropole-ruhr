@@ -10,7 +10,7 @@ import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.prepare.commercial.CreateFreightPlans;
+import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 
 import java.io.IOException;
@@ -26,7 +26,7 @@ public class CreateCommercialDemand {
         String output = "output/completeCommercialTraffic_" + (int) (Double.parseDouble(sample) * 100) + "pct";
 
         if (Files.notExists(Path.of(output, "/" + freightPopulationName))) {
-            new CreateFreightPlans().execute(
+            new GenerateFreightDataRuhr().execute(
                     "--data=../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/",
                     "--network=../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz",
                     "--pathOutput", output,

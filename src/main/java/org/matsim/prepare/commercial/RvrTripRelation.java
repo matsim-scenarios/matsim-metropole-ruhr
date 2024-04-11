@@ -19,6 +19,17 @@ import java.util.Objects;
  * //TODO: Add description
  */
 public class RvrTripRelation {
+    public static final String column_originCellId = "quell_vz_nr";
+    public static final String column_originLocationId = "quell_flaechen_id";
+    public static final String column_destinationCellId = "ziel_vz_nr";
+    public static final String column_destinationLocationId = "ziel_flaechen_id";
+    public static final String column_origin_X = "quell_x";
+    public static final String column_origin_Y = "quell_y";
+    public static final String column_destination_X = "ziel_x";
+    public static final String column_destination_Y = "ziel_y";
+    public static final String column_transportType = "segment";
+    public static final String column_goodsType = "nst";
+    public static final String column_tonesPerYear = "tonnen_gueter";
     /**
      * Start location of the full trip relation
      */
@@ -189,33 +200,33 @@ public class RvrTripRelation {
     }
 
 
-    public static List<RvrTripRelation> readTripRelations(Path pathToDataFolder) throws IOException {
+    public static List<RvrTripRelation> readTripRelations(Path pathToData) throws IOException {
         List<RvrTripRelation> tripRelations = new ArrayList<>();
-        List<File> inputFiles = findInputFiles(pathToDataFolder.toFile());
+//        List<File> inputFiles = findInputFiles(pathToData.toFile());
 
-        for (File file : inputFiles) {
-            try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(file.toPath(), StandardCharsets.ISO_8859_1),
-                    CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
-                for (CSVRecord record : parser) {
-                    Builder builder = new Builder();
-                    // Read locations
-                    builder.originCell(record.get("quell_vz_nr")).originLocationId(record.get("quell_flaechen_id")).
-                            destinationCell(record.get("ziel_vz_nr")).destinationLocationId(record.get("ziel_flaechen_id"));
+        try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(pathToData, StandardCharsets.ISO_8859_1),
+                CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
+            for (CSVRecord record : parser) {
+                Builder builder = new Builder();
+                // Read locations
+                builder.originCell(record.get(column_originCellId)).originLocationId(record.get(column_originLocationId)).
+                        destinationCell(record.get(column_destinationCellId)).destinationLocationId(record.get(column_destinationLocationId));
 
-                    //rear coordinates
-                    builder.originX(Double.parseDouble(record.get("quell_x"))).originY(Double.parseDouble(record.get("quell_y"))).
-                            destinationX(Double.parseDouble(record.get("ziel_x"))).destinationY(Double.parseDouble(record.get("ziel_y")));
+                //read coordinates
+                builder.originX(Double.parseDouble(record.get(column_origin_X))).originY(Double.parseDouble(record.get(column_origin_Y))).
+                        destinationX(Double.parseDouble(record.get(column_destination_X))).destinationY(Double.parseDouble(record.get(
+                                column_destination_Y)));
 
-                    // Read transport type  (FTL or LTL)
-                    builder.transportType(record.get("segment"));
+                // Read transport type  (FTL or LTL)
+                builder.transportType(record.get(column_transportType));
 
-                    // Read goods type and tons
-                    builder.goodsType(record.get("nst")).tonsPerYear(Double.parseDouble(record.get("tonnen_gueter")));
+                // Read goods type and tons
+                builder.goodsType(record.get(column_goodsType)).tonsPerYear(Double.parseDouble(record.get(column_tonesPerYear)));
 
-                    // Build trip relation and add to list
-                    tripRelations.add(builder.build());
-                }
+                // Build trip relation and add to list
+                tripRelations.add(builder.build());
             }
+
         }
 
         return tripRelations;
