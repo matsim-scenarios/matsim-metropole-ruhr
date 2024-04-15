@@ -5,37 +5,26 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.events.Event;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.controler.AbstractModule;
-import org.matsim.core.controler.Controler;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.scoring.ScoringFunction;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.freight.carriers.*;
-import org.matsim.freight.carriers.analysis.RunFreightAnalysisEventBased;
-import org.matsim.freight.carriers.controler.CarrierModule;
 import org.matsim.freight.carriers.controler.CarrierScoringFunctionFactory;
-import org.matsim.vehicles.Vehicle;
-import org.matsim.vehicles.VehicleUtils;
-import org.matsim.vehicles.Vehicles;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightPlansRuhr.class);
@@ -123,20 +112,22 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         populationWriter.write(outputPlansPath);
 
         log.info("Freight plans successfully generated!");
-        log.info("Writing down tsv file for visualization and analysis...");
-        // Write down tsv file for visualization and analysis
-        String freightTripTsvPath = output.toString() + "/freight_trips_" + sampleName + "pct_data.tsv";
-        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(freightTripTsvPath), CSVFormat.TDF);
-        tsvWriter.printRecord("trip_id", "fromCell", "toCell", "from_x", "from_y", "to_x", "to_y", "goodsType", "tripType");
-        for (Person person : outputPopulation.getPersons().values()) {
-            List<PlanElement> planElements = person.getSelectedPlan().getPlanElements();
-            Activity act0 = (Activity) planElements.get(0);
-            Activity act1 = (Activity) planElements.get(2);
-            Coord fromCoord = act0.getCoord();
-            Coord toCoord = act1.getCoord();
-            String fromCell = CommercialTrafficUtils.getOriginCell(person);
-            String toCell = CommercialTrafficUtils.getDestinationCell(person);
-            String tripType = CommercialTrafficUtils.getTransportType(person);
+        boolean writeTsv = false;
+        if (writeTsv) {
+            log.info("Writing down tsv file for visualization and analysis...");
+            // Write down tsv file for visualization and analysis
+            String freightTripTsvPath = output.toString() + "/freight_trips_" + sampleName + "pct_data.tsv";
+            CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(freightTripTsvPath), CSVFormat.TDF);
+            tsvWriter.printRecord("trip_id", "fromCell", "toCell", "from_x", "from_y", "to_x", "to_y", "goodsType", "tripType");
+            for (Person person : outputPopulation.getPersons().values()) {
+                List<PlanElement> planElements = person.getSelectedPlan().getPlanElements();
+                Activity act0 = (Activity) planElements.get(0);
+                Activity act1 = (Activity) planElements.get(2);
+                Coord fromCoord = act0.getCoord();
+                Coord toCoord = act1.getCoord();
+                String fromCell = CommercialTrafficUtils.getOriginCell(person);
+                String toCell = CommercialTrafficUtils.getDestinationCell(person);
+                String tripType = CommercialTrafficUtils.getTransportType(person);
 
             int goodsType = CommercialTrafficUtils.getGoodsType(person);
             tsvWriter.printRecord(person.getId().toString(), fromCell, toCell, fromCoord.getX(), fromCoord.getY(), toCoord.getX(), toCoord.getY(), goodsType, tripType);
@@ -169,103 +160,30 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_carriersWithSolution.xml.gz");
 
-        createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+        LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
 
-        config.controller().setOutputDirectory(output.toString() + "/runMATSim/");
-        config.controller().setLastIteration(0);
-        Controler controler = new Controler(scenario);
-        controler.addOverridingModule(new CarrierModule());
-        controler.addOverridingModule(new AbstractModule() {
-            @Override public void install() {
-                bind(CarrierScoringFunctionFactory.class).toInstance(new CarrierScoringFunctionFactory_KeepScore());
-            }
-        });
-        controler.run();
+//        config.controller().setOutputDirectory(output.toString() + "/runMATSim/");
+//        config.controller().setLastIteration(0);
+//        Controler controler = new Controler(scenario);
+//        controler.addOverridingModule(new CarrierModule());
+//        controler.addOverridingModule(new AbstractModule() {
+//            @Override public void install() {
+//                bind(CarrierScoringFunctionFactory.class).toInstance(new CarrierScoringFunctionFactory_KeepScore());
+//            }
+//        });
+//        controler.run();
 
-        log.info("Run freight analysis");
-        RunFreightAnalysisEventBased freightAnalysis = new RunFreightAnalysisEventBased(output + "/",
-                config.controller().getOutputDirectory() + "/Analysis_new/", config.global().getCoordinateSystem());
-        freightAnalysis.runAnalysis();
+//        log.info("Run freight analysis");
+//        RunFreightAnalysisEventBased freightAnalysis = new RunFreightAnalysisEventBased(output + "/",
+//                config.controller().getOutputDirectory() + "/Analysis_new/", config.global().getCoordinateSystem());
+//        freightAnalysis.runAnalysis();
 //        List<Person> persons = freightAgentGeneratorLTL.generateFreightLTLAgents(freightDemandDataRelation);
 //        for (Person person : persons) {
 //            outputPopulation.addPerson(person);
 //        }
     }
 
-    /**
-     * Creates a population including the plans in preparation for the MATSim run. If a different name of the population is set, different plan variants per person are created
-     */
-    static void createPlansBasedOnCarrierPlans(Scenario scenario, Population outputPopulation) {
 
-        Population population = scenario.getPopulation();
-        PopulationFactory popFactory = population.getFactory();
-
-        Map<String, AtomicLong> idCounter = new HashMap<>();
-
-        Population populationFromCarrier = (Population) scenario.getScenarioElement("allpersons");
-        Vehicles allVehicles = VehicleUtils.getOrCreateAllvehicles(scenario);
-
-        for (Person person : populationFromCarrier.getPersons().values()) {
-
-            Plan plan = popFactory.createPlan();
-//            String carrierName = person.getId().toString().split("freight_")[1].split("_veh_")[0];
-//            Carrier relatedCarrier = CarriersUtils.addOrGetCarriers(scenario).getCarriers()
-//                    .get(Id.create(carrierName, Carrier.class));
-            String subpopulation = "LTL_trips";
-            final String mode = "car";
-
-            List<PlanElement> tourElements = person.getSelectedPlan().getPlanElements();
-            double tourStartTime = 0;
-            for (PlanElement tourElement : tourElements) {
-
-                if (tourElement instanceof Activity activity) {
-                    activity.setCoord(
-                            scenario.getNetwork().getLinks().get(activity.getLinkId()).getFromNode().getCoord());
-                    if (activity.getType().equals("start")) {
-                        tourStartTime = activity.getEndTime().seconds();
-                        activity.setType("commercial_start");
-                    } else
-                        activity.setEndTimeUndefined();
-                    if (activity.getType().equals("end")) {
-                        activity.setStartTime(tourStartTime + 8 * 3600);
-                        activity.setType("commercial_end");
-                    }
-                    plan.addActivity(activity);
-                }
-                if (tourElement instanceof Leg) {
-                    Leg legActivity = popFactory.createLeg(mode);
-                    plan.addLeg(legActivity);
-                }
-            }
-
-            String key = person.getId().toString();
-
-            long id = idCounter.computeIfAbsent(key, (k) -> new AtomicLong()).getAndIncrement();
-
-            Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + id));
-
-            newPerson.addPlan(plan);
-            PopulationUtils.putSubpopulation(newPerson, subpopulation);
-
-            Id<Vehicle> vehicleId = Id.createVehicleId(person.getId().toString());
-
-            VehicleUtils.insertVehicleIdsIntoPersonAttributes(newPerson, Map.of(mode, vehicleId));
-            VehicleUtils.insertVehicleTypesIntoPersonAttributes(newPerson, Map.of(mode, allVehicles.getVehicles().get(vehicleId).getType().getId()));
-
-            outputPopulation.addPerson(newPerson);
-        }
-
-//        String outputPopulationFile;
-//        if (numberOfPlanVariantsPerAgent > 1)
-////				CreateDifferentPlansForFreightPopulation.createMorePlansWithDifferentStartTimes(population, numberOfPlanVariantsPerAgent, 6*3600, 14*3600, 8*3600);
-//            CreateDifferentPlansForFreightPopulation.createMorePlansWithDifferentActivityOrder(population, numberOfPlanVariantsPerAgent);
-//        else if (numberOfPlanVariantsPerAgent < 1)
-//            log.warn(
-//                    "You selected {} of different plan variants per agent. This is invalid. Please check the input parameter. The default is 1 and is now set for the output.",
-//                    numberOfPlanVariantsPerAgent);
-
-        scenario.getPopulation().getPersons().clear();
-    }
 
     private void createPLansForFTLTrips(Person freightDemandDataRelation, FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL, Population outputPopulation) {
         List<Person> persons = freightAgentGeneratorFTL.generateFreightFTLAgents(freightDemandDataRelation, maxKilometerForReturnJourney);

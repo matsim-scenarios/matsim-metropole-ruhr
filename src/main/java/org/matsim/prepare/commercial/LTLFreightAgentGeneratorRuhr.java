@@ -106,7 +106,63 @@ public class LTLFreightAgentGeneratorRuhr {
         newCarrier.setCarrierCapabilities(carrierCapabilities);
     }
 
+    /**
+     * Creates a population including the plans in preparation for the MATSim run. If a different name of the population is set, different plan variants per person are created
+     */
+    static void createPlansBasedOnCarrierPlans(Scenario scenario, Population outputPopulation) {
 
+        Population population = scenario.getPopulation();
+        PopulationFactory popFactory = population.getFactory();
+
+        Map<String, AtomicLong> idCounter = new HashMap<>();
+
+        Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
+
+            carriers.getCarriers().values().forEach(carrier -> {
+                carrier.getSelectedPlan().getScheduledTours().forEach(scheduledTour -> {
+                    Plan plan = PopulationUtils.createPlan();
+                    String subpopulation = "LTL_trips";
+                    final String mode = "car";
+                    List<Tour.TourElement> tourElements = scheduledTour.getTour().getTourElements();
+
+                    //TODO add times
+                    PopulationUtils.createAndAddActivityFromLinkId(plan, "start", scheduledTour.getTour().getStart().getLocation());
+
+                    for (Tour.TourElement tourElement : tourElements) {
+
+                        if (tourElement instanceof Tour.Pickup){
+                            PopulationUtils.createAndAddActivityFromLinkId(plan, "pickup", ((Tour.Pickup) tourElement).getLocation());
+                        }
+                        if (tourElement instanceof Tour.Delivery){
+                            PopulationUtils.createAndAddActivityFromLinkId(plan, "delivery", ((Tour.Delivery) tourElement).getLocation());
+                        }
+                        if (tourElement instanceof Tour.Leg){
+                            PopulationUtils.createAndAddLeg(plan, mode);
+                        }
+                    }
+                    PopulationUtils.createAndAddActivityFromLinkId(plan, "end", scheduledTour.getTour().getEnd().getLocation());
+
+                    String key = carrier.getId().toString();
+
+                    long id = idCounter.computeIfAbsent(key, (k) -> new AtomicLong()).getAndIncrement();
+
+                    Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + id));
+
+                    newPerson.addPlan(plan);
+                    PopulationUtils.putSubpopulation(newPerson, subpopulation);
+
+                    Id<Vehicle> vehicleId = scheduledTour.getVehicle().getId();
+
+                    VehicleUtils.insertVehicleIdsIntoPersonAttributes(newPerson, Map.of(mode, vehicleId));
+                    Id<VehicleType> vehicleTypeId = scheduledTour.getVehicle().getType().getId();
+                    VehicleUtils.insertVehicleTypesIntoPersonAttributes(newPerson, Map.of(mode, vehicleTypeId));
+
+                    outputPopulation.addPerson(newPerson);
+
+                });
+            });
+        scenario.getPopulation().getPersons().clear(); //TODO check if needed
+    }
     private static Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
         return Id.create("Carrier-goodsType_" + CommercialTrafficUtils.getGoodsType(
                 freightDemandDataRelation) + "-facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation), Carrier.class);
