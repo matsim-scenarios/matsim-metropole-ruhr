@@ -40,10 +40,10 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
             defaultValue = "scenarios/metropole-ruhr-v1.0/input/commercial_VehicleTypes.xml")
     private String vehicleTypesFilePath;
-
-    @CommandLine.Option(names = "--nuts", description = "Path to desired network file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/raw-data/shp/NUTS3/NUTS3_2010_DE.shp")
-    // TODO Change this to URL pointing to SVN--> need to update the Location calculator
-    private Path shpPath;
+//
+//    @CommandLine.Option(names = "--nuts", description = "Path to desired network file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/raw-data/shp/NUTS3/NUTS3_2010_DE.shp")
+//    // TODO Change this to URL pointing to SVN--> need to update the Location calculator
+//    private Path shpPath;
 
     @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "output/rvr_freightPlans_new/")
     private Path output;
@@ -129,12 +129,13 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
                 String toCell = CommercialTrafficUtils.getDestinationCell(person);
                 String tripType = CommercialTrafficUtils.getTransportType(person);
 
-            int goodsType = CommercialTrafficUtils.getGoodsType(person);
-            tsvWriter.printRecord(person.getId().toString(), fromCell, toCell, fromCoord.getX(), fromCoord.getY(), toCoord.getX(), toCoord.getY(), goodsType, tripType);
+                int goodsType = CommercialTrafficUtils.getGoodsType(person);
+                tsvWriter.printRecord(person.getId().toString(), fromCell, toCell, fromCoord.getX(), fromCoord.getY(), toCoord.getX(), toCoord.getY(),
+                        goodsType, tripType);
+            }
+            tsvWriter.close();
+            log.info("Tsv file successfully written to " + freightTripTsvPath);
         }
-        tsvWriter.close();
-        log.info("Tsv file successfully written to " + freightTripTsvPath);
-
         return 0;
     }
 
