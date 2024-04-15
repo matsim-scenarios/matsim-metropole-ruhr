@@ -1,31 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v1.0.xsd">
+<vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v2.0.xsd">
 	<vehicleType id="car">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+		</attributes>
 		<length meter="7.5"/>
 		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="36.111111"/>
-		<accessTime secondsPerPerson="1.0"/>
-		<egressTime secondsPerPerson="1.0"/>
-		<doorOperation mode="serial"/>
 		<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
 		<vehicleType id="ride">
-		<length meter="7.5"/>
-		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="36.111111"/>
-		<accessTime secondsPerPerson="1.0"/>
-		<egressTime secondsPerPerson="1.0"/>
-		<doorOperation mode="serial"/>
-		<passengerCarEquivalents pce="0.1"/>
+			<attributes>
+				<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+				<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+				<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			</attributes>
+			<length meter="7.5"/>
+			<width meter="1.0"/>
+			<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
 	<vehicleType id="bike">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1.0</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1.0</attribute>
+		</attributes>
 		<length meter="2.0"/>
 		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h --> 
-		<accessTime secondsPerPerson="1.0"/>
-		<egressTime secondsPerPerson="1.0"/>
-		<doorOperation mode="serial"/>
+		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
 		<passengerCarEquivalents pce="0.1"/>
 	</vehicleType>
 
