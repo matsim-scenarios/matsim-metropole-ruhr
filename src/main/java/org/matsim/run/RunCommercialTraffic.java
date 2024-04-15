@@ -13,6 +13,7 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
 import org.matsim.prepare.commercial.GenerateFreightPlansRuhr;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
+import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,53 +45,87 @@ public class RunCommercialTraffic {
                     "--data", output + "/" + freightDataName,
                     "--network",
                     "../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz",
-                    "--nuts", "../public-svn/matsim/scenarios/countries/de/german-wide-freight/raw-data/shp/NUTS3/NUTS3_2010_DE.shp",
+//                    "--nuts", "../public-svn/matsim/scenarios/countries/de/german-wide-freight/raw-data/shp/NUTS3/NUTS3_2010_DE.shp",
                     "--output", output,
                     "--nameOutputPopulation", freightPopulationName,
                     "--truck-load", "13.0",
                     "--working-days", "260",
+                    "--max-kilometer-for-return-journey", "200",
                     "--sample", sample
             );
 
-        // 3rd step - create small scale commercial traffic
-        String configPath = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.config.xml";
-
+        // 3rd step - create input data for small scale commercial traffic
         String shapeCRS = "EPSG:25832";
         String osmDataLocation = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/osm/";
+
+        String pathCommercialFacilities = output + "/commercialFacilities.xml.gz";
+        if (Files.exists(Path.of(pathCommercialFacilities))) {
+            System.out.println("Commercial facilities already exists. Skipping generation.");
+        } else
+            new CreateDataDistributionOfStructureData().execute(
+                    "--pathOutput", output,
+                    "--landuseConfiguration", "useOSMBuildingsAndLanduse",
+                    "--regionsShapeFileName", osmDataLocation + "regions_25832.shp",
+                    "--regionsShapeRegionColumn", "GEN",
+                    "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
+                    "--zoneShapeFileNameColumn","schluessel",
+                    "--buildingsShapeFileName", osmDataLocation + "buildings_25832.shp",
+                    "--shapeFileBuildingTypeColumn", "building",
+                    "--landuseShapeFileName", osmDataLocation + "landuse_v.1.0_25832.shp",
+                    "--shapeFileLanduseTypeColumn", "landuse",
+                    "--shapeCRS", shapeCRS,
+                    "--pathToInvestigationAreaData", "scenarios/metropole-ruhr-v1.0/input/investigationAreaData.csv"
+            );
+        String configPath = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.config.xml";
+
         String smallScaleCommercialPopulationName = "rvrCommercial." + (int) (Double.parseDouble(sample) * 100) + "pct.plans.xml.gz";
-        String outputSmallScaleCommercial = output + "/smallScaleCommercial";
+        String outputPathSmallScaleCommercial = output + "/smallScaleCommercial/";
+//        new GenerateSmallScaleCommercialTrafficDemand().execute(
+//                configPath,
+//                "--pathToDataDistributionToZones", output + "/dataDistributionPerZone.csv",
+//                "--pathToCommercialFacilities", "../../../" + pathCommercialFacilities,
+//                "--sample", sample,
+//                "--jspritIterations", "1",
+//                "--creationOption", "createNewCarrierFile",
+////                "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
+//                "--smallScaleCommercialTrafficType", "goodsTraffic",
+////                "--zoneShapeFileName", "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040_RuhrOnly2.shp",
+//                "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
+//                "--zoneShapeFileNameColumn","schluessel",
+//                "--shapeCRS", shapeCRS,
+//                "--pathOutput", outputPathSmallScaleCommercial,
+//                "--network=../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz",
+//                "--nameOutputPopulation", smallScaleCommercialPopulationName);
+
         new GenerateSmallScaleCommercialTrafficDemand().execute(
                 configPath,
-                "--pathToInvestigationAreaData", "scenarios/metropole-ruhr-v1.0/input/investigationAreaData.csv",
+                "--pathToDataDistributionToZones", output + "/dataDistributionPerZone.csv",
+                "--pathToCommercialFacilities", "../../../" + pathCommercialFacilities,
+                "--carrierFilePath", "../../../" + outputPathSmallScaleCommercial + "/metropole-ruhr-v1.4-3pct.output_CarrierDemand.xml",
                 "--sample", sample,
-                "--jspritIterations", "2",
-                "--creationOption", "createNewCarrierFile",
-                "--landuseConfiguration", "useOSMBuildingsAndLanduse",
-                "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
+                "--jspritIterations", "1",
+                "--creationOption", "useExistingCarrierFileWithoutSolution",
+//                "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
+                "--smallScaleCommercialTrafficType", "goodsTraffic",
 //                "--zoneShapeFileName", "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040_RuhrOnly2.shp",
                 "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
                 "--zoneShapeFileNameColumn","schluessel",
-                "--regionsShapeFileName", osmDataLocation + "regions_25832.shp",
-                "--regionsShapeRegionColumn", "GEN",
-                "--buildingsShapeFileName", osmDataLocation + "buildings_25832.shp",
-                "--shapeFileBuildingTypeColumn", "building",
-                "--landuseShapeFileName", osmDataLocation + "landuse_v.1.0_25832.shp",
-                "--shapeFileLanduseTypeColumn", "landuse",
                 "--shapeCRS", shapeCRS,
-                "--pathOutput", outputSmallScaleCommercial,
+                "--pathOutput", outputPathSmallScaleCommercial,
                 "--network=../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz",
                 "--nameOutputPopulation", smallScaleCommercialPopulationName);
 
         // 4th step - Merge freight and commercial populations
+        String pathMergedPopulation = output + "/" + freightPopulationName.replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
         new MergePopulations().execute(
                 "--input1", output + "/" + freightPopulationName,
-                "--input2", outputSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
-                "--output", output + "/" + freightPopulationName.replace(".plans.xml.gz", "") + "_merged.plans.xml.gz"
+                "--input2", outputPathSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
+                "--output", pathMergedPopulation
         );
 
         Config config = ConfigUtils.loadConfig(configPath);
 
-        config.plans().setInputFile("output/commercial/" + freightPopulationName);
+        config.plans().setInputFile(pathMergedPopulation);
         config.network().setInputFile(
                 "../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz");
         config.controller().setOutputDirectory("output/commercial/Run_" + (int) (Double.parseDouble(sample) * 100) + "pct");
