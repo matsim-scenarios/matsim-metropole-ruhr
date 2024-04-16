@@ -104,7 +104,8 @@ public class LTLFreightAgentGeneratorRuhr {
     }
 
     /**
-     * Creates a population including the plans in preparation for the MATSim run. If a different name of the population is set, different plan variants per person are created
+     * Creates a population including the plans based on the scheduled tours of the carriers.
+     * If a tour has multiple similar activities (e.g., multiple pickups at the same location), the activities are merged tp one activity.
      */
     static void createPlansBasedOnCarrierPlans(Scenario scenario, Population outputPopulation) {
 
@@ -120,24 +121,47 @@ public class LTLFreightAgentGeneratorRuhr {
                     Plan plan = PopulationUtils.createPlan();
                     String subpopulation = "LTL_trips";
                     final String mode = "car";
-                    List<Tour.TourElement> tourElements = scheduledTour.getTour().getTourElements();
+                    List<Tour.TourElement> carrierScheduledPlanElements = scheduledTour.getTour().getTourElements();
 
                     //TODO add times
-                    PopulationUtils.createAndAddActivityFromLinkId(plan, "start", scheduledTour.getTour().getStart().getLocation());
+                    PopulationUtils.createAndAddActivityFromLinkId(plan, "start", scheduledTour.getTour().getStart().getLocation()).setEndTime(scheduledTour.getTour().getStart().getExpectedArrival()); //TODO check if correct
+                    Id<Link> previousLocation = scheduledTour.getTour().getStart().getLocation();
+                    Id<Link> lastLocationOfTour = scheduledTour.getTour().getEnd().getLocation();
 
-                    for (Tour.TourElement tourElement : tourElements) {
+                    for (int i = 0; i < carrierScheduledPlanElements.size(); i++) {
 
-                        if (tourElement instanceof Tour.Pickup){
-                            PopulationUtils.createAndAddActivityFromLinkId(plan, "pickup", ((Tour.Pickup) tourElement).getLocation());
+                        Tour.TourElement tourElement = carrierScheduledPlanElements.get(i);
+                        if (tourElement instanceof Tour.Pickup pickup) {
+                            Id<Link> linkID = pickup.getLocation();
+                            Activity lastActivity = plan.getPlanElements().get(plan.getPlanElements().size() -1) instanceof Activity activity ? activity : null;
+                            if (lastActivity != null && lastActivity.getType().equals("pickup") && lastActivity.getLinkId().equals(linkID)) {
+                                lastActivity.setMaximumDuration(lastActivity.getMaximumDuration().seconds() + pickup.getDuration());
+                            } else {
+                                PopulationUtils.createAndAddActivityFromLinkId(plan, "pickup", linkID).setMaximumDuration(
+                                        pickup.getDuration());
+                                previousLocation = linkID;
+                            }
                         }
-                        if (tourElement instanceof Tour.Delivery){
-                            PopulationUtils.createAndAddActivityFromLinkId(plan, "delivery", ((Tour.Delivery) tourElement).getLocation());
+                        if (tourElement instanceof Tour.Delivery delivery) {
+                            Id<Link> linkID = delivery.getLocation();
+                            Activity lastActivity = plan.getPlanElements().get(plan.getPlanElements().size() -1) instanceof Activity activity ? activity : null;
+                            if (lastActivity != null && lastActivity.getType().equals("delivery") && lastActivity.getLinkId().equals(linkID)) {
+                                lastActivity.setMaximumDuration(
+                                        lastActivity.getMaximumDuration().seconds() + delivery.getDuration());
+                            } else {
+                                PopulationUtils.createAndAddActivityFromLinkId(plan, "delivery", linkID).setMaximumDuration(
+                                        delivery.getDuration());
+                                previousLocation = linkID;
+                            }
                         }
-                        if (tourElement instanceof Tour.Leg){
+                        if (tourElement instanceof Tour.Leg) {
+                            Id<Link> nextlinkID = carrierScheduledPlanElements.size() == i + 1 ? null : carrierScheduledPlanElements.get(i + 1) instanceof Tour.TourActivity activity ? activity.getLocation() : null;
+                            if (nextlinkID != null && nextlinkID.equals(previousLocation))
+                                continue;
                             PopulationUtils.createAndAddLeg(plan, mode);
                         }
                     }
-                    PopulationUtils.createAndAddActivityFromLinkId(plan, "end", scheduledTour.getTour().getEnd().getLocation());
+                    PopulationUtils.createAndAddActivityFromLinkId(plan, "end", lastLocationOfTour).setMaximumDuration(scheduledTour.getTour().getEnd().getDuration());
 
                     String key = carrier.getId().toString();
 
