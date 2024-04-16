@@ -20,21 +20,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class LTLFreightAgentGeneratorRuhr {
     private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.DepartureTimeCalculator departureTimeCalculator;
-    private final PopulationFactory populationFactory;
     private final DefaultKilogramsPerDayCalculator kilogramsPerDayCalculator;
 
     public LTLFreightAgentGeneratorRuhr(int workingDays, double sample) {
         this.departureTimeCalculator = new DefaultDepartureTimeCalculator();
         this.kilogramsPerDayCalculator = new DefaultKilogramsPerDayCalculator(workingDays, sample);
-        this.populationFactory = PopulationUtils.getFactory();
-    }
-
-    public List<Person> generateFreightLTLAgents(Person freightDemandDataRelation) {
-        List<Person> createdFreightAgentsForThisRelation = new ArrayList<>();
-//        createFreightAgentWithPlan(freightDemandDataRelation, createdFreightAgentsForThisRelation, maxKilometerForReturnJourney);
-
-        return createdFreightAgentsForThisRelation;
-
     }
 
     public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario) {
