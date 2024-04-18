@@ -65,6 +65,9 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--sample", defaultValue = "0.1", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
 
+    @CommandLine.Option(names = "--jsprit-iterations-for-LTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
+    private int jspritIterationsForLTL;
+
     @Override
     public Integer call() throws Exception {
 //        Network network = NetworkUtils.readNetwork(networkPath);
@@ -95,8 +98,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
             }
         }
 
-        createPLansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation);
-
+        createPLansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
 
         if (!Files.exists(output)) {
             Files.createDirectory(output);

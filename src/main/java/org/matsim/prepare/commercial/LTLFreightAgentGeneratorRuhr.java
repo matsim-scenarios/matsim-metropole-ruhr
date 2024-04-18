@@ -27,7 +27,7 @@ public class LTLFreightAgentGeneratorRuhr {
         this.kilogramsPerDayCalculator = new DefaultKilogramsPerDayCalculator(workingDays, sample);
     }
 
-    public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario) {
+    public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario, int jspritIterationsForLTL) {
         Carriers carriers  = CarriersUtils.addOrGetCarriers(scenario);
 
         TransportModeNetworkFilter filter = new TransportModeNetworkFilter(scenario.getNetwork());
@@ -48,7 +48,7 @@ public class LTLFreightAgentGeneratorRuhr {
                 }
                 else {
                     Carrier newCarrier = CarriersUtils.createCarrier(carrierId);
-                    CarriersUtils.setJspritIterations(newCarrier, 1);
+                    CarriersUtils.setJspritIterations(newCarrier, jspritIterationsForLTL);
                     Link fromLinkId = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getOriginX(freightDemandDataRelation), CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
                     createFreightVehicles (scenario, newCarrier, fromLinkId.getId());
                     addShipment(filteredNetwork, newCarrier, freightDemandDataRelation, fromLinkId.getId());
