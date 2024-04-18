@@ -7,6 +7,7 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.prepare.freight.tripGeneration.DefaultDepartureTimeCalculator;
+import org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.TransportModeNetworkFilter;
 import org.matsim.core.population.PopulationUtils;
@@ -19,11 +20,11 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class LTLFreightAgentGeneratorRuhr {
-    private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.DepartureTimeCalculator departureTimeCalculator;
+    private static FreightAgentGenerator.DepartureTimeCalculator departureTimeCalculator = null;
     private final DefaultKilogramsPerDayCalculator kilogramsPerDayCalculator;
 
     public LTLFreightAgentGeneratorRuhr(int workingDays, double sample) {
-        this.departureTimeCalculator = new DefaultDepartureTimeCalculator();
+        departureTimeCalculator = new DefaultDepartureTimeCalculator();
         this.kilogramsPerDayCalculator = new DefaultKilogramsPerDayCalculator(workingDays, sample);
     }
 
@@ -80,7 +81,7 @@ public class LTLFreightAgentGeneratorRuhr {
         CarrierCapabilities carrierCapabilities = CarrierCapabilities.Builder.newInstance().setFleetSize(
                 CarrierCapabilities.FleetSize.INFINITE).build();
 
-        int vehicleStartTime = 0 * 3600;
+        int vehicleStartTime = (int) departureTimeCalculator.getDepartureTime();
         int vehicleEndTime = 24 * 3600;
         VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create("heavy40t", VehicleType.class));
         vehicleType.setNetworkMode("car"); //TODO change later
