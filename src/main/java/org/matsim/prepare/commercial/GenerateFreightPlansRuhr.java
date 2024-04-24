@@ -5,47 +5,45 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.events.Event;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.scoring.ScoringFunction;
 import org.matsim.core.utils.io.IOUtils;
-import org.matsim.freight.carriers.*;
-import org.matsim.freight.carriers.controler.CarrierScoringFunctionFactory;
+import org.matsim.freight.carriers.CarrierVehicleTypeReader;
+import org.matsim.freight.carriers.CarrierVehicleTypes;
+import org.matsim.freight.carriers.CarriersUtils;
+import org.matsim.freight.carriers.FreightCarriersConfigGroup;
+import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightPlansRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to generated freight data",
-            defaultValue = "output/commercial/ruhr_freightData_100pct.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v1.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
     private String dataPath;
 
     @CommandLine.Option(names = "--network", description = "Path to desired network file",
-            defaultValue = "../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v1.0/input/ruhr_network_adjustedModes.xml.gz")
     private String networkPath;
 
     @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/commercial_VehicleTypes.xml")
+            defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml")
     private String vehicleTypesFilePath;
-//
-//    @CommandLine.Option(names = "--nuts", description = "Path to desired network file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/raw-data/shp/NUTS3/NUTS3_2010_DE.shp")
-//    // TODO Change this to URL pointing to SVN--> need to update the Location calculator
-//    private Path shpPath;
 
-    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "output/rvr_freightPlans_new/")
+    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/rvr_freightPlans_new/")
     private Path output;
 
     @CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file")
@@ -70,8 +68,6 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-//        Network network = NetworkUtils.readNetwork(networkPath);
-//        log.info("Network successfully loaded!");
 
         log.info("preparing freight agent generator...");
         FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL = new FTLFreightAgentGeneratorRuhr(averageTruckLoad, workingDays, sample);
@@ -90,7 +86,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         int i = 0;
         for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
             if (i % 500000 == 0) {
-                log.info("Processing: " + i + " out of " + inputFreightDemandData.getPersons().size() + " entries have been processed");
+                log.info("Processing: {} out of {} entries have been processed", i, inputFreightDemandData.getPersons().size());
             }
             i++;
             if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.FTL.toString())){
@@ -141,7 +137,11 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         return 0;
     }
 
-    private void createPLansForLTLTrips(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL, Population outputPopulation) throws ExecutionException, InterruptedException, IOException {
+    /**
+     * Creates plans for LTL trips. Therefore, multiple carriers are created to solve the resulted vehicle routing problem.
+     */
+    private void createPLansForLTLTrips(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL, Population outputPopulation,
+                                        int jspritIterationsForLTL) throws ExecutionException, InterruptedException {
 
         Config config = ConfigUtils.createConfig();
         config.network().setInputFile(networkPath);
@@ -155,39 +155,38 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
         new CarrierVehicleTypeReader( carrierVehicleTypes ).readURL( IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
 
-        freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario);
+        freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL);
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_carriersNoSolution.xml.gz");
+        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersNoSolution.xml.gz");
+
+        filterRelevantVehicleTypesForTourplanning(scenario);
 
         CarriersUtils.runJsprit(scenario);
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_carriersWithSolution.xml.gz");
+        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersWithSolution.xml.gz");
 
         LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+    }
 
-//        config.controller().setOutputDirectory(output.toString() + "/runMATSim/");
-//        config.controller().setLastIteration(0);
-//        Controler controler = new Controler(scenario);
-//        controler.addOverridingModule(new CarrierModule());
-//        controler.addOverridingModule(new AbstractModule() {
-//            @Override public void install() {
-//                bind(CarrierScoringFunctionFactory.class).toInstance(new CarrierScoringFunctionFactory_KeepScore());
-//            }
-//        });
-//        controler.run();
+    /** Remove vehicle types which are not used by the carriers
+     * @param scenario the scenario
+     */
+    private static void filterRelevantVehicleTypesForTourplanning(Scenario scenario) {
+        //
+        Map<Id<VehicleType>, VehicleType> readVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario).getVehicleTypes();
+        List<Id<VehicleType>> usedCarrierVehicleTypes = CarriersUtils.getCarriers(scenario).getCarriers().values().stream()
+                .flatMap(carrier -> carrier.getCarrierCapabilities().getCarrierVehicles().values().stream())
+                .map(vehicle -> vehicle.getType().getId())
+                .distinct()
+                .toList();
 
-//        log.info("Run freight analysis");
-//        RunFreightAnalysisEventBased freightAnalysis = new RunFreightAnalysisEventBased(output + "/",
-//                config.controller().getOutputDirectory() + "/Analysis_new/", config.global().getCoordinateSystem());
-//        freightAnalysis.runAnalysis();
-//        List<Person> persons = freightAgentGeneratorLTL.generateFreightLTLAgents(freightDemandDataRelation);
-//        for (Person person : persons) {
-//            outputPopulation.addPerson(person);
-//        }
+        readVehicleTypes.keySet().removeIf(vehicleType -> !usedCarrierVehicleTypes.contains(vehicleType));
     }
 
 
-
+    /**
+     * Creates plans for FTL trips.
+     */
     private void createPLansForFTLTrips(Person freightDemandDataRelation, FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL, Population outputPopulation) {
         List<Person> persons = freightAgentGeneratorFTL.generateFreightFTLAgents(freightDemandDataRelation, maxKilometerForReturnJourney);
         for (Person person : persons) {
@@ -208,29 +207,4 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         return sampleName;
     }
 
-    private static class CarrierScoringFunctionFactory_KeepScore implements CarrierScoringFunctionFactory {
-        @Override public ScoringFunction createScoringFunction(Carrier carrier ){
-            return new ScoringFunction(){
-                @Override public void handleActivity( Activity activity ){
-                }
-                @Override public void handleLeg( Leg leg ){
-                }
-                @Override public void agentStuck( double time ){
-                }
-                @Override public void addMoney( double amount ){
-                }
-                @Override public void addScore( double amount ){
-                }
-                @Override public void finish(){
-                }
-                @Override public double getScore(){
-                    return CarriersUtils.getJspritScore(carrier.getSelectedPlan()); //2nd Quickfix: Keep the current score -> which ist normally the score from jsprit. -> Better safe JspritScore as own value.
-//					return Double.MIN_VALUE; // 1st Quickfix, to have a "double" value for xsd (instead of neg.-Infinity).
-//					return Double.NEGATIVE_INFINITY; // Default from KN -> causes errors with reading in carrierFile because Java writes "Infinity", while XSD needs "INF"
-                }
-                @Override public void handleEvent( Event event ){
-                }
-            };
-        }
-    }
 }
