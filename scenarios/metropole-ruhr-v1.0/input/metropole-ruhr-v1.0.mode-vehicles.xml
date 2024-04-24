@@ -11,6 +11,46 @@
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
+	<vehicleType id="truck8t">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+		</attributes>
+		<length meter="7.5"/>
+		<width meter="1.0"/>
+		<passengerCarEquivalents pce="3.5"/>
+	</vehicleType>
+	<vehicleType id="truck18t">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+		</attributes>
+		<length meter="7.5"/>
+		<width meter="1.0"/>
+		<passengerCarEquivalents pce="3.5"/>
+	</vehicleType>
+	<vehicleType id="truck40t">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+		</attributes>
+		<length meter="7.5"/>
+		<width meter="1.0"/>
+		<passengerCarEquivalents pce="3.5"/>
+	</vehicleType>
+	<vehicleType id="truck26t">
+		<attributes>
+			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
+			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
+		</attributes>
+		<length meter="7.5"/>
+		<width meter="1.0"/>
+		<passengerCarEquivalents pce="3.5"/>
+	</vehicleType>
 		<vehicleType id="ride">
 			<attributes>
 				<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
@@ -134,7 +174,7 @@
 			</attributes>
 		</costInformation>
 		<passengerCarEquivalents pce="2.0"/>
-		<networkMode networkMode="truck"/>
+		<networkMode networkMode="truck8t"/>
 		<flowEfficiencyFactor factor="1.0"/>
 	</vehicleType>
 
@@ -160,7 +200,7 @@
 			</attributes>
 		</costInformation>
 		<passengerCarEquivalents pce="3.0"/>
-		<networkMode networkMode="truck"/>
+		<networkMode networkMode="truck18t"/>
 		<flowEfficiencyFactor factor="1.0"/>
 	</vehicleType>
 	<vehicleType id="heavy40t">
@@ -185,7 +225,54 @@
 			</attributes>
 		</costInformation>
 		<passengerCarEquivalents pce="4.0"/>
-		<networkMode networkMode="truck"/>
+		<networkMode networkMode="truck40t"/>
 		<flowEfficiencyFactor factor="1.0"/>
+	</vehicleType>
+	<vehicleType id="freight">
+
+		<description>Heavy Vehicle 40t</description>
+		<capacity seats="1" standingRoomInPersons="0" other="33.0"/>
+		<length meter="15"/>
+		<width meter="1.0"/>
+		<maximumVelocity meterPerSecond="22.22"/>
+		<engineInformation>
+			<attributes>
+				<attribute name="HbefaVehicleCategory" class="java.lang.String">HEAVY_GOODS_VEHICLE</attribute>
+				<attribute name="HbefaTechnology" class="java.lang.String">average</attribute>
+				<attribute name="HbefaSizeClass" class="java.lang.String">average</attribute>
+				<attribute name="HbefaEmissionsConcept" class="java.lang.String">diesel</attribute>
+			</attributes>
+		</engineInformation>
+		<costInformation fixedCostsPerDay="126.58" costsPerMeter="6.9E-4" costsPerSecond="0.00559">
+			<attributes>
+				<attribute name="costsPerSecondInService" class="java.lang.Double">0.00559</attribute>
+				<attribute name="costsPerSecondWaiting" class="java.lang.Double">0.00559</attribute>
+			</attributes>
+		</costInformation>
+		<passengerCarEquivalents pce="4.0"/>
+		<networkMode networkMode="truck40t"/>
+		<flowEfficiencyFactor factor="1.0"/>
+	</vehicleType>
+	<vehicleType id="waste_collection_diesel">
+		<description>Waste collection vehicle</description>
+		<capacity seats="1" standingRoomInPersons="0" other="11500.0">
+
+		</capacity>
+		<maximumVelocity meterPerSecond="22.22"/>
+		<engineInformation>
+			<attributes>
+				<attribute name="fuelConsumptionPerTonnePickupWaste" class="java.lang.Double">0.5</attribute>
+				<attribute name="fuelConsumptionPerKm" class="java.lang.Double">60.0</attribute>
+				<attribute name="fuelType" class="java.lang.String">diesel</attribute>
+				<attribute name="HbefaEmissionsConcept" class="java.lang.String">diesel</attribute>
+			</attributes>
+		</engineInformation>
+		<costInformation fixedCostsPerDay="982.98" costsPerMeter="8.46E-4" costsPerSecond="0.0">
+			<attributes>
+				<attribute name="costsPerSecondInService" class="java.lang.Double">0.0</attribute>
+				<attribute name="costsPerSecondWaiting" class="java.lang.Double">0.0</attribute>
+			</attributes>
+		</costInformation>
+		<networkMode networkMode="truck26t"/>
 	</vehicleType>
 </vehicleDefinitions>
