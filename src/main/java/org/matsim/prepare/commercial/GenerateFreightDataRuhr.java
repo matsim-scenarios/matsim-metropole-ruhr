@@ -29,8 +29,10 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.application.options.CrsOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.utils.geometry.CoordinateTransformation;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -53,26 +55,21 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
             defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt.csv")
     private Path dataFolderPath;
 
-//    @CommandLine.Option(names = "--network", description = "Path to desired network file",
-//            defaultValue = "../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.network_resolutionHigh.xml.gz")
-//    private String networkPath;
+    @CommandLine.Option(names = "--KEPdata", description = "Path to buw KEP data",
+            defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/kep_aufkommen/aufkommen_kep.csv")
+    private Path KEPdataFolderPath;
+
+    @CommandLine.Option(names = "--KEPdataCRS", description = "CRS of the KEP data", defaultValue = "EPSG:3035")
+    private String CRS_KEPdata;
+
+    @CommandLine.Option(names = "--mainCRS", description = "Main CRS", defaultValue = "EPSG:25832")
+    private String mainCRS;
 
     @CommandLine.Option(names = "--pathOutput", description = "Path for the output", required = true, defaultValue = "output/commercial/")
     private Path output;
 
-//    @CommandLine.Option(names = "--truck-load", defaultValue = "13.0", description = "Average load of truck")
-//    private double averageTruckLoad;
-//
-//    @CommandLine.Option(names = "--working-days", defaultValue = "260", description = "Number of working days in a year")
-//    private int workingDays;
-//
-//    @CommandLine.Option(names = "--sample", defaultValue = "1", description = "Scaling factor of the freight traffic (0, 1)")
-//    private double sample;
-//
-    @CommandLine.Option(names = "--nameOutputDataFile", defaultValue = "ruhr_freightData_100pct.xml.gz", description = "Name of the output data file")
+    @CommandLine.Option(names = "--nameOutputDataFile", defaultValue = "ruhr_freightData_withKEP_100pct.xml.gz", description = "Name of the output data file")
     private String nameOutputDataFile;
-//
-//    private Random rnd;
 
     public static void main(String[] args) {
         new CommandLine(new GenerateFreightDataRuhr()).execute(args);
@@ -82,8 +79,10 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     public Integer call() throws Exception {
         Configurator.setLevel("org.matsim.core.utils.geometry.geotools.MGC", Level.ERROR);
 
+        CoordinateTransformation coordinateTransformation = new CrsOptions(CRS_KEPdata, mainCRS).getTransformation();
         log.info("Reading trip relations...");
-        List<RvrTripRelation> tripRelations = RvrTripRelation.readTripRelations(dataFolderPath);
+        List<RvrTripRelation> tripRelations = RvrTripRelation.readTripRelations(dataFolderPath, KEPdataFolderPath,
+                coordinateTransformation);
         log.info("Trip relations successfully loaded. There are " + tripRelations.size() + " trip relations");
 
         log.info("Start generating population...");
