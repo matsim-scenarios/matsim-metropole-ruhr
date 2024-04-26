@@ -121,6 +121,7 @@ public class LTLFreightAgentGeneratorRuhr {
 
                 newPerson.addPlan(plan);
                 PopulationUtils.putSubpopulation(newPerson, subpopulation);
+                newPerson.getAttributes().putAttribute("goodsType", carrier.getAttributes().getAttribute("goodsType"));
 
                 Id<Vehicle> vehicleId = scheduledTour.getVehicle().getId();
 
@@ -196,6 +197,7 @@ public class LTLFreightAgentGeneratorRuhr {
 
                     }
                     createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
+                    newCarrier.getAttributes().putAttribute("goodsType", CommercialTrafficUtils.getGoodsType(freightDemandDataRelation));
                     carriers.addCarrier(newCarrier);
                 }
             }
