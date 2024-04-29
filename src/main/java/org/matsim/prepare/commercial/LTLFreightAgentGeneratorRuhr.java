@@ -17,6 +17,11 @@ import org.matsim.vehicles.VehicleUtils;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Generates LTL freight agents for the Ruhr area.
+ *
+ * @author Ricardo Ewert
+ */
 public class LTLFreightAgentGeneratorRuhr {
     private static DepartureTimeCalculator departureTimeCalculator;
     private static DemandPerDayCalculator demandPerDayCalculator;
@@ -32,6 +37,13 @@ public class LTLFreightAgentGeneratorRuhr {
         this.sample = sample;
     }
 
+    /**
+     * Creates the CarrierVehicle for a carrier.
+     *
+     * @param scenario          scenario
+     * @param newCarrier        carrier
+     * @param nearestLinkOrigin link of the depot
+     */
     private static void createFreightVehicles(Scenario scenario, Carrier newCarrier, Id<Link> nearestLinkOrigin, Person freightDemandDataRelation) {
 
         CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
@@ -143,6 +155,11 @@ public class LTLFreightAgentGeneratorRuhr {
         });
     }
 
+    /**
+     * Creates a carrier id based on the freight demand data.
+     *
+     * @return Creates a carrier id based on the freight demand data.
+     */
     private static Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
 
         int goodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
@@ -163,6 +180,13 @@ public class LTLFreightAgentGeneratorRuhr {
                 Carrier.class);
     }
 
+    /**
+     * Creates all carriers for LTL freight agents based on the freight demand data.
+     *
+     * @param inputFreightDemandData freight demand data
+     * @param scenario               scenario
+     * @param jspritIterationsForLTL number of iterations for the jsprit algorithm to solve the LTL carriers
+     */
     public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario, int jspritIterationsForLTL) {
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
@@ -222,6 +246,12 @@ public class LTLFreightAgentGeneratorRuhr {
         }
     }
 
+    /**
+     * Creates all shipments for a given freight demand data relation.
+     *
+     * @param fromLinkId if null, we assume a waste collection, because we know the delivery location (dump), but we have different pickup locations
+     * @param toLinkId   if null, we assume a delivery, because we know the pickup location (hub), but we have different delivery locations
+     */
     private void addShipment(Network filteredNetwork, Carrier existingCarrier, Person freightDemandDataRelation, Id<Link> fromLinkId,
                              Id<Link> toLinkId) {
         CarrierShipment newCarrierShipment;
