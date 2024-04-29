@@ -300,7 +300,7 @@ public class LTLFreightAgentGeneratorRuhr {
             for (int i = 0; i < numberOfJobsForDemand; i++) {
                 int wasteThisJob = volumeWaste / numberOfJobsForDemand;
                 double collectionTimeForBins = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, wasteThisJob);
-                double deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, wasteThisJob);
+                int deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, wasteThisJob);
                 TimeWindow timeWindow = TimeWindow.newInstance(6 * 3600, 16 * 3600);
 
                 // combines waste collections from/to the same locations to one shipment
@@ -312,7 +312,7 @@ public class LTLFreightAgentGeneratorRuhr {
                     if (demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, wasteThisJob + existingShipment.getSize()) == 1) {
                         collectionTimeForBins = collectionTimeForBins + existingShipment.getPickupServiceTime();
                         wasteThisJob = wasteThisJob + existingShipment.getSize();
-                        deliveryTime = deliveryTime + existingShipment.getDeliveryServiceTime();
+                        deliveryTime = deliveryTime + (int) existingShipment.getDeliveryServiceTime();
                         existingCarrier.getShipments().remove(existingShipment.getId());
                     }
                 }
