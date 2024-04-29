@@ -290,11 +290,11 @@ public class LTLFreightAgentGeneratorRuhr {
         } else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) { //waste collection
             Link fromLink = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getOriginX(freightDemandDataRelation),
                     CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
-            List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
-                    carrierShipment -> carrierShipment.getTo().equals(toLinkId) && carrierShipment.getFrom().equals(fromLink.getId())).toList();
+
             int volumeWaste = demandPerDayCalculator.calculateWasteDemandPerDay(freightDemandDataRelation);
             if (volumeWaste == 0) return;
             int numberOfJobsForDemand = demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, volumeWaste);
+
             for (int i = 0; i < numberOfJobsForDemand; i++) {
                 int wasteThisJob = volumeWaste / numberOfJobsForDemand;
                 double collectionTimeForBins = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, wasteThisJob);
@@ -302,6 +302,8 @@ public class LTLFreightAgentGeneratorRuhr {
                 TimeWindow timeWindow = TimeWindow.newInstance(6 * 3600, 16 * 3600);
 
                 // combines waste collections from/to the same locations to one shipment
+                List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
+                        carrierShipment -> carrierShipment.getTo().equals(toLinkId) && carrierShipment.getFrom().equals(fromLink.getId())).toList();
                 if (!existingShipments.isEmpty()) {
                     CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.get(0).getId());
                     // checks if the waste collection can be combined with the existing shipment and will not exceed the vehicle capacity
@@ -314,10 +316,10 @@ public class LTLFreightAgentGeneratorRuhr {
                 }
 
                 newCarrierShipment = CarrierShipment.Builder.newInstance(
-                        Id.create(freightDemandDataRelation.getId().toString(), CarrierShipment.class),
+                        Id.create(freightDemandDataRelation.getId().toString() + "_" + i, CarrierShipment.class),
                         fromLink.getId(),
                         toLinkId,
-                        volumeWaste).setPickupTimeWindow(timeWindow).setDeliveryTimeWindow(timeWindow).setPickupServiceTime(
+                        wasteThisJob).setPickupTimeWindow(timeWindow).setDeliveryTimeWindow(timeWindow).setPickupServiceTime(
                         collectionTimeForBins).setDeliveryServiceTime(deliveryTime).build();
                 existingCarrier.getShipments().put(newCarrierShipment.getId(), newCarrierShipment);
             }
