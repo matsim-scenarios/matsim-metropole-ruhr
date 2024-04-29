@@ -89,7 +89,9 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
                 log.info("Processing: {} out of {} entries have been processed", i, inputFreightDemandData.getPersons().size());
             }
             i++;
-            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.FTL.toString())){
+            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
+                    CommercialTrafficUtils.TransportType.FTL.toString()) || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
+                    CommercialTrafficUtils.TransportType.FTL_kv.toString())) {
                 createPLansForFTLTrips(freightDemandDataRelation, freightAgentGeneratorFTL, outputPopulation);
             }
         }

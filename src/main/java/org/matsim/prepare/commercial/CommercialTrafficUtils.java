@@ -7,7 +7,7 @@ import java.util.Objects;
 public class CommercialTrafficUtils {
 
     public enum TransportType {
-        FTL, LTL
+        FTL, LTL, FTL_kv
     }
 
     public static void writeCommonAttributes(Person person, RvrTripRelation rvrTripRelation, String tripRelationId) {
