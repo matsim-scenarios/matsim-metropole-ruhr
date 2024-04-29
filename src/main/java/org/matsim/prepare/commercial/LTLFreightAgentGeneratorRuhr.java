@@ -245,7 +245,8 @@ public class LTLFreightAgentGeneratorRuhr {
                         createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
                         addShipment(filteredNetwork, newCarrier, freightDemandDataRelation, null, vehicleLocation.getId());
                     }
-                    carriers.addCarrier(newCarrier);
+                    if (!newCarrier.getShipments().isEmpty())
+                        carriers.addCarrier(newCarrier);
                 }
             }
         }
