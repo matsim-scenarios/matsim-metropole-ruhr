@@ -163,19 +163,24 @@ public class LTLFreightAgentGeneratorRuhr {
     private static Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
 
         int goodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
-        if (goodsType == 140)
-            return Id.create("WasteCollection_facility_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
+
+        // waste collection; assuming that the collection teams has service areas based on the vpp2040 cells -> per collection cell a separate carrier
+        if (goodsType == 140) {
+            String collectionZone = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
+            return Id.create("WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
                     Carrier.class);
-        if (goodsType == 150)
+        }
+        // parcel delivery; assuming that the delivery teams has service areas based on the vpp2040 cells -> per delivery cell a separate carrier
+        if (goodsType == 150) {
+            String deliveryZone = CommercialTrafficUtils.getDestinationCell(freightDemandDataRelation);
+            String key = "ParcelDelivery_Zone_" + deliveryZone + "_"+ CommercialTrafficUtils.getParcelOperator(
+                    freightDemandDataRelation) + "_hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation);
             // here I assume that locations (100x100) with a demand of 200 parcels per day or more are served by a 26t truck, because they are commercial costumers
             if (demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation)) >= 200)
-                return Id.create("ParcelDelivery_" + CommercialTrafficUtils.getParcelOperator(
-                                freightDemandDataRelation) + "_hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation) + "_truck18t",
-                        Carrier.class);
+                return Id.create(key + "_truck18t", Carrier.class);
             else
-                return Id.create("ParcelDelivery_" + CommercialTrafficUtils.getParcelOperator(
-                                freightDemandDataRelation) + "_hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation),
-                        Carrier.class);
+                return Id.create(key, Carrier.class);
+        }
         return Id.create("GoodsType_" + goodsType + "_facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation),
                 Carrier.class);
     }
