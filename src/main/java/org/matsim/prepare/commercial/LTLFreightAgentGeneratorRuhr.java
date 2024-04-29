@@ -167,19 +167,20 @@ public class LTLFreightAgentGeneratorRuhr {
         // waste collection; assuming that the collection teams has service areas based on the vpp2040 cells -> per collection cell a separate carrier
         if (goodsType == 140) {
             String collectionZone = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
-            return Id.create("WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
+            return Id.create(
+                    "WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
                     Carrier.class);
         }
         // parcel delivery; assuming that the delivery teams has service areas based on the vpp2040 cells -> per delivery cell a separate carrier
         if (goodsType == 150) {
             String deliveryZone = CommercialTrafficUtils.getDestinationCell(freightDemandDataRelation);
-            String key = "ParcelDelivery_Zone_" + deliveryZone + "_"+ CommercialTrafficUtils.getParcelOperator(
-                    freightDemandDataRelation) + "_hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation);
+            String key = "ParcelDelivery_" + CommercialTrafficUtils.getParcelOperator(
+                    freightDemandDataRelation) + "_Hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation);
             // here I assume that locations (100x100) with a demand of 200 parcels per day or more are served by a 26t truck, because they are commercial costumers
             if (demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation)) >= 200)
                 return Id.create(key + "_truck18t", Carrier.class);
             else
-                return Id.create(key, Carrier.class);
+                return Id.create(key + "_zone_" + deliveryZone, Carrier.class);
         }
         return Id.create("GoodsType_" + goodsType + "_facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation),
                 Carrier.class);
