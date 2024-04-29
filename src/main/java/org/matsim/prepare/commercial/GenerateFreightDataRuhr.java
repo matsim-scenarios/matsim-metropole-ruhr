@@ -71,6 +71,9 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--nameOutputDataFile", defaultValue = "ruhr_freightData_withKEP_100pct.xml.gz", description = "Name of the output data file")
     private String nameOutputDataFile;
 
+    @CommandLine.Option(names = "--shpCells", description = "Path to shapefile with the cells vp2040", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
+    private Path shpCells;
+
     public static void main(String[] args) {
         new CommandLine(new GenerateFreightDataRuhr()).execute(args);
     }
@@ -79,10 +82,13 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     public Integer call() throws Exception {
         Configurator.setLevel("org.matsim.core.utils.geometry.geotools.MGC", Level.ERROR);
 
+        ShpOptions shpOptions = new ShpOptions(shpCells, null, null);
+        ShpOptions.Index indexZones = shpOptions.createIndex("nr");
+
         CoordinateTransformation coordinateTransformation = new CrsOptions(CRS_KEPdata, mainCRS).getTransformation();
         log.info("Reading trip relations...");
         List<RvrTripRelation> tripRelations = RvrTripRelation.readTripRelations(dataFolderPath, KEPdataFolderPath,
-                coordinateTransformation);
+                coordinateTransformation, indexZones);
         log.info("Trip relations successfully loaded. There are {} trip relations", tripRelations.size());
 
         log.info("Start generating population...");

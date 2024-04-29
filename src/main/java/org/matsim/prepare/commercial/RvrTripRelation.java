@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.application.options.ShpOptions;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 
@@ -236,11 +237,12 @@ public class RvrTripRelation {
     }
 
 
-    public static List<RvrTripRelation> readTripRelations(Path pathToData, Path KEPdataFolderPath, CoordinateTransformation coordinateTransformation) throws IOException {
+    public static List<RvrTripRelation> readTripRelations(Path pathToData, Path KEPdataFolderPath, CoordinateTransformation coordinateTransformation,
+                                                          ShpOptions.Index indexZones) throws IOException {
         List<RvrTripRelation> tripRelations = new ArrayList<>();
 
         readRelationsFromMainMatrix(pathToData, tripRelations);
-        readRelationsFromKEPMatrix(KEPdataFolderPath, tripRelations, coordinateTransformation);
+        readRelationsFromKEPMatrix(KEPdataFolderPath, tripRelations, coordinateTransformation, indexZones);
 
         return tripRelations;
     }
@@ -273,7 +275,7 @@ public class RvrTripRelation {
     }
 
     private static void readRelationsFromKEPMatrix(Path KEPdataFolderPath, List<RvrTripRelation> tripRelations,
-                                                   CoordinateTransformation coordinateTransformation) throws IOException {
+                                                   CoordinateTransformation coordinateTransformation, ShpOptions.Index indexZones) throws IOException {
         try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(KEPdataFolderPath, StandardCharsets.ISO_8859_1),
                 CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
             for (CSVRecord record : parser) {
@@ -293,6 +295,7 @@ public class RvrTripRelation {
                 builder.originX(coordOrigin.getX()).originY(coordOrigin.getY()).destinationX(coordDestination.getX()).destinationY(
                         coordDestination.getY());
 
+                builder.destinationCell(indexZones.query(coordDestination).toString());
                 // Read transport type  (FTL or LTL)
                 builder.transportType(CommercialTrafficUtils.TransportType.LTL.toString());
 
