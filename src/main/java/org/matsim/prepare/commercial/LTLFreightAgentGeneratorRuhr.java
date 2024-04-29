@@ -53,11 +53,13 @@ public class LTLFreightAgentGeneratorRuhr {
 
         int earliestVehicleStartTime = (int) departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
         int latestVehicleEndTime = earliestVehicleStartTime + 9 * 3600; //assumption that working only max 9hours
-        List<String> possibleVehicleTypeIds = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation, newCarrier.getId().toString());
+        List<String> possibleVehicleTypeIds = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation,
+                newCarrier.getId().toString());
         possibleVehicleTypeIds.forEach(vehicleTypeId -> {
             VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create(vehicleTypeId, VehicleType.class));
             // Waste collection and parcel delivery tours we will not sample. That's why we adjust the pcu equivalents
-            if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140 || CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150 )
+            if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140 || CommercialTrafficUtils.getGoodsType(
+                    freightDemandDataRelation) == 150)
                 vehicleType.setPcuEquivalents(vehicleType.getPcuEquivalents() * sample);
             CarrierVehicle newCarrierVehicle = CarrierVehicle.Builder.newInstance(
                     Id.create(newCarrier.getId().toString() + "_" + (carrierCapabilities.getCarrierVehicles().size() + 1), Vehicle.class),
@@ -205,7 +207,7 @@ public class LTLFreightAgentGeneratorRuhr {
         for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
             if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.LTL.toString())) {
                 Id<Carrier> carrierId = createCarrierId(freightDemandDataRelation);
-                if (carriers.getCarriers().containsKey(carrierId) ) {
+                if (carriers.getCarriers().containsKey(carrierId)) {
                     Carrier existingCarrier = carriers.getCarriers().get(carrierId);
                     if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) != 140) {
                         Id<Link> fromLinkId;
@@ -238,8 +240,7 @@ public class LTLFreightAgentGeneratorRuhr {
                                         CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
                         createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
                         addShipment(filteredNetwork, newCarrier, freightDemandDataRelation, vehicleLocation.getId(), null);
-                    }
-                    else { //waste collection
+                    } else { //waste collection
                         vehicleLocation = NetworkUtils.getNearestLink(filteredNetwork,
                                 new Coord(CommercialTrafficUtils.getDestinationX(freightDemandDataRelation),
                                         CommercialTrafficUtils.getDestinationY(freightDemandDataRelation)));
@@ -267,7 +268,7 @@ public class LTLFreightAgentGeneratorRuhr {
             Link toLink = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getDestinationX(freightDemandDataRelation),
                     CommercialTrafficUtils.getDestinationY(freightDemandDataRelation)));
             int demand;
-            if(CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) //parcel delivery
+            if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) //parcel delivery
                 demand = demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation));
             else
                 demand = demandPerDayCalculator.calculateKilogramsPerDay(CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation));
