@@ -20,8 +20,10 @@ import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
 import org.matsim.prepare.commercial.GenerateFreightPlansRuhr;
+import org.matsim.prepare.commercial.IntegrationOfExistingCommercialTrafficRuhr;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
+import org.matsim.smallScaleCommercialTrafficGeneration.IntegrateExistingTrafficToSmallScaleCommercial;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreator;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreatorForOSM_Data;
@@ -165,26 +167,30 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         String smallScaleCommercialPopulationName = "rvrCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
         String outputPathSmallScaleCommercial = output.resolve("smallScaleCommercial").toString();
         Path resolve = Path.of(outputPathSmallScaleCommercial).resolve(smallScaleCommercialPopulationName);
+        IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(output.resolve(freightPopulationName));
 
         if (Files.exists(resolve)) {
             log.warn("Small-scale Commercial demand already exists. Skipping generation.");
         } else {
-            new GenerateSmallScaleCommercialTrafficDemand().execute(
+            new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial).execute(
                     configPath.toString(),
                     "--pathToDataDistributionToZones", output.resolve("dataDistributionPerZone.csv").toString(),
-                    "--pathToCommercialFacilities", "../" + pathCommercialFacilities,
+                    "--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
                     "--sample", String.valueOf(sample),
                     "--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
                     "--creationOption", "createNewCarrierFile",
-                "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
-//                    "--smallScaleCommercialTrafficType", "goodsTraffic",
+//                    "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
+                    "--smallScaleCommercialTrafficType", "goodsTraffic",
 //                "--zoneShapeFileName", "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040_RuhrOnly2.shp",
                     "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
                     "--zoneShapeFileNameColumn", "schluessel",
                     "--shapeCRS", shapeCRS,
                     "--pathOutput", outputPathSmallScaleCommercial,
-//                "--network", networkPath,
-                    "--nameOutputPopulation", smallScaleCommercialPopulationName);
+                    "--network", networkPath,
+                    "--nameOutputPopulation", smallScaleCommercialPopulationName,
+                    "--includeExistingModels");
+
+            // TODO filter relevant agents for the small scale commercial traffic
         }
         log.info("6th step - Merge freight and commercial populations");
         String pathMergedPopulation = output.resolve(freightPopulationName).toString().replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
@@ -198,10 +204,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--output", pathMergedPopulation
             );
         }
+
         if (alsoRunCompleteCommercialTraffic) {
             Config config = ConfigUtils.loadConfig(configPath.toString());
-            Path reverse = configPath.getParent().relativize(Path.of(pathMergedPopulation));
-            String replace = pathMergedPopulation.replace("scenarios/metropole-ruhr-v1.0", "..");
             config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
             config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
             config.network().setInputFile(networkPath);

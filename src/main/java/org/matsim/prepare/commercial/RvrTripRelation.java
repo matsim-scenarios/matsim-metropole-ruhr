@@ -294,7 +294,7 @@ public class RvrTripRelation {
                         coordDestination.getY());
 
                 // Read transport type  (FTL or LTL)
-                builder.transportType("LTL");
+                builder.transportType(CommercialTrafficUtils.TransportType.LTL.toString());
 
                 // Read goods type and parcels per year
                 builder.goodsType("150").parcelHubId(record.get(column_parcelHubId)).parcelOperator(record.get(column_parcelOperator)).parcelsPerYear(

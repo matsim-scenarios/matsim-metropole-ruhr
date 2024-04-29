@@ -13,13 +13,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FTLFreightAgentGeneratorRuhr {
-    private final DepartureTimeCalculatorRuhr departureTimeCalculator;
+    private final DepartureTimeCalculator departureTimeCalculator;
     private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator;
     private final PopulationFactory populationFactory;
     private final CommercialVehicleSelector commercialVehicleSelector;
 
     public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample) {
-        this.departureTimeCalculator = new DefaultDepartureTimeCalculatorRuhr();
+        this.departureTimeCalculator = new DefaultDepartureTimeCalculator();
         this.numOfTripsCalculator = new DefaultNumberOfTripsCalculator(averageLoad, workingDays, sample);
         this.commercialVehicleSelector = new DefaultCommercialVehicleSelector();
         this.populationFactory = PopulationUtils.getFactory();

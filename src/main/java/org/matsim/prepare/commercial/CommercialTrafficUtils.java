@@ -121,8 +121,8 @@ public class CommercialTrafficUtils {
     public static String getParcelOperator(Person person) {
         return person.getAttributes().getAttribute("parcelOperator").toString();
     }
-    public static double getParcelsPerYear(Person person) {
-        return Double.parseDouble(person.getAttributes().getAttribute("parcelsPerYear").toString());
+    public static int getParcelsPerYear(Person person) {
+        return (int)(Double.parseDouble(person.getAttributes().getAttribute("parcelsPerYear").toString()));
     }
     public static String getParcelHubId(Person person) {
         return person.getAttributes().getAttribute("parcelHubId").toString();
