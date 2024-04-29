@@ -19,6 +19,7 @@ public class CommercialTrafficUtils {
         setOriginY(person, rvrTripRelation);
         setDestinationX(person, rvrTripRelation);
         setDestinationY(person, rvrTripRelation);
+        setDestinationCell(person, rvrTripRelation);
         // parcel specific attributes
         if (Objects.equals(rvrTripRelation.getGoodsType(), "150")) {
             setParcelOperator(person, rvrTripRelation);
@@ -27,7 +28,6 @@ public class CommercialTrafficUtils {
         } else {
             setOriginCell(person, rvrTripRelation);
             setOriginLocationId(person, rvrTripRelation);
-            setDestinationCell(person, rvrTripRelation);
             setDestinationLocationId(person, rvrTripRelation);
             setTonesPerYear(person, rvrTripRelation);
         }
