@@ -11,6 +11,9 @@ public class DefaultCommercialServiceTimeCalculator implements CommercialService
     @Override
     public int calculateDeliveryTime(Person freightDemandDataRelation, int demand) {
         if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) { // parcel delivery
+            // assumption: for large amount of parcels a fast delivery is possible (B2B), 30min is an assumption
+            if (demand > 100)
+                return (int) (0.5 * 3600); //TODO
             int timePerParcel = 180;
             return (demand * timePerParcel);
         }
