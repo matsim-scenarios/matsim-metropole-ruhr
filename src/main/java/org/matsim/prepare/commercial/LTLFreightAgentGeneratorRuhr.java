@@ -87,9 +87,8 @@ public class LTLFreightAgentGeneratorRuhr {
                 String mode = scheduledTour.getVehicle().getType().getNetworkMode();
                 List<Tour.TourElement> carrierScheduledPlanElements = scheduledTour.getTour().getTourElements();
 
-                //TODO add times
                 PopulationUtils.createAndAddActivityFromLinkId(plan, "start", scheduledTour.getTour().getStart().getLocation()).setEndTime(
-                        scheduledTour.getTour().getStart().getExpectedArrival()); //TODO check if correct
+                        scheduledTour.getDeparture());
                 Id<Link> previousLocation = scheduledTour.getTour().getStart().getLocation();
                 Id<Link> lastLocationOfTour = scheduledTour.getTour().getEnd().getLocation();
 
