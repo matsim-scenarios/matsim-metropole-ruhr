@@ -15,7 +15,6 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Generates LTL freight agents for the Ruhr area.
@@ -79,8 +78,6 @@ public class LTLFreightAgentGeneratorRuhr {
         Population population = scenario.getPopulation();
         PopulationFactory popFactory = population.getFactory();
 
-        Map<String, AtomicLong> idCounter = new HashMap<>();
-
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
         carriers.getCarriers().values().forEach(carrier -> {
@@ -137,9 +134,7 @@ public class LTLFreightAgentGeneratorRuhr {
 
                 String key = carrier.getId().toString();
 
-                long id = idCounter.computeIfAbsent(key, (k) -> new AtomicLong()).getAndIncrement();
-
-                Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + id));
+                Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + scheduledTour.getTour().getId().toString()));
 
                 newPerson.addPlan(plan);
                 PopulationUtils.putSubpopulation(newPerson, subpopulation);
