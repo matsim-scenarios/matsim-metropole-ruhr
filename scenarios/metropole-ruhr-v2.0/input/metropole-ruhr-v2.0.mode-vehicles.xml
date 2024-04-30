@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v1.0.xsd">
+<vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v2.0.xsd">
 	<vehicleType id="car">
 		<attributes>
 			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
@@ -12,36 +12,26 @@
 		<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
 	<vehicleType id="truck8t">
-		<attributes>
-			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
-			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-		</attributes>
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
 	</vehicleType>
 	<vehicleType id="truck18t">
-		<attributes>
-			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
-			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-		</attributes>
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
 	</vehicleType>
 	<vehicleType id="truck40t">
-		<attributes>
-			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
-			<attribute name="egressTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
-		</attributes>
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
 	</vehicleType>
 	<vehicleType id="truck26t">
+		<length meter="7.5"/>
+		<width meter="1.0"/>
+		<passengerCarEquivalents pce="3.5"/>
+	</vehicleType>
+	<vehicleType id="ride">
 		<attributes>
 			<attribute name="accessTimeInSecondsPerPerson" class="java.lang.Double">1</attribute>
 			<attribute name="doorOperationMode" class="org.matsim.vehicles.VehicleType$DoorOperationMode">serial</attribute>
@@ -49,24 +39,12 @@
 		</attributes>
 		<length meter="7.5"/>
 		<width meter="1.0"/>
-		<passengerCarEquivalents pce="3.5"/>
-	</vehicleType>
-		<vehicleType id="ride">
-		<length meter="7.5"/>
-		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="36.111111"/>
-		<accessTime secondsPerPerson="1.0"/>
-		<egressTime secondsPerPerson="1.0"/>
-		<doorOperation mode="serial"/>
-		<passengerCarEquivalents pce="0.1"/>
+		<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
 	<vehicleType id="bike">
 		<length meter="2.0"/>
 		<width meter="1.0"/>
 		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
-		<accessTime secondsPerPerson="1.0"/>
-		<egressTime secondsPerPerson="1.0"/>
-		<doorOperation mode="serial"/>
 		<passengerCarEquivalents pce="0.1"/>
 	</vehicleType>
 
@@ -303,7 +281,6 @@
 	<vehicleType id="waste_collection_diesel">
 		<description>Waste collection vehicle</description>
 		<capacity seats="1" standingRoomInPersons="0" other="11500.0">
-
 		</capacity>
 		<maximumVelocity meterPerSecond="22.22"/>
 		<engineInformation>
