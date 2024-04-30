@@ -11,9 +11,9 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 
         if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL"))
             return List.of("heavy40t");
-        else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140)
+        else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) // waste collection
             return List.of("waste_collection_diesel");
-        if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) // parcel delivery TODO possible adjustments from BUW data
+        if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) // parcel delivery
             if (carrierId.contains("_truck18t"))
                 return List.of("medium18t_parcel");
             else
