@@ -85,7 +85,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     }
 
     @Override
-    public Integer call() throws Exception {
+    public Integer call() {
 
 //        alsoRunCompleteCommercialTraffic = true;
 
