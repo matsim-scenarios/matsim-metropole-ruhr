@@ -77,7 +77,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         log.info("Reading freight data...");
         Population inputFreightDemandData = PopulationUtils.readPopulation(dataPath);
-        log.info("Freight data successfully loaded. There are " + inputFreightDemandData.getPersons().size() + " trip relations");
+        log.info("Freight data successfully loaded. There are {} trip relations", inputFreightDemandData.getPersons().size());
 
         log.info("Start generating population...");
         Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
