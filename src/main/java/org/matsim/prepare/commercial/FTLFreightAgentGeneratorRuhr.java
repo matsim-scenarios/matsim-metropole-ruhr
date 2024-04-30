@@ -8,9 +8,12 @@ import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.application.prepare.freight.tripGeneration.DefaultNumberOfTripsCalculator;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.vehicles.VehicleType;
+import org.matsim.vehicles.VehicleUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class FTLFreightAgentGeneratorRuhr {
     private final DepartureTimeCalculator departureTimeCalculator;
@@ -51,6 +54,7 @@ public class FTLFreightAgentGeneratorRuhr {
         double destinationX = CommercialTrafficUtils.getDestinationX(freightDemandDataRelation);
         double destinationY = CommercialTrafficUtils.getDestinationY(freightDemandDataRelation);
         String FTL_mode = commercialVehicleSelector.getModeForTrip(freightDemandDataRelation);
+        String vehicleType = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation, null).iterator().next();
         for (int i = 0; i < numOfTrips; i++) {
             Person person = populationFactory.createPerson(Id.createPersonId("freight_" + tripRelationId + "_" + i + "_" + transportType));
             double departureTime = departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
@@ -66,9 +70,29 @@ public class FTLFreightAgentGeneratorRuhr {
                 PopulationUtils.createAndAddLeg(plan, FTL_mode);
                 PopulationUtils.createAndAddActivityFromCoord(plan, "freight_return", new Coord(originX, originY));
             }
+            else {
+                // Create a return trip for the FTL trip. This trip represents the empty return journey of the truck. Because we simulate one day, we add a return trip on the same day.
+                Person person_return = populationFactory.createPerson(Id.createPersonId("freight_" + tripRelationId + "_" + i + "_" + transportType + "_return"));
+                double departureTime_return = departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
+
+                Plan plan_return = populationFactory.createPlan();
+                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_start", new Coord(originX, originY)).setEndTime(departureTime_return);
+
+                PopulationUtils.createAndAddLeg(plan_return, FTL_mode);
+                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_end", new Coord(destinationX, destinationY)).setMaximumDuration(0.5 * 3600);
+
+                person_return.addPlan(plan);
+                freightDemandDataRelation.getAttributes().getAsMap().forEach((k, v) -> person_return.getAttributes().putAttribute(k, v));
+                PopulationUtils.putSubpopulation(person_return, transportType + "_trip");
+                Id<VehicleType> vehicleTypeId = Id.create(vehicleType, VehicleType.class);
+                VehicleUtils.insertVehicleTypesIntoPersonAttributes(person_return, Map.of(FTL_mode, vehicleTypeId));
+                freightAgents.add(person_return);
+            }
             person.addPlan(plan);
             freightDemandDataRelation.getAttributes().getAsMap().forEach((k, v) -> person.getAttributes().putAttribute(k, v));
             PopulationUtils.putSubpopulation(person, transportType + "_trip");
+            Id<VehicleType> vehicleTypeId = Id.create(vehicleType, VehicleType.class);
+            VehicleUtils.insertVehicleTypesIntoPersonAttributes(person, Map.of(FTL_mode, vehicleTypeId));
             freightAgents.add(person);
         }
     }

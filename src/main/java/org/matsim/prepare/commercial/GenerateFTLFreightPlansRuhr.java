@@ -56,7 +56,6 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
 
         log.info("Start generating population...");
         Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
-        // TODO überlegen ob man für die Leerfahrten bei längeren Touren eigenen Agenten erstellt
 
         int i = 0;
         for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
