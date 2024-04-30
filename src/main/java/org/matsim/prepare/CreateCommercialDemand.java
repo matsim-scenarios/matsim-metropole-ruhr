@@ -41,7 +41,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     @CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.01")
     private double sample;
 
-    @CommandLine.Option(names = "--pathOutputFolder", description = "Path for the output folder", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/completeCommercialTraffic_1pct")
+    @CommandLine.Option(names = "--pathOutputFolder", description = "Path for the output folder", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/output/completeCommercialTraffic_1pct")
     private Path output;
 
     @CommandLine.Option(names = "--freightData", description = "Name of the freight population", required = true, defaultValue = "ruhr_freightPlans_100pct.plans.xml.gz")
@@ -50,16 +50,16 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     @CommandLine.Option(names = "--osmDataLocation", description = "Path to the OSM data location", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/osm/")
     private String osmDataLocation;
 
-    @CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.config.xml")
+    @CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-3pct.config.xml")
     private Path configPath;
 
-    @CommandLine.Option(names = "--pathToInvestigationAreaData", description = "Path to the investigation area data", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/input/investigationAreaData.csv")
+    @CommandLine.Option(names = "--pathToInvestigationAreaData", description = "Path to the investigation area data", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/investigationAreaData.csv")
     private String pathToInvestigationAreaData;
 
-    @CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "ruhr_network_adjustedModes.xml.gz")
+    @CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "metropole-ruhr-v2.0_network.xml.gz")
     private String networkPath;
 
-    @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml")
+    @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.mode-vehicles.xml")
     private String vehicleTypesFilePath;
 
     @CommandLine.Option(names = "--jspritIterationsForLTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)

@@ -32,18 +32,18 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightPlansRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to generated freight data",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
     private String dataPath;
 
     @CommandLine.Option(names = "--network", description = "Path to desired network file",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/ruhr_network_adjustedModes.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/ruhr_network_adjustedModes.xml.gz")
     private String networkPath;
 
     @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.mode-vehicles.xml")
     private String vehicleTypesFilePath;
 
-    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/rvr_freightPlans/")
+    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/output/rvr_freightPlans/")
     private Path output;
 
     @CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file")
