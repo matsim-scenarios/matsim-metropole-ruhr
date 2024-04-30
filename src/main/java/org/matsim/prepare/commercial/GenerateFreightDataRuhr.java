@@ -30,6 +30,7 @@ import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
+import org.matsim.application.options.ShpOptions;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
@@ -52,7 +53,7 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightDataRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to buw data",
-            defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt.csv")
+            defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V2.csv")
     private Path dataFolderPath;
 
     @CommandLine.Option(names = "--KEPdata", description = "Path to buw KEP data",
@@ -68,7 +69,7 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--pathOutput", description = "Path for the output", required = true, defaultValue = "output/commercial/")
     private Path output;
 
-    @CommandLine.Option(names = "--nameOutputDataFile", defaultValue = "ruhr_freightData_withKEP_100pct.xml.gz", description = "Name of the output data file")
+    @CommandLine.Option(names = "--nameOutputDataFile", defaultValue = "ruhr_freightData_100pct.xml.gz", description = "Name of the output data file")
     private String nameOutputDataFile;
 
     @CommandLine.Option(names = "--shpCells", description = "Path to shapefile with the cells vp2040", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")

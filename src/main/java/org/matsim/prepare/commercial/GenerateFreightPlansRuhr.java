@@ -43,7 +43,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
             defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml")
     private String vehicleTypesFilePath;
 
-    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/rvr_freightPlans_new/")
+    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/rvr_freightPlans/")
     private Path output;
 
     @CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file")
@@ -60,7 +60,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private int maxKilometerForReturnJourney;
     //TODO discuss if 200 is a good value, the ruhr area has a horizontal length of 100 km
 
-    @CommandLine.Option(names = "--sample", defaultValue = "0.1", description = "Scaling factor of the freight traffic (0, 1)")
+    @CommandLine.Option(names = "--sample", defaultValue = "0.01", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
 
     @CommandLine.Option(names = "--jsprit-iterations-for-LTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
