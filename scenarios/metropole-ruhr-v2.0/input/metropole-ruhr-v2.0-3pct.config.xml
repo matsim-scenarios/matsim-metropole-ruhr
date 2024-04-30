@@ -7,8 +7,8 @@
 	<module name="controler">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v1.4-3pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v1.4-3pct/"/>
+		<param name="runId" value="metropole-ruhr-v2.0-3pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2.0-3pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -20,7 +20,7 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="./ruhr_network_adjustedModes.xml.gz"/>
+			   value="./metropole-ruhr-v2.0_network.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
@@ -29,7 +29,7 @@
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="./metropole-ruhr-v1.0.mode-vehicles.xml"/>
+			   value="./metropole-ruhr-v2.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
