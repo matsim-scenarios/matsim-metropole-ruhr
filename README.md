@@ -110,3 +110,8 @@ For more information about traffic simulation and traffic data at the Regionalve
 Some functionality in this repository is based on the 'MATSim Open Ruhrgebiet' model (https://github.com/matsim-scenarios/matsim-ruhrgebiet) where the development was made possible by Stiftung Mercator (https://www.stiftung-mercator.de/) within the project Neue Emscher Mobilität (NEMO, https://www.nemo-ruhr.de).
 
 The travel demand data for the metropolitan area Ruhr is provided by Senozon Deutschland GmbH (https://senozon.com).
+
+### Internal documentation
+
+Internal documentation can be found here:
+https://docs.google.com/document/d/1GQhdJh4Cg4ZrzbcP_aB4KYK6jxIGmj5EB1eyIbWNbAU/edit?usp=sharing
