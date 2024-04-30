@@ -18,8 +18,9 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.prepare.commercial.GenerateFTLFreightPlansRuhr;
 import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
-import org.matsim.prepare.commercial.GenerateFreightPlansRuhr;
+import org.matsim.prepare.commercial.GenerateLTLFreightPlansRuhr;
 import org.matsim.prepare.commercial.IntegrationOfExistingCommercialTrafficRuhr;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
@@ -92,7 +93,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         String shapeCRS = "EPSG:25832";
         log.info("1st step - create freight data from BUW data");
 
-        String freightPopulationName = "ruhr_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
+        String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
+        String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
+
         String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
         if (Files.exists(output.resolve(freightDataName)) || Files.exists(freightData)) {
@@ -104,18 +107,32 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--nameOutputDataFile", freightDataName
             );
         }
-        log.info("2nd step - create freight plans from generated data");
-        if (Files.exists(output.resolve(freightPopulationName))) {
+
+        log.info("2rd step - create FTL freight plans from generated data");
+        if (Files.exists(output.resolve(FTLFreightPopulationName))) {
             log.warn("Freight population already exists. Skipping generation.");
         } else {
-            new GenerateFreightPlansRuhr().execute(
+            new GenerateFTLFreightPlansRuhr().execute(
                     "--data", output.resolve(freightDataName).toString(),
-                    "--network", "input/" + networkPath,
                     "--output", output.toString(),
-                    "--nameOutputPopulation", freightPopulationName,
+                    "--nameOutputPopulation", FTLFreightPopulationName,
                     "--truck-load", "13.0",
                     "--working-days", "260",
                     "--max-kilometer-for-return-journey", "200",
+                    "--sample", String.valueOf(sample)
+            );
+        }
+
+        log.info("3rd step - create LTL freight plans from generated data");
+        if (Files.exists(output.resolve(LTLFreightPopulationName))) {
+            log.warn("Freight population already exists. Skipping generation.");
+        } else {
+            new GenerateLTLFreightPlansRuhr().execute(
+                    "--data", output.resolve(freightDataName).toString(),
+                    "--network", configPath.getParent().resolve(networkPath).toString(),
+                    "--output", output.toString(),
+                    "--nameOutputPopulation", LTLFreightPopulationName,
+                    "--working-days", "260",
                     "--sample", String.valueOf(sample),
                     "--vehicleTypesFilePath", vehicleTypesFilePath,
                     "--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
@@ -170,7 +187,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         String smallScaleCommercialPopulationName = "rvrCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
         String outputPathSmallScaleCommercial = output.resolve("smallScaleCommercial").toString();
         Path resolve = Path.of(outputPathSmallScaleCommercial).resolve(smallScaleCommercialPopulationName);
-        IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(output.resolve(freightPopulationName));
+        IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(output.resolve(LTLFreightPopulationName));
 
         if (Files.exists(resolve)) {
             log.warn("Small-scale Commercial demand already exists. Skipping generation.");
@@ -196,12 +213,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             // TODO filter relevant agents for the small scale commercial traffic
         }
         log.info("6th step - Merge freight and commercial populations");
-        String pathMergedPopulation = output.resolve(freightPopulationName).toString().replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
+        String pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("LTL","").replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
         if (Files.exists(Path.of(pathMergedPopulation))) {
             log.info("Merged demand already exists. Skipping generation.");
         } else {
             new MergePopulations().execute(
-                    output.resolve(freightPopulationName).toString(),
+                    output.resolve(LTLFreightPopulationName).toString(),
+                    output.resolve(FTLFreightPopulationName).toString(),
                     outputPathSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
                     longDistanceFreightPopulationName,
                     "--output", pathMergedPopulation

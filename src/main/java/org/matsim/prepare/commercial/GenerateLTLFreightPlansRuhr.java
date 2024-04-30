@@ -28,15 +28,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-public class GenerateFreightPlansRuhr implements MATSimAppCommand {
-    private static final Logger log = LogManager.getLogger(GenerateFreightPlansRuhr.class);
+public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
+    private static final Logger log = LogManager.getLogger(GenerateLTLFreightPlansRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to generated freight data",
             defaultValue = "scenarios/metropole-ruhr-v2.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
     private String dataPath;
 
     @CommandLine.Option(names = "--network", description = "Path to desired network file",
-            defaultValue = "scenarios/metropole-ruhr-v2.0/input/ruhr_network_adjustedModes.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0_network.xml.gz")
     private String networkPath;
 
     @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
@@ -49,16 +49,9 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file")
     private String nameOutputPopulation;
 
-    @CommandLine.Option(names = "--truck-load", defaultValue = "13.0", description = "Average load of truck")
-    private double averageTruckLoad;
-
     @CommandLine.Option(names = "--working-days", defaultValue = "260", description = "Number of working days per year")
     private int workingDays;
     //TODO discuss if 260 is a good value
-
-    @CommandLine.Option(names = "--max-kilometer-for-return-journey", defaultValue = "200", description = "[km] Set the maximum euclidean distance to add an empty return journey at the end of FLT trip")
-    private int maxKilometerForReturnJourney;
-    //TODO discuss if 200 is a good value, the ruhr area has a horizontal length of 100 km
 
     @CommandLine.Option(names = "--sample", defaultValue = "0.01", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
@@ -69,11 +62,10 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     @Override
     public Integer call() throws Exception {
 
-        log.info("preparing freight agent generator...");
-        FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL = new FTLFreightAgentGeneratorRuhr(averageTruckLoad, workingDays, sample);
+        log.info("preparing freight agent generator for FTL trips...");
         LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL = new LTLFreightAgentGeneratorRuhr(workingDays, sample);
 
-        log.info("Freight agent generator successfully created!");
+        log.info("Freight agent generator for FTL trips successfully created!");
 
         log.info("Reading freight data...");
         Population inputFreightDemandData = PopulationUtils.readPopulation(dataPath);
@@ -81,20 +73,6 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         log.info("Start generating population...");
         Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
-        // TODO überlegen ob man für die Leerfahrten bei längeren Touren eigenen Agenten erstellt
-
-        int i = 0;
-        for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
-            if (i % 500000 == 0) {
-                log.info("Processing: {} out of {} entries have been processed", i, inputFreightDemandData.getPersons().size());
-            }
-            i++;
-            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
-                    CommercialTrafficUtils.TransportType.FTL.toString()) || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
-                    CommercialTrafficUtils.TransportType.FTL_kv.toString())) {
-                createPLansForFTLTrips(freightDemandDataRelation, freightAgentGeneratorFTL, outputPopulation);
-            }
-        }
 
         createPLansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
 
@@ -105,7 +83,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         String sampleName = getSampleNameOfOutputFolder(sample);
         String outputPlansPath;
         if(nameOutputPopulation == null)
-            outputPlansPath = output.resolve("/german_freight." + sampleName+ "pct.plans.xml.gz").toString();
+            outputPlansPath = output.resolve("freight." + sampleName+ "pct.plansLTL.xml.gz").toString();
         else
             outputPlansPath = output.resolve(nameOutputPopulation).toString();
         PopulationWriter populationWriter = new PopulationWriter(outputPopulation);
@@ -185,19 +163,8 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
         readVehicleTypes.keySet().removeIf(vehicleType -> !usedCarrierVehicleTypes.contains(vehicleType));
     }
 
-
-    /**
-     * Creates plans for FTL trips.
-     */
-    private void createPLansForFTLTrips(Person freightDemandDataRelation, FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL, Population outputPopulation) {
-        List<Person> persons = freightAgentGeneratorFTL.generateFreightFTLAgents(freightDemandDataRelation, maxKilometerForReturnJourney);
-        for (Person person : persons) {
-            outputPopulation.addPerson(person);
-        }
-    }
-
     public static void main(String[] args) {
-        new GenerateFreightPlansRuhr().execute(args);
+        new GenerateLTLFreightPlansRuhr().execute(args);
     }
 
     private static String getSampleNameOfOutputFolder(double sample) {
