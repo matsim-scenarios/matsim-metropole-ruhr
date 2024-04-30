@@ -161,7 +161,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersNoSolution.xml.gz");
 
-        filterRelevantVehicleTypesForTourplanning(scenario);
+        filterRelevantVehicleTypesForTourPlanning(scenario);
 
         CarriersUtils.runJsprit(scenario);
 
@@ -173,7 +173,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     /** Remove vehicle types which are not used by the carriers
      * @param scenario the scenario
      */
-    private static void filterRelevantVehicleTypesForTourplanning(Scenario scenario) {
+    private static void filterRelevantVehicleTypesForTourPlanning(Scenario scenario) {
         //
         Map<Id<VehicleType>, VehicleType> readVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario).getVehicleTypes();
         List<Id<VehicleType>> usedCarrierVehicleTypes = CarriersUtils.getCarriers(scenario).getCarriers().values().stream()
