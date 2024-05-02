@@ -32,18 +32,18 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightPlansRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to generated freight data",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
     private String dataPath;
 
     @CommandLine.Option(names = "--network", description = "Path to desired network file",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/ruhr_network_adjustedModes.xml.gz")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/ruhr_network_adjustedModes.xml.gz")
     private String networkPath;
 
     @CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
-            defaultValue = "scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0.mode-vehicles.xml")
+            defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.mode-vehicles.xml")
     private String vehicleTypesFilePath;
 
-    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v1.0/output/rvr_freightPlans_new/")
+    @CommandLine.Option(names = "--output", description = "Output folder path", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/output/rvr_freightPlans/")
     private Path output;
 
     @CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file")
@@ -60,7 +60,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     private int maxKilometerForReturnJourney;
     //TODO discuss if 200 is a good value, the ruhr area has a horizontal length of 100 km
 
-    @CommandLine.Option(names = "--sample", defaultValue = "0.1", description = "Scaling factor of the freight traffic (0, 1)")
+    @CommandLine.Option(names = "--sample", defaultValue = "0.01", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
 
     @CommandLine.Option(names = "--jsprit-iterations-for-LTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
@@ -77,7 +77,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         log.info("Reading freight data...");
         Population inputFreightDemandData = PopulationUtils.readPopulation(dataPath);
-        log.info("Freight data successfully loaded. There are " + inputFreightDemandData.getPersons().size() + " trip relations");
+        log.info("Freight data successfully loaded. There are {} trip relations", inputFreightDemandData.getPersons().size());
 
         log.info("Start generating population...");
         Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
@@ -89,7 +89,9 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
                 log.info("Processing: {} out of {} entries have been processed", i, inputFreightDemandData.getPersons().size());
             }
             i++;
-            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.FTL.toString())){
+            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
+                    CommercialTrafficUtils.TransportType.FTL.toString()) || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
+                    CommercialTrafficUtils.TransportType.FTL_kv.toString())) {
                 createPLansForFTLTrips(freightDemandDataRelation, freightAgentGeneratorFTL, outputPopulation);
             }
         }
@@ -159,7 +161,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
 
         CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersNoSolution.xml.gz");
 
-        filterRelevantVehicleTypesForTourplanning(scenario);
+        filterRelevantVehicleTypesForTourPlanning(scenario);
 
         CarriersUtils.runJsprit(scenario);
 
@@ -171,7 +173,7 @@ public class GenerateFreightPlansRuhr implements MATSimAppCommand {
     /** Remove vehicle types which are not used by the carriers
      * @param scenario the scenario
      */
-    private static void filterRelevantVehicleTypesForTourplanning(Scenario scenario) {
+    private static void filterRelevantVehicleTypesForTourPlanning(Scenario scenario) {
         //
         Map<Id<VehicleType>, VehicleType> readVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario).getVehicleTypes();
         List<Id<VehicleType>> usedCarrierVehicleTypes = CarriersUtils.getCarriers(scenario).getCarriers().values().stream()

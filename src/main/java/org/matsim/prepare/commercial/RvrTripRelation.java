@@ -4,16 +4,17 @@ package org.matsim.prepare.commercial;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.matsim.api.core.v01.Coord;
+import org.matsim.application.options.ShpOptions;
+import org.matsim.core.utils.geometry.CoordUtils;
+import org.matsim.core.utils.geometry.CoordinateTransformation;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * //TODO: Add description
@@ -30,6 +31,9 @@ public class RvrTripRelation {
     public static final String column_transportType = "segment";
     public static final String column_goodsType = "nst";
     public static final String column_tonesPerYear = "tonnen_gueter";
+    public static final String column_parcelHubId = "quelle_id";
+    public static final String column_parcelsPerYear = "paketeProJahr";
+    public static final String column_parcelOperator = "dienstleister";
     /**
      * Start location of the full trip relation
      */
@@ -60,11 +64,12 @@ public class RvrTripRelation {
     private final double destinationX;
     private final double destinationY;
 
-    // TODO Additional data (currently, we don't have the lookup table for those data)
-    // private final String originalTerminal; // Starting terminal for the main run (also the destination for the pre-run)
-    // private final String destinationTerminal; // Destination terminal for main run (also the starting terminal for the post-run)
+    private final double parcelsPerYear;
+    private final String parcelOperator;
+    private final String parcelHubId;
 
     public static class Builder {
+
         private String originCell;
         private String originLocationId;
         private String destinationCell;
@@ -78,6 +83,10 @@ public class RvrTripRelation {
         private double originY;
         private double destinationX;
         private double destinationY;
+
+        public double parcelsPerYear;
+        public String parcelOperator;
+        public String parcelHubId;
 
         public Builder originCell(String value) {
             this.originCell = value;
@@ -133,6 +142,18 @@ public class RvrTripRelation {
             this.destinationY = value;
             return this;
         }
+        public Builder parcelsPerYear(double value) {
+            this.parcelsPerYear = value;
+            return this;
+        }
+        public Builder parcelOperator(String value) {
+            this.parcelOperator = value;
+            return this;
+        }
+        public Builder parcelHubId(String value) {
+            this.parcelHubId = value;
+            return this;
+        }
 
         public RvrTripRelation build() {
             return new RvrTripRelation(this);
@@ -153,6 +174,10 @@ public class RvrTripRelation {
         this.originY = builder.originY;
         this.destinationX = builder.destinationX;
         this.destinationY = builder.destinationY;
+
+        this.parcelsPerYear = builder.parcelsPerYear;
+        this.parcelOperator = builder.parcelOperator;
+        this.parcelHubId = builder.parcelHubId;
     }
 
     public double getOriginX() {
@@ -199,11 +224,30 @@ public class RvrTripRelation {
         return tonsPerYear;
     }
 
+    public double getParcelsPerYear() {
+        return parcelsPerYear;
+    }
 
-    public static List<RvrTripRelation> readTripRelations(Path pathToData) throws IOException {
+    public String getParcelOperator() {
+        return parcelOperator;
+    }
+
+    public String getParcelHubId() {
+        return parcelHubId;
+    }
+
+
+    public static List<RvrTripRelation> readTripRelations(Path pathToData, Path KEPdataFolderPath, CoordinateTransformation coordinateTransformation,
+                                                          ShpOptions.Index indexZones) throws IOException {
         List<RvrTripRelation> tripRelations = new ArrayList<>();
-//        List<File> inputFiles = findInputFiles(pathToData.toFile());
 
+        readRelationsFromMainMatrix(pathToData, tripRelations);
+        readRelationsFromKEPMatrix(KEPdataFolderPath, tripRelations, coordinateTransformation, indexZones);
+
+        return tripRelations;
+    }
+
+    private static void readRelationsFromMainMatrix(Path pathToData, List<RvrTripRelation> tripRelations) throws IOException {
         try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(pathToData, StandardCharsets.ISO_8859_1),
                 CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
             for (CSVRecord record : parser) {
@@ -228,22 +272,42 @@ public class RvrTripRelation {
             }
 
         }
-
-        return tripRelations;
     }
 
-    /**
-     * This method searches all csv files in a given folder.
-     */
-    static List<File> findInputFiles(File inputFolder) {
-        List<File> fileData = new ArrayList<>();
+    private static void readRelationsFromKEPMatrix(Path KEPdataFolderPath, List<RvrTripRelation> tripRelations,
+                                                   CoordinateTransformation coordinateTransformation, ShpOptions.Index indexZones) throws IOException {
+        try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(KEPdataFolderPath, StandardCharsets.ISO_8859_1),
+                CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
+            for (CSVRecord record : parser) {
+                Builder builder = new Builder();
+                // Read hub
+                builder.originLocationId(record.get(column_parcelHubId));
 
-        for (File file : Objects.requireNonNull(inputFolder.listFiles())) {
-            if (file.getName().contains(".csv"))
-                fileData.add(file);
+                //read coordinates (destination only on 100x100 grid) and transform them
+                Coord coordOrigin = CoordUtils.createCoord(Double.parseDouble(record.get(column_origin_X)),
+                        Double.parseDouble(record.get(column_origin_Y)));
+                coordOrigin = coordinateTransformation.transform(coordOrigin);
+
+                Coord coordDestination = CoordUtils.createCoord(Double.parseDouble(record.get(column_destination_X)),
+                        Double.parseDouble(record.get(column_destination_Y)));
+                coordDestination = coordinateTransformation.transform(coordDestination);
+
+                builder.originX(coordOrigin.getX()).originY(coordOrigin.getY()).destinationX(coordDestination.getX()).destinationY(
+                        coordDestination.getY());
+
+                builder.destinationCell(indexZones.query(coordDestination).toString());
+                // Read transport type  (FTL or LTL)
+                builder.transportType(CommercialTrafficUtils.TransportType.LTL.toString());
+
+                // Read goods type and parcels per year
+                builder.goodsType("150").parcelHubId(record.get(column_parcelHubId)).parcelOperator(record.get(column_parcelOperator)).parcelsPerYear(
+                        Double.parseDouble(record.get(column_parcelsPerYear)));
+
+                // Build trip relation and add to list
+                tripRelations.add(builder.build());
+            }
+
         }
-        Collections.sort(fileData);
-        return fileData;
     }
 }
 

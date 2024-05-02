@@ -15,19 +15,34 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Generates LTL freight agents for the Ruhr area.
+ *
+ * @author Ricardo Ewert
+ */
 public class LTLFreightAgentGeneratorRuhr {
-    private static DepartureTimeCalculatorRuhr departureTimeCalculator;
+    private static DepartureTimeCalculator departureTimeCalculator;
     private static DemandPerDayCalculator demandPerDayCalculator;
     private static CommercialVehicleSelector commercialVehicleSelector;
+    private static CommercialServiceTimeCalculator commercialServiceTimeCalculator;
+    private static double sample;
 
     public LTLFreightAgentGeneratorRuhr(int workingDays, double sample) {
-        departureTimeCalculator = new DefaultDepartureTimeCalculatorRuhr();
+        departureTimeCalculator = new DefaultDepartureTimeCalculator();
         demandPerDayCalculator = new DefaultDemandPerDayCalculator(workingDays, sample);
         commercialVehicleSelector = new DefaultCommercialVehicleSelector();
+        commercialServiceTimeCalculator = new DefaultCommercialServiceTimeCalculator();
+        this.sample = sample;
     }
 
+    /**
+     * Creates the CarrierVehicle for a carrier.
+     *
+     * @param scenario          scenario
+     * @param newCarrier        carrier
+     * @param nearestLinkOrigin link of the depot
+     */
     private static void createFreightVehicles(Scenario scenario, Carrier newCarrier, Id<Link> nearestLinkOrigin, Person freightDemandDataRelation) {
 
         CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
@@ -36,15 +51,21 @@ public class LTLFreightAgentGeneratorRuhr {
                 CarrierCapabilities.FleetSize.INFINITE).build();
 
         int earliestVehicleStartTime = (int) departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
-        int latestVehicleEndTime = earliestVehicleStartTime + 10 * 3600; //assumption that working only max 10hours
-        String vehicleTypeString = commercialVehicleSelector.getVehicleType(freightDemandDataRelation);
-        VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create(vehicleTypeString, VehicleType.class));
-        CarrierVehicle newCarrierVehicle = CarrierVehicle.Builder.newInstance(
-                Id.create(newCarrier.getId().toString() + "_" + (carrierCapabilities.getCarrierVehicles().size() + 1), Vehicle.class),
-                nearestLinkOrigin, vehicleType).setEarliestStart(earliestVehicleStartTime).setLatestEnd(latestVehicleEndTime).build();
-        carrierCapabilities.getCarrierVehicles().put(newCarrierVehicle.getId(), newCarrierVehicle);
-        if (!carrierCapabilities.getVehicleTypes().contains(vehicleType)) carrierCapabilities.getVehicleTypes().add(vehicleType);
-
+        int latestVehicleEndTime = earliestVehicleStartTime + 9 * 3600; //assumption that working only max 9hours
+        List<String> possibleVehicleTypeIds = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation,
+                newCarrier.getId().toString());
+        possibleVehicleTypeIds.forEach(vehicleTypeId -> {
+            VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create(vehicleTypeId, VehicleType.class));
+            // Waste collection and parcel delivery tours we will not sample. That's why we adjust the pcu equivalents
+            if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140 || CommercialTrafficUtils.getGoodsType(
+                    freightDemandDataRelation) == 150)
+                vehicleType.setPcuEquivalents(vehicleType.getPcuEquivalents() * sample);
+            CarrierVehicle newCarrierVehicle = CarrierVehicle.Builder.newInstance(
+                    Id.create(newCarrier.getId().toString() + "_" + (carrierCapabilities.getCarrierVehicles().size() + 1), Vehicle.class),
+                    nearestLinkOrigin, vehicleType).setEarliestStart(earliestVehicleStartTime).setLatestEnd(latestVehicleEndTime).build();
+            carrierCapabilities.getCarrierVehicles().put(newCarrierVehicle.getId(), newCarrierVehicle);
+            if (!carrierCapabilities.getVehicleTypes().contains(vehicleType)) carrierCapabilities.getVehicleTypes().add(vehicleType);
+        });
         newCarrier.setCarrierCapabilities(carrierCapabilities);
     }
 
@@ -56,8 +77,6 @@ public class LTLFreightAgentGeneratorRuhr {
 
         Population population = scenario.getPopulation();
         PopulationFactory popFactory = population.getFactory();
-
-        Map<String, AtomicLong> idCounter = new HashMap<>();
 
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
@@ -115,12 +134,11 @@ public class LTLFreightAgentGeneratorRuhr {
 
                 String key = carrier.getId().toString();
 
-                long id = idCounter.computeIfAbsent(key, (k) -> new AtomicLong()).getAndIncrement();
-
-                Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + id));
+                Person newPerson = popFactory.createPerson(Id.createPersonId(key + "_" + scheduledTour.getTour().getId().toString()));
 
                 newPerson.addPlan(plan);
                 PopulationUtils.putSubpopulation(newPerson, subpopulation);
+                newPerson.getAttributes().putAttribute("goodsType", carrier.getAttributes().getAttribute("goodsType"));
 
                 Id<Vehicle> vehicleId = scheduledTour.getVehicle().getId();
 
@@ -134,16 +152,44 @@ public class LTLFreightAgentGeneratorRuhr {
         });
     }
 
+    /**
+     * Creates a carrier id based on the freight demand data.
+     *
+     * @return Creates a carrier id based on the freight demand data.
+     */
     private static Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
 
         int goodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
-        if (goodsType == 140)
-            return Id.create("Carrier-wasteCollection-facility_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
+
+        // waste collection; assuming that the collection teams have service areas based on the vpp2040 cells -> per collection cell a separate carrier
+        if (goodsType == 140) {
+            String collectionZone = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
+            return Id.create(
+                    "WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
                     Carrier.class);
-        return Id.create("Carrier-goodsType_" + goodsType + "-facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation),
+        }
+        // parcel delivery; assuming that the delivery teams have service areas based on the vpp2040 cells -> per delivery cell a separate carrier
+        if (goodsType == 150) {
+            String deliveryZone = CommercialTrafficUtils.getDestinationCell(freightDemandDataRelation);
+            String key = "ParcelDelivery_" + CommercialTrafficUtils.getParcelOperator(
+                    freightDemandDataRelation) + "_Hub_" + CommercialTrafficUtils.getParcelHubId(freightDemandDataRelation);
+            // here I assume that locations (100x100) with a demand of 200 parcels per day or more are served by a 26t truck, because they are commercial costumers
+            if (demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation)) >= 200)
+                return Id.create(key + "_truck18t", Carrier.class);
+            else
+                return Id.create(key + "_zone_" + deliveryZone, Carrier.class);
+        }
+        return Id.create("GoodsType_" + goodsType + "_facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation),
                 Carrier.class);
     }
 
+    /**
+     * Creates all carriers for LTL freight agents based on the freight demand data.
+     *
+     * @param inputFreightDemandData freight demand data
+     * @param scenario               scenario
+     * @param jspritIterationsForLTL number of iterations for the jsprit algorithm to solve the LTL carriers
+     */
     public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario, int jspritIterationsForLTL) {
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
@@ -156,7 +202,7 @@ public class LTLFreightAgentGeneratorRuhr {
         for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
             if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.LTL.toString())) {
                 Id<Carrier> carrierId = createCarrierId(freightDemandDataRelation);
-                if (carriers.getCarriers().containsKey(carrierId) ) {
+                if (carriers.getCarriers().containsKey(carrierId)) {
                     Carrier existingCarrier = carriers.getCarriers().get(carrierId);
                     if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) != 140) {
                         Id<Link> fromLinkId;
@@ -181,27 +227,34 @@ public class LTLFreightAgentGeneratorRuhr {
                 } else {
                     Carrier newCarrier = CarriersUtils.createCarrier(carrierId);
                     CarriersUtils.setJspritIterations(newCarrier, jspritIterationsForLTL);
+                    newCarrier.getAttributes().putAttribute("goodsType", CommercialTrafficUtils.getGoodsType(freightDemandDataRelation));
                     Link vehicleLocation;
                     if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) != 140) {
                         vehicleLocation = NetworkUtils.getNearestLink(filteredNetwork,
                                 new Coord(CommercialTrafficUtils.getOriginX(freightDemandDataRelation),
                                         CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
+                        createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
                         addShipment(filteredNetwork, newCarrier, freightDemandDataRelation, vehicleLocation.getId(), null);
-                    }
-                    else { //waste collection
+                    } else { //waste collection
                         vehicleLocation = NetworkUtils.getNearestLink(filteredNetwork,
                                 new Coord(CommercialTrafficUtils.getDestinationX(freightDemandDataRelation),
                                         CommercialTrafficUtils.getDestinationY(freightDemandDataRelation)));
+                        createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
                         addShipment(filteredNetwork, newCarrier, freightDemandDataRelation, null, vehicleLocation.getId());
-
                     }
-                    createFreightVehicles(scenario, newCarrier, vehicleLocation.getId(), freightDemandDataRelation);
-                    carriers.addCarrier(newCarrier);
+                    if (!newCarrier.getShipments().isEmpty())
+                        carriers.addCarrier(newCarrier);
                 }
             }
         }
     }
 
+    /**
+     * Creates all shipments for a given freight demand data relation.
+     *
+     * @param fromLinkId if null, we assume a waste collection, because we know the delivery location (dump), but we have different pickup locations
+     * @param toLinkId   if null, we assume a delivery, because we know the pickup location (hub), but we have different delivery locations
+     */
     private void addShipment(Network filteredNetwork, Carrier existingCarrier, Person freightDemandDataRelation, Id<Link> fromLinkId,
                              Id<Link> toLinkId) {
         CarrierShipment newCarrierShipment;
@@ -209,49 +262,68 @@ public class LTLFreightAgentGeneratorRuhr {
         if (toLinkId == null) {
             Link toLink = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getDestinationX(freightDemandDataRelation),
                     CommercialTrafficUtils.getDestinationY(freightDemandDataRelation)));
-            int demand = demandPerDayCalculator.calculateKilogramsPerDay(CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation));
+            int demand;
+            if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) //parcel delivery
+                demand = demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation));
+            else
+                demand = demandPerDayCalculator.calculateKilogramsPerDay(CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation));
             if (demand == 0) return;
-            int serviceTime = (int) (0.5 * 3600); //TODO
-            TimeWindow timeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
-            newCarrierShipment = CarrierShipment.Builder.newInstance(
-                    Id.create(freightDemandDataRelation.getId().toString(), CarrierShipment.class),
-                    fromLinkId,
-                    toLink.getId(),
-                    demand).setPickupTimeWindow(timeWindow).setDeliveryTimeWindow(timeWindow).setPickupServiceTime(
-                    serviceTime).setDeliveryServiceTime(serviceTime).build();
+            int numberOfJobsForDemand = demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, demand);
 
+            for (int i = 0; i < numberOfJobsForDemand; i++) {
+                int demandThisJob = demand / numberOfJobsForDemand;
+                int pickupTime = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, demandThisJob);
+                int deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, demandThisJob);
+                TimeWindow pickupTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
+                TimeWindow deliveryTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
+
+                newCarrierShipment = CarrierShipment.Builder.newInstance(
+                        Id.create(freightDemandDataRelation.getId().toString(), CarrierShipment.class),
+                        fromLinkId,
+                        toLink.getId(),
+                        demandThisJob).setPickupTimeWindow(pickupTimeWindow).setDeliveryTimeWindow(deliveryTimeWindow).setPickupServiceTime(
+                        pickupTime).setDeliveryServiceTime(deliveryTime).build();
+                existingCarrier.getShipments().put(newCarrierShipment.getId(), newCarrierShipment);
+            }
         } else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) { //waste collection
             Link fromLink = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getOriginX(freightDemandDataRelation),
                     CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
-            List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
-                    carrierShipment -> carrierShipment.getTo().equals(toLinkId) && carrierShipment.getFrom().equals(fromLink.getId())).toList();
+
             int volumeWaste = demandPerDayCalculator.calculateWasteDemandPerDay(freightDemandDataRelation);
             if (volumeWaste == 0) return;
-            double maxLoadPerBinInKilogramm = 110; //bin with 1100l and density 100kg/m^3
-            int timePerBin = 41;
-            double collectionTimeForBins = timePerBin * (int) Math.ceil(volumeWaste / maxLoadPerBinInKilogramm);
-            double deliveryTime = ((double) volumeWaste / 11000) * 45 * 60; // assuming that the delivery time is 45 minutes (lunch break) and the vehicle is full when driving to the dump
-            TimeWindow timeWindow = TimeWindow.newInstance(6 * 3600, 16 * 3600);
+            int numberOfJobsForDemand = demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, volumeWaste);
 
-            // combines waste collections from/to the same locations to one shipment
-            if (!existingShipments.isEmpty()) {
-                CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.get(0).getId());
-                collectionTimeForBins = collectionTimeForBins + existingShipment.getPickupServiceTime();
-                volumeWaste = volumeWaste + existingShipment.getSize();
-                deliveryTime = deliveryTime + existingShipment.getDeliveryServiceTime();
-                existingCarrier.getShipments().remove(existingShipment.getId());
+            for (int i = 0; i < numberOfJobsForDemand; i++) {
+                int wasteThisJob = volumeWaste / numberOfJobsForDemand;
+                double collectionTimeForBins = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, wasteThisJob);
+                int deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, wasteThisJob);
+                TimeWindow timeWindow = TimeWindow.newInstance(6 * 3600, 16 * 3600);
+
+                // combines waste collections from/to the same locations to one shipment
+                List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
+                        carrierShipment -> carrierShipment.getTo().equals(toLinkId) && carrierShipment.getFrom().equals(fromLink.getId())).toList();
+                if (!existingShipments.isEmpty()) {
+                    CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.get(0).getId());
+                    // checks if the waste collection can be combined with the existing shipment and will not exceed the vehicle capacity
+                    if (demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, wasteThisJob + existingShipment.getSize()) == 1) {
+                        collectionTimeForBins = collectionTimeForBins + existingShipment.getPickupServiceTime();
+                        wasteThisJob = wasteThisJob + existingShipment.getSize();
+                        deliveryTime = deliveryTime + (int) existingShipment.getDeliveryServiceTime();
+                        existingCarrier.getShipments().remove(existingShipment.getId());
+                    }
+                }
+
+                newCarrierShipment = CarrierShipment.Builder.newInstance(
+                        Id.create(freightDemandDataRelation.getId().toString() + "_" + i, CarrierShipment.class),
+                        fromLink.getId(),
+                        toLinkId,
+                        wasteThisJob).setPickupTimeWindow(timeWindow).setDeliveryTimeWindow(timeWindow).setPickupServiceTime(
+                        collectionTimeForBins).setDeliveryServiceTime(deliveryTime).build();
+                existingCarrier.getShipments().put(newCarrierShipment.getId(), newCarrierShipment);
             }
-
-            newCarrierShipment = CarrierShipment.Builder.newInstance(
-                    Id.create(freightDemandDataRelation.getId().toString(), CarrierShipment.class),
-                    fromLink.getId(),
-                    toLinkId,
-                    volumeWaste).setPickupTimeWindow(timeWindow).setDeliveryTimeWindow(timeWindow).setPickupServiceTime(
-                    collectionTimeForBins).setDeliveryServiceTime(deliveryTime).build();
         } else
             throw new RuntimeException("This should not happen");
 
-        existingCarrier.getShipments().put(newCarrierShipment.getId(), newCarrierShipment);
     }
 }
 

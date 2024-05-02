@@ -2,31 +2,40 @@ package org.matsim.prepare.commercial;
 
 import org.matsim.api.core.v01.population.Person;
 
+import java.util.Objects;
+
 public class CommercialTrafficUtils {
 
     public enum TransportType {
-        FTL, LTL
+        FTL, LTL, FTL_kv
     }
 
     public static void writeCommonAttributes(Person person, RvrTripRelation rvrTripRelation, String tripRelationId) {
-        setFreightSubpopulation(person);
+//        setFreightSubpopulation(person);
         setTripRelationIndex(person, tripRelationId);
-        setOriginCell(person, rvrTripRelation);
-        setDestinationCell(person, rvrTripRelation);
-        setOriginLocationId(person, rvrTripRelation);
-        setDestinationLocationId(person, rvrTripRelation);
         setGoodsType(person, rvrTripRelation);
         setTransportType(person, rvrTripRelation);
         setOriginX(person, rvrTripRelation);
         setOriginY(person, rvrTripRelation);
         setDestinationX(person, rvrTripRelation);
         setDestinationY(person, rvrTripRelation);
-        setTonesPerYear(person, rvrTripRelation);
+        setDestinationCell(person, rvrTripRelation);
+        // parcel specific attributes
+        if (Objects.equals(rvrTripRelation.getGoodsType(), "150")) {
+            setParcelOperator(person, rvrTripRelation);
+            setParcelHubId(person, rvrTripRelation);
+            setParcelsPerYear(person, rvrTripRelation);
+        } else {
+            setOriginCell(person, rvrTripRelation);
+            setOriginLocationId(person, rvrTripRelation);
+            setDestinationLocationId(person, rvrTripRelation);
+            setTonesPerYear(person, rvrTripRelation);
+        }
     }
 
-    private static void setFreightSubpopulation(Person person) {
-        person.getAttributes().putAttribute("subpopulation", "freight");
-    }
+//    private static void setFreightSubpopulation(Person person) {
+//        person.getAttributes().putAttribute("subpopulation", "freight");
+//    }
     private static void setTripRelationIndex(Person person, String tripRelationId) {
         person.getAttributes().putAttribute("trip_relation_index", tripRelationId);
     }
@@ -62,6 +71,15 @@ public class CommercialTrafficUtils {
     }
     private static void setTonesPerYear(Person person, RvrTripRelation rvrTripRelation) {
         person.getAttributes().putAttribute("tons_per_year", rvrTripRelation.getTonsPerYear());
+    }
+    public static void setParcelOperator(Person person, RvrTripRelation rvrTripRelation) {
+        person.getAttributes().putAttribute("parcelOperator", rvrTripRelation.getParcelOperator());
+    }
+    public static void setParcelsPerYear(Person person, RvrTripRelation rvrTripRelation) {
+        person.getAttributes().putAttribute("parcelsPerYear", rvrTripRelation.getParcelsPerYear());
+    }
+    public static void setParcelHubId(Person person, RvrTripRelation rvrTripRelation) {
+        person.getAttributes().putAttribute("parcelHubId", rvrTripRelation.getParcelHubId());
     }
 
     public static String getTransportType(Person person) {
@@ -99,5 +117,14 @@ public class CommercialTrafficUtils {
     }
     public static String getDestinationLocationId(Person person) {
         return person.getAttributes().getAttribute("destination_locationId").toString();
+    }
+    public static String getParcelOperator(Person person) {
+        return person.getAttributes().getAttribute("parcelOperator").toString();
+    }
+    public static int getParcelsPerYear(Person person) {
+        return (int)(Double.parseDouble(person.getAttributes().getAttribute("parcelsPerYear").toString()));
+    }
+    public static String getParcelHubId(Person person) {
+        return person.getAttributes().getAttribute("parcelHubId").toString();
     }
 }
