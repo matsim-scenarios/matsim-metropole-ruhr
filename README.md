@@ -111,3 +111,7 @@ Some functionality in this repository is based on the 'MATSim Open Ruhrgebiet' m
 
 The travel demand data for the metropolitan area Ruhr is provided by Senozon Deutschland GmbH (https://senozon.com).
 
+### Internal documentation
+
+Internal documentation can be found here:
+https://docs.google.com/document/d/1GQhdJh4Cg4ZrzbcP_aB4KYK6jxIGmj5EB1eyIbWNbAU/edit?usp=sharing
