@@ -18,7 +18,7 @@ public class DefaultCommercialServiceTimeCalculator implements CommercialService
             return (demand * timePerParcel);
         }
         if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) // waste collection
-            return (int) ((double) demand / 11000) * 45 * 60; // assuming that the delivery time is 45 minutes (lunch break) and the vehicle is full when driving to the dump;
+            return (int) ((double) demand / 11000 * 45 * 60); // assuming that the delivery time is 45 minutes (lunch break) and the vehicle is full when driving to the dump;
         return (int) (0.5 * 3600); //TODO
     }
 
