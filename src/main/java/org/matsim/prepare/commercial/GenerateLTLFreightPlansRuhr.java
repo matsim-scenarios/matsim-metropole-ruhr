@@ -137,13 +137,13 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
         freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL);
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersNoSolution.xml.gz");
+        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_LTLcarriersNoSolution.xml.gz");
 
         filterRelevantVehicleTypesForTourPlanning(scenario);
 
         CarriersUtils.runJsprit(scenario);
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_FTLcarriersWithSolution.xml.gz");
+        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_LTLcarriersWithSolution.xml.gz");
 
         LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
     }
