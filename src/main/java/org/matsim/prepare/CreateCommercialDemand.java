@@ -138,7 +138,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
             );
         }
-        log.info("3rd step - create transit long distance freight traffic");
+        log.info("4rd step - create transit long distance freight traffic");
         String longDistanceFreightPopulationName = output.resolve(
                 "ruhr_longDistanceFreight." + (int) (sample * 100) + "pct.plans.xml.gz").toString();
         if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
@@ -161,12 +161,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             PopulationUtils.sampleDown(population, sample / 0.25);
             PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
         }
-        log.info("4rd step - create input data for small scale commercial traffic");
+        log.info("5rd step - create input data for small scale commercial traffic");
 
         Path pathCommercialFacilities = output.resolve("commercialFacilities.xml.gz");
         LanduseDataConnectionCreator landuseDataConnectionCreator = new LanduseDataConnectionCreatorForOSM_Data(); //here possible to create an implementation for ruhrAGIS data
         if (Files.exists(pathCommercialFacilities)) {
-            log.warn("Commercial facilities already exists. Skipping generation.");
+            log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
         } else {
             new CreateDataDistributionOfStructureData(landuseDataConnectionCreator).execute(
                     "--pathOutput", output.toString(),
@@ -183,7 +183,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--pathToInvestigationAreaData", pathToInvestigationAreaData
             );
         }
-        log.info("5th step - create small scale commercial traffic");
+        log.info("6th step - create small scale commercial traffic");
         String smallScaleCommercialPopulationName = "rvrCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
         String outputPathSmallScaleCommercial = output.resolve("smallScaleCommercial").toString();
         Path resolve = Path.of(outputPathSmallScaleCommercial).resolve(smallScaleCommercialPopulationName);
@@ -199,8 +199,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--sample", String.valueOf(sample),
                     "--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
                     "--creationOption", "createNewCarrierFile",
-//                    "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
-                    "--smallScaleCommercialTrafficType", "goodsTraffic",
+                    "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
+//                    "--smallScaleCommercialTrafficType", "goodsTraffic",
 //                "--zoneShapeFileName", "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040_RuhrOnly2.shp",
                     "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
                     "--zoneShapeFileNameColumn", "schluessel",
@@ -212,8 +212,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
             // TODO filter relevant agents for the small scale commercial traffic
         }
-        log.info("6th step - Merge freight and commercial populations");
-        String pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("LTL","").replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
+        log.info("7th step - Merge freight and commercial populations");
+        String pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL","").replace(".plans.xml.gz", "") + "_merged.plans.xml.gz";
         if (Files.exists(Path.of(pathMergedPopulation))) {
             log.info("Merged demand already exists. Skipping generation.");
         } else {
