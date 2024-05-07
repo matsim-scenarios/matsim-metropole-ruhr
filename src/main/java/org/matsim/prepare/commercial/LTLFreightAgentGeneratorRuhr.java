@@ -330,6 +330,7 @@ public class LTLFreightAgentGeneratorRuhr {
                              Id<Link> toLinkId) {
         CarrierShipment newCarrierShipment;
 
+        // parcel delivery or general goods
         if (toLinkId == null) {
             Link toLink = NetworkUtils.getNearestLink(filteredNetwork, new Coord(CommercialTrafficUtils.getDestinationX(freightDemandDataRelation),
                     CommercialTrafficUtils.getDestinationY(freightDemandDataRelation)));

@@ -31,6 +31,12 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         return (int) kilogramsPerDay;
     }
 
+    /**
+     * Calculate the waste demand per day. The assumption is that waste is collected once a week and is collected in 20% of the zones on each day.
+     *
+     * @param freightDemandDataRelation the freight demand data relation
+     * @return the waste demand per day
+     */
     @Override
     public int calculateWasteDemandPerDay(Person freightDemandDataRelation) {
         String destination = CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation);
@@ -55,7 +61,7 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
     }
 
     /**
-     * @param parcelsPerYear the number of parcels per year
+     * @param parcelsPerYear the number of parcels per year. This demand calculation contains no sampling. This results in a 100% demand.
      * @return the number of parcels per day
      */
     @Override
