@@ -123,27 +123,46 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
     private void createPLansForLTLTrips(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL, Population outputPopulation,
                                         int jspritIterationsForLTL) throws ExecutionException, InterruptedException {
 
+        Path carrierVRPFile = output.resolve("output_LTLcarriersNoSolution.xml.gz");
+        Path carrierVRPFile_Solution = output.resolve("output_LTLcarriersWithSolution.xml.gz");
+
         Config config = ConfigUtils.createConfig();
         config.network().setInputFile(networkPath);
         config.global().setCoordinateSystem("EPSG:25832");
         FreightCarriersConfigGroup freightCarriersConfigGroup = ConfigUtils.addOrGetModule(config, FreightCarriersConfigGroup.class);
         freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
+        Scenario scenario;
+        if (Files.exists(carrierVRPFile_Solution)) {
+            log.warn("Using existing carrier VRP file with solution: {}", carrierVRPFile_Solution);
+            freightCarriersConfigGroup.setCarriersFile(carrierVRPFile_Solution.toString());
+            scenario = ScenarioUtils.loadScenario(config);
+            CarriersUtils.loadCarriersAccordingToFreightConfig(scenario);
+        } else {
+            if (Files.exists(carrierVRPFile)) {
+                log.warn("Using existing carrier VRP file without solution: {}", carrierVRPFile);
+                freightCarriersConfigGroup.setCarriersFile(carrierVRPFile.toString());
 
-        Scenario scenario = ScenarioUtils.loadScenario(config);
+                scenario = ScenarioUtils.loadScenario(config);
+                CarriersUtils.loadCarriersAccordingToFreightConfig(scenario);
 
-        log.info("Read carrier vehicle types");
-        CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
-        new CarrierVehicleTypeReader( carrierVehicleTypes ).readURL( IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
+            } else {
+                scenario = ScenarioUtils.loadScenario(config);
 
-        freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL);
+                log.info("Read carrier vehicle types");
+                CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
+                new CarrierVehicleTypeReader(carrierVehicleTypes).readURL(
+                        IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_LTLcarriersNoSolution.xml.gz");
+                freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL);
 
-        filterRelevantVehicleTypesForTourPlanning(scenario);
+                CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierVRPFile.toString());
+            }
+            filterRelevantVehicleTypesForTourPlanning(scenario);
 
-        CarriersUtils.runJsprit(scenario);
+            CarriersUtils.runJsprit(scenario);
 
-        CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_LTLcarriersWithSolution.xml.gz");
+            CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), output.toString() + "/output_LTLcarriersWithSolution.xml.gz");
+        }
 
         LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
     }
