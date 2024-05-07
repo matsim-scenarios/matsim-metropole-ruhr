@@ -7,14 +7,17 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
-import org.matsim.api.core.v01.*;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.Identifiable;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
+import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.population.io.PopulationReader;
@@ -26,9 +29,7 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
 public class TestParking {
 
@@ -74,14 +75,14 @@ public class TestParking {
             preparedConfig.global().setNumberOfThreads(1);
             preparedConfig.qsim().setNumberOfThreads(1);
             preparedConfig.plans().setInputFile(null);
-            preparedConfig.controler().setLastIteration(0);
-            preparedConfig.controler().setRunId(RUN_ID);
+            preparedConfig.controller().setLastIteration(0);
+            preparedConfig.controller().setRunId(RUN_ID);
 
             // Disable PT
             preparedConfig.transit().setUseTransit(false);
 
             if (useParking== false) {
-                config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
+                config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.accessEgressModeToLink);
             }
 
             return preparedConfig;
