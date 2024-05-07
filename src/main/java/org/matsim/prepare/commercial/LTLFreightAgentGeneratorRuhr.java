@@ -15,6 +15,8 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Generates LTL freight agents for the Ruhr area.
@@ -80,8 +82,74 @@ public class LTLFreightAgentGeneratorRuhr {
 
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
+        // counting the total number of tours for waste collections and parcel delivery, because the carrier is for both goods types a 100% demand
+        int totalToursForWasteCollections = carriers.getCarriers().values().stream().mapToInt(carrier -> {
+            if ((int) carrier.getAttributes().getAttribute("goodsType") == 140)
+                return carrier.getSelectedPlan().getScheduledTours().size();
+            return 0;
+        }).sum();
+        int totalToursForParcelDelivery = carriers.getCarriers().values().stream().mapToInt(carrier -> {
+            if ((int) carrier.getAttributes().getAttribute("goodsType") == 150)
+                return carrier.getSelectedPlan().getScheduledTours().size();
+            return 0;
+        }).sum();
+
+        int sampledToursForWasteCollections = (int) Math.round(totalToursForWasteCollections * sample);
+        int sampledToursForParcelDelivery = (int) Math.round(totalToursForParcelDelivery * sample);
+        AtomicReference<Double> wasteCollectionRoundingError = new AtomicReference<>((double) 0);
+        AtomicReference<Double> parcelDeliveryRoundingError = new AtomicReference<>((double) 0);
+        AtomicInteger integratedToursForWasteCollections = new AtomicInteger();
+        AtomicInteger integratedToursForParcelDelivery = new AtomicInteger();
+
+        // Sample tours of waste collections and parcel delivery to the scenario sample size.
+        // Therefore, use an error to add a tour if the error is >1
         carriers.getCarriers().values().forEach(carrier -> {
+            AtomicInteger sampledToursForThisCarrier = new AtomicInteger();
+            AtomicInteger integratedToursForThisCarrier = new AtomicInteger();
+            int goodsType = (int) carrier.getAttributes().getAttribute("goodsType");
+            if ( goodsType == 140 || goodsType == 150) {
+                sampledToursForThisCarrier.set((int) Math.round(carrier.getSelectedPlan().getScheduledTours().size() * sample));
+                if (goodsType == 140)
+                    wasteCollectionRoundingError.getAndAccumulate((double) sampledToursForThisCarrier.get() - (carrier.getSelectedPlan().getScheduledTours().size() * sample),
+                            Double::sum);
+                if (goodsType == 150)
+                    parcelDeliveryRoundingError.getAndAccumulate((double) sampledToursForThisCarrier.get() - (carrier.getSelectedPlan().getScheduledTours().size() * sample),
+                            Double::sum);
+            } else {
+                // if the carrier is not for waste collections or parcel delivery, we use all tours
+                sampledToursForThisCarrier.set(Integer.MIN_VALUE);
+            }
             carrier.getSelectedPlan().getScheduledTours().forEach(scheduledTour -> {
+                // if the rounding error is >1, we add this tour
+                if (Math.abs(wasteCollectionRoundingError.get()) >= 1.) {
+                    if (wasteCollectionRoundingError.get() > 0) {
+                        wasteCollectionRoundingError.getAndAccumulate(-1., Double::sum);
+                        sampledToursForThisCarrier.getAndIncrement();
+                    } else {
+                        wasteCollectionRoundingError.getAndAccumulate(1., Double::sum);
+                        sampledToursForThisCarrier.getAndIncrement();
+                    }
+                }
+                else if (Math.abs(parcelDeliveryRoundingError.get()) >= 1.) {
+                    if (parcelDeliveryRoundingError.get() > 0) {
+                        parcelDeliveryRoundingError.getAndAccumulate(-1., Double::sum);
+                        sampledToursForThisCarrier.getAndIncrement();
+                    } else {
+                        parcelDeliveryRoundingError.getAndAccumulate(1., Double::sum);
+                        sampledToursForThisCarrier.getAndIncrement();
+                    }
+                }
+                // is the number of sampled tours for this carrier reached, we ignore the rest. If the carrier is not for waste collections or parcel delivery, we use all tours
+                else if (sampledToursForThisCarrier.get() == integratedToursForThisCarrier.get())
+                    return;
+
+                integratedToursForThisCarrier.getAndIncrement();
+                if ((int) carrier.getAttributes().getAttribute("goodsType") == 140) {
+                    integratedToursForWasteCollections.getAndIncrement();
+                }
+                if ((int) carrier.getAttributes().getAttribute("goodsType") == 150) {
+                    integratedToursForParcelDelivery.getAndIncrement();
+                }
                 Plan plan = PopulationUtils.createPlan();
                 String subpopulation = "LTL_trips";
                 String mode = scheduledTour.getVehicle().getType().getNetworkMode();
@@ -149,6 +217,10 @@ public class LTLFreightAgentGeneratorRuhr {
 
             });
         });
+        if (sampledToursForWasteCollections != integratedToursForWasteCollections.get())
+            throw new RuntimeException("The number of integrated tours for waste collections does not match the sampled tours");
+        if (sampledToursForParcelDelivery != integratedToursForParcelDelivery.get())
+            throw new RuntimeException("The number of integrated tours for parcel delivery does not match the sampled tours");
     }
 
     /**
