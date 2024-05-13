@@ -43,6 +43,9 @@ import java.util.stream.Collectors;
 
 import static org.matsim.prepare.RuhrUtils.*;
 
+/**
+ * Create supply (network, pt, counts) for the scenario.
+ */
 public class CreateSupply {
 
 	public enum NetworkResolution {Low, Medium, High}
@@ -129,7 +132,11 @@ public class CreateSupply {
 
 		// ----------------------------------------- Create Network ----------------------------------------------------
 
+		// ruhr area is rather large, with a mixture of urban and more rural areas
+		// based on the paper "Road network free flow speed estimation using microscopic simulation and point-to-point travel times"
+		// the free speed factor was set to a mean of urban, metropolitan and rural areas
 		var networkBuilder = new OsmBicycleReader.Builder()
+				.setFreeSpeedFactor(0.75)
 				.setCoordinateTransformation(transformation)
 				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
 				.setPreserveNodeWithId(nodeIdsToKeep::contains)

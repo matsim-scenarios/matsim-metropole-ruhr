@@ -15,6 +15,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+/**
+ * Create population (input plans) for the scenario.
+ */
 public class CreateDemand {
 
 	private static final Path rootFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
