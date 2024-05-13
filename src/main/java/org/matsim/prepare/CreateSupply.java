@@ -12,6 +12,7 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.application.prepare.counts.CreateCountsFromBAStData;
 import org.matsim.application.prepare.pt.CreateTransitScheduleFromGtfs;
 import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.osm.networkReader.LinkProperties;
@@ -76,9 +77,11 @@ public class CreateSupply {
 	// for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
 	// private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
 
-	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/");
+	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/");
 
-	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input/");
+	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/input/");
+
+	private static final Path bastCountsRoot = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/BASt");
 	private static final Path longTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
@@ -166,15 +169,15 @@ public class CreateSupply {
 		// ----------------------------- Add bicycles and write network ------------------------------------------------
 
 		Network network1 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork1));
-		new NetworkWriter(network1).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork1.xml.gz").toString());
+		new NetworkWriter(network1).write(outputDir.resolve("metropole-ruhr-v2.0.network-onlyBikeNetwork1.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network1);
 
 		Network network2 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork2));
-		new NetworkWriter(network2).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork2.xml.gz").toString());
+		new NetworkWriter(network2).write(outputDir.resolve("metropole-ruhr-v2.0.network-onlyBikeNetwork2.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network2);
 
 		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
-		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v1.4.network-onlyBikeNetwork3.xml.gz").toString());
+		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v2.0.network-onlyBikeNetwork3.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
@@ -273,7 +276,7 @@ public class CreateSupply {
 			}
 		}
 
-		String networkOut = outputDir.resolve("metropole-ruhr-v1.4.network_resolution" + networkResolution + ".xml.gz").toString();
+		String networkOut = outputDir.resolve("metropole-ruhr-v2.0.network_resolution" + networkResolution + ".xml.gz").toString();
 		new NetworkWriter(network).write(networkOut);
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
@@ -285,7 +288,7 @@ public class CreateSupply {
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
-				"--name", "metropole-ruhr-v1.4"
+				"--name", "metropole-ruhr-v2.0"
 		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
@@ -310,7 +313,20 @@ public class CreateSupply {
 				.build()
 				.run();
 
-		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v1.4.counts.xml.gz"),
+
+		new CreateCountsFromBAStData().execute(
+			"--network", networkOut,
+			"--year", "2022",
+			"--counts-mapping", rootDirectory.resolve(bastCountsRoot).resolve("bast-mapping.csv").toString(),
+			"--motorway-data",  rootDirectory.resolve(bastCountsRoot).resolve("2022_A_S.zip").toString(),
+			"--primary-data", rootDirectory.resolve(bastCountsRoot).resolve("2022_B_S.zip").toString(),
+			"--station-data", rootDirectory.resolve(bastCountsRoot).resolve("Jawe2022.csv").toString(),
+			"--output", rootDirectory.resolve(outputDirPublic).resolve("metropole-ruhr-v2.0.counts.xml.gz").toString()
+		);
+
+
+		// Based on 2015 count data, won't be used in the new model
+		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v2.0.counts-old.xml.gz"),
 				longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
 	}
 

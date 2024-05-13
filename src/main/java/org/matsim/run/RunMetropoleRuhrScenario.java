@@ -206,7 +206,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setFlowCapFactor(sample.getSample());
 			config.qsim().setStorageCapFactor(sample.getSample());
 
-			simWrapperConfigGroup.defaultParams().sampleSize = sample.getSample();
+			simWrapperConfigGroup.sampleSize = sample.getSample();
 		}
 
 		// snz activity types that are always the same, Differentiated by typical duration
