@@ -192,6 +192,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         if (Files.exists(resolve)) {
             log.warn("Small-scale Commercial demand already exists. Skipping generation.");
         } else {
+            //TODO check: Wo wird das Volumen der existierenden Modelle von den erzeugten Potentialen abgezogen?
             new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial).execute(
                     configPath.toString(),
                     "--pathToDataDistributionToZones", output.resolve("dataDistributionPerZone.csv").toString(),
@@ -227,6 +228,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         }
 
         if (alsoRunCompleteCommercialTraffic) {
+            //TODO perhaps check if this can be moved to RunMetropoleRuhrScenario
             Config config = ConfigUtils.loadConfig(configPath.toString());
             config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
             config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
@@ -245,7 +247,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             config.qsim().setUsingTravelTimeCheckInTeleportation(true);
             config.qsim().setUsePersonIdForMissingVehicleId(false);
             config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
-            config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
+            config.scoring().setFractionOfIterationsToStartScoreMSA(Double.valueOf(0.8));
             config.getModules().remove("intermodalTripFareCompensators");
             config.getModules().remove("ptExtensions");
             config.getModules().remove("ptIntermodalRoutingModes");
