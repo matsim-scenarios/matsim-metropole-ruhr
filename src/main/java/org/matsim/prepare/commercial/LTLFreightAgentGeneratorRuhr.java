@@ -124,7 +124,7 @@ public class LTLFreightAgentGeneratorRuhr {
                 if (Math.abs(wasteCollectionRoundingError.get()) >= 1.) {
                     if (wasteCollectionRoundingError.get() > 0) {
                         wasteCollectionRoundingError.getAndAccumulate(-1., Double::sum);
-                        sampledToursForThisCarrier.getAndIncrement();
+                        sampledToursForThisCarrier.getAndDecrement();
                     } else {
                         wasteCollectionRoundingError.getAndAccumulate(1., Double::sum);
                         sampledToursForThisCarrier.getAndIncrement();
@@ -133,7 +133,7 @@ public class LTLFreightAgentGeneratorRuhr {
                 else if (Math.abs(parcelDeliveryRoundingError.get()) >= 1.) {
                     if (parcelDeliveryRoundingError.get() > 0) {
                         parcelDeliveryRoundingError.getAndAccumulate(-1., Double::sum);
-                        sampledToursForThisCarrier.getAndIncrement();
+                        sampledToursForThisCarrier.getAndDecrement();
                     } else {
                         parcelDeliveryRoundingError.getAndAccumulate(1., Double::sum);
                         sampledToursForThisCarrier.getAndIncrement();
