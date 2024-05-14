@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.util.Map;
 
 public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrateExistingTrafficToSmallScaleCommercialImpl {
-//public class IntegrationOfExistingCommercialTrafficRuhr implements IntegrateExistingTrafficToSmallScaleCommercial {
 
     private static final Logger log = LogManager.getLogger(IntegrationOfExistingCommercialTrafficRuhr.class);
     private final Path pathExistingPlans;
@@ -29,7 +28,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 
     @Override
     public void readExistingCarriersFromFolder(Scenario scenario, double sampleScenario,
-                                               Map<String, Map<Id<Link>, Link>> linksPerZone) throws Exception {
+                                               Map<String, Map<Id<Link>, Link>> linksPerZone) {
         log.warn("Existing plans will not be added to the plans you generate now!");
     }
 
