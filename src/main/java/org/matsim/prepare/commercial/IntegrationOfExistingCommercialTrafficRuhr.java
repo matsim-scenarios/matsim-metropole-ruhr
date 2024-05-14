@@ -49,8 +49,9 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
         Population population = PopulationUtils.readPopulation(pathExistingPlans.toString());
 
         for (Person freightPerson : population.getPersons().values()) {
+            // we only reduce the volume of LTL trips and not for waste collection
             if (!PopulationUtils.getSubpopulation(freightPerson).equals(
-                    "LTL_trips")/* || (int)freightPerson.getAttributes().getAttribute("goodsType") == 140*/)
+                    "LTL_trips") || (int)freightPerson.getAttributes().getAttribute("goodsType") == 140)
                 continue;
             Plan selectedPlan = freightPerson.getSelectedPlan();
             Id<Link> startLink = PopulationUtils.getFirstActivity(selectedPlan).getLinkId();
