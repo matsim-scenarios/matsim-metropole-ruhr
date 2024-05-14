@@ -3,8 +3,9 @@ package org.matsim.prepare;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.referencing.CRS;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -27,12 +28,9 @@ import org.opengis.referencing.FactoryException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-
 public class AdjustDemandTest {
 
-    @Rule
+    @RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
     @Test
@@ -68,7 +66,7 @@ public class AdjustDemandTest {
 
                 // give this test a lot of slack, because we draw persons by using a random number generator and this test operates on
                 // relatively small numbers the results vary in the range of 10%
-                assertEquals(numberOfPersonsBefore.size() * factor, numberOfPersonsAfter.size(), numberOfPersonsBefore.size() * factor * 1.1);
+                Assertions.assertEquals(numberOfPersonsBefore.size() * factor, numberOfPersonsAfter.size(), numberOfPersonsBefore.size() * factor * 1.1);
             }
         }
     }
@@ -103,10 +101,10 @@ public class AdjustDemandTest {
                 .flatMap(couple -> mergeActivities(couple.getFirst(), couple.getSecond()).stream())
                 .forEach(activityTuple -> {
                     // make sure types are equal
-                    assertEquals(activityTuple.getFirst().getType(), activityTuple.getSecond().getType());
+                    Assertions.assertEquals(activityTuple.getFirst().getType(), activityTuple.getSecond().getType());
 
                     // make sure coords are not the same
-                    assertNotEquals(activityTuple.getFirst().getCoord(), activityTuple.getSecond().getCoord());
+                    Assertions.assertNotEquals(activityTuple.getFirst().getCoord(), activityTuple.getSecond().getCoord());
                 });
     }
 
@@ -140,7 +138,7 @@ public class AdjustDemandTest {
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
 
         // we expect only the special person to be cloned.
-        assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
+        Assertions.assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
     }
 
     @Test
@@ -173,7 +171,7 @@ public class AdjustDemandTest {
         AdjustDemand.adjust(population, cells, populationIndex, adjustments);
 
         // we expect only the special person to be cloned.
-        assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
+        Assertions.assertEquals(numberOfPersonsBefore + 1, population.getPersons().size());
     }
 
     @Test
@@ -188,13 +186,13 @@ public class AdjustDemandTest {
         );
 
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
-        assertEquals(500, result.getPersons().size());
+        Assertions.assertEquals(500, result.getPersons().size());
         // make sure only people from cell 1 are cloned
         var clonedNumber = result.getPersons().values().stream()
                 .filter(person -> person.getId().toString().endsWith("cloned"))
                 .filter(person -> person.getId().toString().startsWith("1_"))
                 .count();
-        assertEquals(100, clonedNumber);
+        Assertions.assertEquals(100, clonedNumber);
     }
 
     @Test
@@ -243,7 +241,7 @@ public class AdjustDemandTest {
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
         System.out.println("Expected number: " + expectedNumberOfPersons);
         System.out.println("Population before: " + population.getPersons().size() + " Population after: " + result.getPersons().size());
-        assertEquals(expectedNumberOfPersons, result.getPersons().size());
+        Assertions.assertEquals(expectedNumberOfPersons, result.getPersons().size());
     }
 
     @Test
@@ -284,7 +282,7 @@ public class AdjustDemandTest {
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
         System.out.println("Expected number: " + expectedNumberOfPersons);
         System.out.println("Population before: " + population.getPersons().size() + " Population after: " + result.getPersons().size());
-        assertEquals(expectedNumberOfPersons, result.getPersons().size());
+        Assertions.assertEquals(expectedNumberOfPersons, result.getPersons().size());
 
     }
 
@@ -299,13 +297,13 @@ public class AdjustDemandTest {
         );
 
         var result = PopulationUtils.readPopulation(testUtils.getOutputDirectory() + "output_plans.xml.gz");
-        assertEquals(500, result.getPersons().size());
+        Assertions.assertEquals(500, result.getPersons().size());
         // make sure only people from cell 1 are cloned
         var clonedNumber = result.getPersons().values().stream()
                 .filter(person -> person.getId().toString().endsWith("cloned"))
                 .filter(person -> person.getId().toString().startsWith("1_"))
                 .count();
-        assertEquals(100, clonedNumber);
+        Assertions.assertEquals(100, clonedNumber);
     }
 
     private static SimpleFeatureType createCellType() {
