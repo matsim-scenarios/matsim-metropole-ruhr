@@ -158,6 +158,11 @@
 			<artifactId>pt-extensions</artifactId>
 			<version>ceef00ef6e</version>
 		</dependency>
+		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>small-scale-traffic-generation</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
 
 	</dependencies>
 
