@@ -21,14 +21,11 @@ package org.matsim.run;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
-import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
-import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
@@ -36,19 +33,18 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
-import org.matsim.application.analysis.traffic.traveltime.SampleValidationRoutes;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
+import org.matsim.contrib.vsp.scenario.SnzActivities;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ChangeModeConfigGroup;
-import org.matsim.core.config.groups.ScoringConfigGroup;
+import org.matsim.core.config.groups.FacilitiesConfigGroup;
 import org.matsim.core.config.groups.SubtourModeChoiceConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
@@ -60,24 +56,23 @@ import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesC
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
+import org.matsim.simwrapper.SimWrapperConfigGroup;
+import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = RunMetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
-		SampleValidationRoutes.class, LinkStats.class, TripMatrix.class
+		LinkStats.class, TripMatrix.class
 })
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class RunMetropoleRuhrScenario extends MATSimApplication {
@@ -86,16 +81,8 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 	private static final Logger log = LogManager.getLogger(RunMetropoleRuhrScenario.class);
 
-	public static final String URL = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/";
-
 	@CommandLine.Mixin
 	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
-
-	@CommandLine.Option(names = "--zero-bike-pcu", defaultValue = "false", description = "Set bike pcu to zero")
-	private boolean zeroBikePCU;
-
-	@CommandLine.Option(names = "--download-input", defaultValue = "false", description = "Download input files from remote location")
-	private boolean download;
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
@@ -133,6 +120,10 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
 		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
 
+		// because vsp default reasons
+		config.facilities().setFacilitiesSource(FacilitiesConfigGroup.FacilitiesSource.onePerActivityLinkInPlansFile);
+
+		// someone wished to have an easy option to remove all intermodal functionality, so remove it from config or switch off
 		if (!intermodal) {
 
 			log.info("Disabling intermodal config...");
@@ -185,9 +176,11 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 
 		OutputDirectoryLogging.catchLogEntries();
 
+		// bike contrib is needed for bike highways and elevation routing
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
+		// this is needed for the parking cost money events
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
 		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName(RuhrUtils.ONE_HOUR_P_COST);
 		parkingCostConfigGroup.setExtraHourParkingCostLinkAttributeName(RuhrUtils.EXTRA_HOUR_P_COST);
@@ -196,50 +189,28 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 		parkingCostConfigGroup.setParkingPenaltyAttributeName(RuhrUtils.P_FINE);
 		parkingCostConfigGroup.setResidentialParkingFeeAttributeName(RuhrUtils.RES_P_COSTS);
 
-		//config.plansCalcRoute().setAccessEgressType(AccessEgressType.accessEgressModeToLink);
 		log.info("using accessEgressModeToLinkPlusTimeConstant");
+		// we do this to model parking search traffic, as on some links car agents have additional travel time
 		config.routing().setAccessEgressType(accessEgressModeToLinkPlusTimeConstant);
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 		config.qsim().setUsePersonIdForMissingVehicleId(false);
-		config.subtourModeChoice().setProbaForRandomSingleTripMode(0.5);
 
+		SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
+
+		// adjust if sample size specific parameters
 		if (sample.isSet()) {
 			config.controller().setRunId(sample.adjustName(config.controller().getRunId()));
 			config.controller().setOutputDirectory(sample.adjustName(config.controller().getOutputDirectory()));
 			config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 
-			config.qsim().setFlowCapFactor(sample.getSize() / 100.0);
-			config.qsim().setStorageCapFactor(sample.getSize() / 100.0);
+			config.qsim().setFlowCapFactor(sample.getSample());
+			config.qsim().setStorageCapFactor(sample.getSample());
+
+			simWrapperConfigGroup.sampleSize = sample.getSample();
 		}
 
-		if (download) {
-			adjustURL(config.network()::getInputFile, config.network()::setInputFile);
-			adjustURL(config.plans()::getInputFile, config.plans()::setInputFile);
-			adjustURL(config.vehicles()::getVehiclesFile, config.vehicles()::setVehiclesFile);
-			adjustURL(config.transit()::getVehiclesFile, config.transit()::setVehiclesFile);
-			adjustURL(config.transit()::getTransitScheduleFile, config.transit()::setTransitScheduleFile);
-		}
-
-		for (long ii = 600; ii <= 86400; ii += 600) {
-
-			for (String act : List.of("home", "restaurant", "other", "visit", "errands",
-					"educ_higher", "educ_secondary", "educ_primary", "educ_tertiary", "educ_kiga", "educ_other")) {
-				config.scoring()
-						.addActivityParams(new ScoringConfigGroup.ActivityParams(act + "_" + ii).setTypicalDuration(ii));
-			}
-
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("work_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("business_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(6. * 3600.).setClosingTime(20. * 3600.));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("leisure_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(9. * 3600.).setClosingTime(27. * 3600.));
-
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("shop_daily_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("shop_other_" + ii).setTypicalDuration(ii)
-					.setOpeningTime(8. * 3600.).setClosingTime(20. * 3600.));
-		}
+		// snz activity types that are always the same, Differentiated by typical duration
+		SnzActivities.addScoringParams(config);
 
 		return config;
 	}
@@ -247,105 +218,62 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	@Override
 	protected void prepareScenario(Scenario scenario) {
 
-		if (zeroBikePCU) {
-			Id<VehicleType> key = Id.create("bike", VehicleType.class);
-			VehicleType bike = scenario.getVehicles().getVehicleTypes().get(key);
-			bike.setPcuEquivalents(0);
-		}
-
+		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
+		bike.setNetworkMode(TransportMode.bike);
 	}
 
 	@Override
 	protected void prepareControler(Controler controler) {
 
-		if (!controler.getConfig().transit().isUsingTransitInMobsim())
+		if (!controler.getConfig().transit().isUsingTransitInMobsim()) {
 			log.error("Public transit will be teleported and not simulated in the mobsim! "
 					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
 					+ "Should only be used for testing or car-focused studies with fixed modal split.");
+			throw new IllegalArgumentException("Pt is teleported, wich is not supported");
+		}
 
-		controler.addOverridingModule(new SwissRailRaptorModule());
+		controler.addOverridingModule(new SimWrapperModule());
 
-		// intermodal pt
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
-				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
-			}
-		});
-
+		// allow for separate pt routing modes (pure walk+pt, bike+walk+pt, car+walk+pt, ...)
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
+		// throw additional score or money events if pt is combined with bike or car in the same trip
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
-		// analysis
-		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+		// additional analysis output
+		//controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
 			public void install() {
-				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
-			}
-		});
 
-		// use the (congested) car travel time for the teleported ride mode
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
+				// use the (congested) car travel time for the teleported ride mode
 				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
 				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
-
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
-
-//				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
-
 				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
 
+				// calculate access/egress leg generalized cost correctly for intermodal pt routing
+				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
+				// separate pure walk+pt from intermodal pt in mode stats etc.
+				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
 
-				// Configure mode-choice strategy
-				addControlerListenerBinding().to(StrategyWeightFadeout.class).in(Singleton.class);
-				Multibinder<StrategyWeightFadeout.Schedule> schedules = Multibinder.newSetBinder(binder(), StrategyWeightFadeout.Schedule.class);
-				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice, "person", 0.75, 0.85));
-				schedules.addBinding().toInstance(new StrategyWeightFadeout.Schedule(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute, "person", 0.78));
-
+				// for income dependent scoring --> this works with the bicycle contrib as we don´t use the scoring in the bicycle contrib
+				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
 
 			}
 		});
 
-		/*log.info("Adding parking cost");
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				this.addEventHandlerBinding().to(UtilityBasedParkingPressureEventHandler.class);
-			}
-		});*/
 
 		log.info("Adding money event analysis");
-		controler.addOverridingModule(new AbstractModule() {
-			@Override
-			public void install() {
-				//analyse PersonMoneyEvents
-				install(new PersonMoneyEventsAnalysisModule());
-			}
-		});
 
+		//analyse PersonMoneyEvents
+		controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
+
+		//this is needed for  the parking cost
 		controler.addOverridingModule(new ParkingCostModule());
-
+		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
-	}
-
-	/**
-	 * Appends url to download a resource if not present.
-	 */
-	private void adjustURL(Supplier<String> getter, Consumer<String> setter) {
-
-		String input = getter.get();
-		if (input.startsWith("http"))
-			return;
-
-		String name = new File(input).getName();
-
-		setter.accept(URL + name);
 	}
 
 }

@@ -1,13 +1,13 @@
 package org.matsim.prepare.counts;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.matsim.api.core.v01.Identifiable;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.counts.Counts;
 import org.matsim.counts.CountsWriter;
-
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CombinedCountsWriter<T extends Identifiable<T>> {
 
