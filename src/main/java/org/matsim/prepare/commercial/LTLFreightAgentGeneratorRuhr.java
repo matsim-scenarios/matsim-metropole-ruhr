@@ -14,7 +14,10 @@ import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -232,14 +235,14 @@ public class LTLFreightAgentGeneratorRuhr {
 
         int goodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
 
-        // waste collection; assuming that the collection teams have service areas based on the vpp2040 cells -> per collection cell a separate carrier
+        // waste collection, assuming that the collection teams have service areas based on the vpp2040 cells -> per collection cell a separate carrier
         if (goodsType == 140) {
             String collectionZone = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
             return Id.create(
                     "WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
                     Carrier.class);
         }
-        // parcel delivery; assuming that the delivery teams have service areas based on the vpp2040 cells -> per delivery cell a separate carrier
+        // parcel delivery, assuming that the delivery teams have service areas based on the vpp2040 cells -> per delivery cell a separate carrier
         if (goodsType == 150) {
             String deliveryZone = CommercialTrafficUtils.getDestinationCell(freightDemandDataRelation);
             String key = "ParcelDelivery_" + CommercialTrafficUtils.getParcelOperator(
