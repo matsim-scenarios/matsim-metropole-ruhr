@@ -155,9 +155,15 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--tripType", "TRANSIT"
             );
             Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
-            for (Person person : population.getPersons().values()) {
-                PopulationUtils.putSubpopulation(person, "longDistanceFreight");
-            }
+			log.info("Set mode to truck40t for long distance freight");
+			for (Person person : population.getPersons().values()) {
+				PopulationUtils.putSubpopulation(person, "longDistanceFreight");
+				person.getSelectedPlan().getPlanElements().forEach(planElement -> {
+					if (planElement instanceof Leg leg) {
+						leg.setMode("truck40t");
+					}
+				});
+			}
             PopulationUtils.sampleDown(population, sample / 0.25);
             PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
         }
