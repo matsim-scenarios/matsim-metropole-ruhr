@@ -36,7 +36,7 @@ public class TransferRestrictions {
 
         // Add all freight-modes to all car-links
         Collection<? extends Link> links = network.getLinks().values();
-        Set<String> all = new HashSet<>(Arrays.asList("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+        Set<String> all = new HashSet<>(Arrays.asList("truck8t", "truck18t", "truck26t", "truck40t"));
         for (Link link : links){
             if(link.getAllowedModes().contains("car")){
                 Set<String> combined = Stream.concat(link.getAllowedModes().stream(), all.stream()).collect(Collectors.toSet());

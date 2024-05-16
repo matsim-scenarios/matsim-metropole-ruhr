@@ -10,15 +10,9 @@ import java.util.Set;
 
 public class AdjustModesForNetwork {
     public static void main(String[] args) {
-//        Config config = ConfigUtils.loadConfig("scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-3pct.config.xml");
         Network network = NetworkUtils.readNetwork("scenarios/metropole-ruhr-v1.0/input/ruhr_network.xml.gz");
-//        config.network().setInputFile("ruhr_network.xml.gz");
-//        config.network().setInputCRS("EPSG:25832");
-//
-//        Scenario scenario = ScenarioUtils.loadScenario(config);
 
-//        Network network = scenario.getNetwork();
-        ArrayList<String> newModes = new ArrayList<>(List.of("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+        ArrayList<String> newModes = new ArrayList<>(List.of("truck8t", "truck18t", "truck26t", "truck40t"));
 
         network.getLinks().values().forEach(link -> {
             if (link.getAllowedModes().contains("car")) {
