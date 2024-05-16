@@ -233,7 +233,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
             config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
             config.network().setInputFile(networkPath);
-            System.out.println(networkPath);
             config.controller().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
             config.controller().setLastIteration(0);
             config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
