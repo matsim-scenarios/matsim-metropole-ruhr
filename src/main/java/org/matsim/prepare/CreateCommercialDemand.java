@@ -213,7 +213,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--creationOption", "createNewCarrierFile",
                     "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
 //                    "--smallScaleCommercialTrafficType", "goodsTraffic",
-//                "--zoneShapeFileName", "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040_RuhrOnly2.shp",
                     "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
                     "--zoneShapeFileNameColumn", "schluessel",
                     "--shapeCRS", shapeCRS,
@@ -258,7 +257,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             config.qsim().setUsingTravelTimeCheckInTeleportation(true);
             config.qsim().setUsePersonIdForMissingVehicleId(false);
             config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
-            config.scoring().setFractionOfIterationsToStartScoreMSA(Double.valueOf(0.8));
+            config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
             config.getModules().remove("intermodalTripFareCompensators");
             config.getModules().remove("ptExtensions");
             config.getModules().remove("ptIntermodalRoutingModes");
