@@ -44,7 +44,9 @@
 	<vehicleType id="bike">
 		<length meter="2.0"/>
 		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
+		<!--
+		<maximumVelocity meterPerSecond="6.82"/> from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
+		<maximumVelocity meterPerSecond="5"/> <!-- based on the rvr -->
 		<passengerCarEquivalents pce="0.1"/>
 	</vehicleType>
 
