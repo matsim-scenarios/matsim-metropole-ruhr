@@ -32,7 +32,8 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
     }
 
     /**
-     * Calculate the waste demand per day. The assumption is that waste is collected once a week and is collected in 20% of the zones on each day.
+     * Calculate the waste demand per day.
+	 * The assumption is that waste is collected once a week and is collected in 20% of the zones on each day.
      *
      * @param freightDemandDataRelation the freight demand data relation
      * @return the waste demand per day
@@ -43,12 +44,14 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         String originCell = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
         countZonesForWasteCollections.computeIfAbsent(destination, k -> new ArrayList<>());
         zonesWithWasteCollectionsOnThisDay.computeIfAbsent(destination, k -> new ArrayList<>());
+		// add 20% of the zones to the list of zones with waste collections on this day
         if (!countZonesForWasteCollections.get(destination).contains(originCell)){
             countZonesForWasteCollections.get(destination).add(originCell);
             if (((countZonesForWasteCollections.get(destination).size() + 4) % 5) == 0){
                 zonesWithWasteCollectionsOnThisDay.get(destination).add(originCell);
             }
         }
+		//if zone has a waste collection on this day, calculate the demand
         if (zonesWithWasteCollectionsOnThisDay.get(destination).contains(originCell)){
             int numberOfCollectionsPerWeek = 1;
             double kilogramsPerDay = 0;
