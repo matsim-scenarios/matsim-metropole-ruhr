@@ -102,6 +102,15 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
         String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
+		if (!Files.exists(output)) {
+			try {
+				Files.createDirectories(output);
+			} catch (Exception e) {
+				log.error("Could not create output directory", e);
+				return 1;
+			}
+		}
+
         if (Files.exists(output.resolve(freightDataName)) || Files.exists(freightData)) {
             log.warn("Freight data already exists. Skipping generation.");
         } else {
