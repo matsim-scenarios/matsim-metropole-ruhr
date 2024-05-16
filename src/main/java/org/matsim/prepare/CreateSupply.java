@@ -59,17 +59,19 @@ public class CreateSupply {
 
 	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
 
-	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
-	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
-	private static final Path gtfsData3 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
+	//new gtfs file provided by the rvr
+	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids.zip");
+	//private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
+	//private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
+	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
 
-	private static final String gtfsDataDate1 = "2021-11-17";
-	private static final String gtfsDataDate2 = "2021-02-04";
-	private static final String gtfsDataDate3 = "2021-08-19";
+	private static final String gtfsDataDate1 = "2023-01-17";
+	//private static final String gtfsDataDate2 = "2021-02-04";
+	private static final String gtfsDataDate2 = "2021-08-19";
 
 	private static final String gtfsData1Prefix = "vrr";
-	private static final String gtfsData2Prefix = "nwl";
-	private static final String gtfsData3Prefix = "fern";
+	//private static final String gtfsData2Prefix = "nwl";
+	private static final String gtfsData2Prefix = "fern";
 
 	private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
 	private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
@@ -282,9 +284,9 @@ public class CreateSupply {
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
 		new CreateTransitScheduleFromGtfs().execute(
-				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(), rootDirectory.resolve(gtfsData3).toString(),
-				"--date", gtfsDataDate1, gtfsDataDate2, gtfsDataDate3,
-				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix + "," + gtfsData3Prefix,
+				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
+				"--date", gtfsDataDate1, gtfsDataDate2,
+				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix + "," + gtfsData2Prefix,
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
@@ -363,9 +365,9 @@ public class CreateSupply {
 			link.setAllowedModes(modes);
 		}
 
-		// all regular bike links should have an infrastructure speed factor of 0.5
+		// all regular bike links should have an infrastructure speed factor of 0.64 according to the rvr
 		if (link.getAllowedModes().contains(TransportMode.bike)) {
-			link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 0.5);
+			link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 0.64);
 		}
 	}
 
