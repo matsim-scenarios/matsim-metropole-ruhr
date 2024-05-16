@@ -46,7 +46,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     @CommandLine.Option(names = "--pathOutputFolder", description = "Path for the output folder", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/output/completeCommercialTraffic_1pct")
     private Path output;
 
-    @CommandLine.Option(names = "--freightData", description = "Name of the freight population", required = true, defaultValue = "ruhr_freightPlans_100pct.plans.xml.gz")
+    @CommandLine.Option(names = "--freightData", description = "Name of the freight population", defaultValue = "ruhr_freightPlans_100pct.plans.xml.gz")
     private Path freightData;
 
     @CommandLine.Option(names = "--osmDataLocation", description = "Path to the OSM data location", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/osm/")
@@ -73,7 +73,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     @CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V2.csv")
     private String freightRawData;
 
-    @CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
+	@CommandLine.Option(names = "--freightRawData_KEP", description = "Path to the KEP data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/kep_aufkommen/aufkommen_kep.csv")
+	String freightRawData_KEP;
+
+	@CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
     private boolean alsoRunCompleteCommercialTraffic;
 
     @CommandLine.Option(names = "--germanyFreightPlansFile", description = "Path to the Germany plans file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/german_freight.25pct.plans.xml.gz")
@@ -102,8 +105,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
         if (Files.exists(output.resolve(freightDataName)) || Files.exists(freightData)) {
             log.warn("Freight data already exists. Skipping generation.");
         } else {
-            new GenerateFreightDataRuhr().execute(
+			new GenerateFreightDataRuhr().execute(
                     "--data", freightRawData,
+					"--KEPdata", freightRawData_KEP,
                     "--pathOutput", output.toString(),
                     "--nameOutputDataFile", freightDataName
             );
