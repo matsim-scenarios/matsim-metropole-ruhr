@@ -76,12 +76,12 @@ public class FTLFreightAgentGeneratorRuhr {
                 double departureTime_return = departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
 
                 Plan plan_return = populationFactory.createPlan();
-                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_start", new Coord(originX, originY)).setEndTime(departureTime_return);
+                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_start", new Coord(destinationX, destinationY)).setEndTime(departureTime_return);
 
                 PopulationUtils.createAndAddLeg(plan_return, FTL_mode);
-                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_end", new Coord(destinationX, destinationY)).setMaximumDuration(0.5 * 3600);
+                PopulationUtils.createAndAddActivityFromCoord(plan_return, "freight_end", new Coord(originX, originY)).setMaximumDuration(0.5 * 3600);
 
-                person_return.addPlan(plan);
+                person_return.addPlan(plan_return);
                 freightDemandDataRelation.getAttributes().getAsMap().forEach((k, v) -> person_return.getAttributes().putAttribute(k, v));
                 PopulationUtils.putSubpopulation(person_return, transportType + "_trip");
                 Id<VehicleType> vehicleTypeId = Id.create(vehicleType, VehicleType.class);
