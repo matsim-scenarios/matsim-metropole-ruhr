@@ -3,6 +3,7 @@ package org.matsim.prepare;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
@@ -215,6 +216,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--pathOutput", outputPathSmallScaleCommercial,
                     "--network", networkPath,
                     "--nameOutputPopulation", smallScaleCommercialPopulationName,
+					"--numberOfPlanVariantsPerAgent", "5",
                     "--includeExistingModels");
 
             // TODO filter relevant agents for the small scale commercial traffic
@@ -266,6 +268,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             Set<String> allNetworkModes = new HashSet<>(config.routing().getNetworkModes());
             allNetworkModes.addAll(newModes);
             config.routing().setNetworkModes(allNetworkModes);
+			//TODO add replanning strategy for small scale commercial traffic
             newModes.forEach(mode -> {
                     ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
                     config.scoring().addModeParams(thisModeParams);
