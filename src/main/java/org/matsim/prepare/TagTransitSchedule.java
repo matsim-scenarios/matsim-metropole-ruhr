@@ -21,40 +21,57 @@ package org.matsim.prepare;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.contrib.gtfs.RouteType;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.extensions.pt.utils.TransitStopTagger;
-import org.matsim.pt.transitSchedule.api.TransitSchedule;
-import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
-import org.matsim.pt.transitSchedule.api.TransitScheduleWriter;
-import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import org.matsim.pt.transitSchedule.api.*;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Set;
 
 public class TagTransitSchedule {
 
     public static void main(String[] args) {
-        String scheduleFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule.xml.gz";
+        String scheduleFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-transitSchedule.xml.gz";
 
         Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
         new TransitScheduleReader(scenario).readFile(scheduleFile);
         TransitSchedule transitSchedule = scenario.getTransitSchedule();
-
-        String newAttributeName = "car_bike_accessible";
-        String newAttributeValue = "true";
-        URL ruhrShape;
+        Set<String> filterModes = Set.of(RouteType.RAIL.getSimpleTypeName());
+        URL ruhrShapeUrl;
         try {
-            ruhrShape = new URL("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
+            ruhrShapeUrl = new URL("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-        String oldFilterAttribute = "stopFilter";
-        String oldFilterValue = "station_S/U/RE/RB";
+
+        tagIntermodalStops(transitSchedule, filterModes, ruhrShapeUrl);
+    }
+
+    static void tagIntermodalStops (TransitSchedule transitSchedule, Set<String> filterModes, URL ruhrShapeUrl) {
+        String modeFilterAttribute = "selected_modes_stop";
+        String modeFilterValue = "true";
+
+        for (TransitLine line: transitSchedule.getTransitLines().values()) {
+            for (TransitRoute route : line.getRoutes().values()) {
+                String gtfsRouteType = (String) route.getAttributes().getAttribute("simple_route_type");
+                if (filterModes.contains(gtfsRouteType)) {
+                    for (TransitRouteStop routeStop : route.getStops()) {
+                        routeStop.getStopFacility().getAttributes().putAttribute(modeFilterAttribute, modeFilterValue);
+                    }
+                }
+            }
+        }
+
+        String newAttributeName = "car_bike_accessible";
+        String newAttributeValue = "true";
+
         double bufferAroundServiceArea = 1000;
 
         TransitStopTagger.tagTransitStopsInShpFile(transitSchedule, newAttributeName, newAttributeValue,
-                ruhrShape, oldFilterAttribute, oldFilterValue, bufferAroundServiceArea);
+                ruhrShapeUrl, modeFilterAttribute, modeFilterValue, bufferAroundServiceArea);
 
         // manually add bus stops, umlauts and german-s replaced in names
 
