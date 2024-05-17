@@ -50,7 +50,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     private Path freightData;
 
     @CommandLine.Option(names = "--osmDataLocation", description = "Path to the OSM data location", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/osm/")
-    private String osmDataLocation;
+    private Path osmDataLocation;
+
+	@CommandLine.Option(names = "--vpCellsLocation", description = "Path to the cell of the 'Verkehrsprognose (VP)' ", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
+	private Path vpCellsLocation;
 
     @CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-3pct.config.xml")
     private Path configPath;
@@ -118,7 +121,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--data", freightRawData,
 					"--KEPdata", freightRawData_KEP,
                     "--pathOutput", output.toString(),
-                    "--nameOutputDataFile", freightDataName
+                    "--nameOutputDataFile", freightDataName,
+					"--shpCells", vpCellsLocation.toString()
             );
         }
 
