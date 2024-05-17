@@ -95,15 +95,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
     @Override
     public Integer call() {
 
-//        alsoRunCompleteCommercialTraffic = true;
-
-        String shapeCRS = "EPSG:25832";
-        log.info("1st step - create freight data from BUW data");
-
-        String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
-        String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
-
-        String freightDataName = "ruhr_freightData_100pct.xml.gz";
+        alsoRunCompleteCommercialTraffic = true;
 
 		if (!Files.exists(output)) {
 			try {
@@ -113,6 +105,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				return 1;
 			}
 		}
+
+        String shapeCRS = "EPSG:25832";
+        log.info("1st step - create freight data from BUW data");
+
+        String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
+        String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
+
+        String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
         if (Files.exists(output.resolve(freightDataName)) || Files.exists(freightData)) {
             log.warn("Freight data already exists. Skipping generation.");
@@ -166,7 +166,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     germanyPlansFile.toString(),
                     "--network", networkForLongDistanceFreight.toString(),
                     "--output", longDistanceFreightPopulationName,
-                    "--shp", osmDataLocation + "regions_25832.shp",
+                    "--shp", osmDataLocation.resolve("regions_25832.shp").toString(),
                     "--input-crs", shapeCRS,
                     "--target-crs", shapeCRS,
                     "--shp-crs", shapeCRS,
@@ -195,13 +195,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
             new CreateDataDistributionOfStructureData(landuseDataConnectionCreator).execute(
                     "--pathOutput", output.toString(),
                     "--landuseConfiguration", "useOSMBuildingsAndLanduse",
-                    "--regionsShapeFileName", osmDataLocation + "regions_25832.shp",
+                    "--regionsShapeFileName", osmDataLocation.resolve("regions_25832.shp").toString(),
                     "--regionsShapeRegionColumn", "GEN",
-                    "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
+                    "--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
                     "--zoneShapeFileNameColumn", "schluessel",
-                    "--buildingsShapeFileName", osmDataLocation + "buildings_25832.shp",
+                    "--buildingsShapeFileName", osmDataLocation.resolve("buildings_25832.shp").toString(),
                     "--shapeFileBuildingTypeColumn", "building",
-                    "--landuseShapeFileName", osmDataLocation + "landuse_v.1.0_25832.shp",
+                    "--landuseShapeFileName", osmDataLocation.resolve("landuse_v.1.0_25832.shp").toString(),
                     "--shapeFileLanduseTypeColumn", "landuse",
                     "--shapeCRS", shapeCRS,
                     "--pathToInvestigationAreaData", pathToInvestigationAreaData
@@ -226,7 +226,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
                     "--creationOption", "createNewCarrierFile",
                     "--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
 //                    "--smallScaleCommercialTrafficType", "goodsTraffic",
-                    "--zoneShapeFileName", osmDataLocation + "zones_v2.0_25832.shp",
+                    "--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
                     "--zoneShapeFileNameColumn", "schluessel",
                     "--shapeCRS", shapeCRS,
                     "--pathOutput", outputPathSmallScaleCommercial,
