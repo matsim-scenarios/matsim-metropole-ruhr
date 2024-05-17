@@ -1,7 +1,8 @@
 package org.matsim.run;
 
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
@@ -29,14 +30,12 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertTrue;
-
 public class TestParking {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
     private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz";
 
-    @Rule
+	@RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
     @Test
@@ -57,7 +56,7 @@ public class TestParking {
         // somehow compare the two routes
         var personWithParking = scenarioWithParking.getPopulation().getPersons().get(personId);
         var personWithoutParking = scenarioWithoutParking.getPopulation().getPersons().get(personId);
-        assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
+		Assertions.assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
     }
 
 
