@@ -111,10 +111,10 @@
 		<parameterset type="scoringParameters" >
 			<parameterset type="modeParams" >
 				<param name="mode" value="car" />
-				<param name="dailyMonetaryConstant" value="-5.3" />
+				<param name="dailyMonetaryConstant" value="-14.13" />
 				<param name="constant" value="0.8379675427416293" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-1.0" />
-				<param name="monetaryDistanceRate" value="-0.0002" />
+				<param name="monetaryDistanceRate" value="-0.000268" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
@@ -124,7 +124,8 @@
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="pt" />
-				<param name="dailyMonetaryConstant" value="-2.15" />
+				<!-- 49 EUR Ticket  -->
+				<param name="dailyMonetaryConstant" value="-2.35" />
 				<param name="constant" value="0.07469218978843763" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-3.0" />
 			</parameterset>

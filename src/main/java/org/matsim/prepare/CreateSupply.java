@@ -69,7 +69,7 @@ public class CreateSupply {
 	//private static final String gtfsDataDate2 = "2021-02-04";
 	private static final String gtfsDataDate2 = "2021-08-19";
 
-	private static final String gtfsData1Prefix = "vrr";
+	private static final String gtfsData1Prefix = "nrw";
 	//private static final String gtfsData2Prefix = "nwl";
 	private static final String gtfsData2Prefix = "fern";
 
