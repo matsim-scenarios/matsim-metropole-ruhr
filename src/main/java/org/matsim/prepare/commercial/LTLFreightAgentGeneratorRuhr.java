@@ -168,8 +168,8 @@ public class LTLFreightAgentGeneratorRuhr {
                     Tour.TourElement tourElement = carrierScheduledPlanElements.get(i);
                     if (tourElement instanceof Tour.Pickup pickup) {
                         Id<Link> linkID = pickup.getLocation();
-                        Activity lastActivity = plan.getPlanElements().get(
-                                plan.getPlanElements().size() - 1) instanceof Activity activity ? activity : null;
+                        Activity lastActivity = plan.getPlanElements().getLast(
+						) instanceof Activity activity ? activity : null;
                         if (lastActivity != null && lastActivity.getType().equals("pickup") && lastActivity.getLinkId().equals(linkID)) {
                             lastActivity.setMaximumDuration(lastActivity.getMaximumDuration().seconds() + pickup.getDuration());
                         } else {
@@ -180,8 +180,8 @@ public class LTLFreightAgentGeneratorRuhr {
                     }
                     if (tourElement instanceof Tour.Delivery delivery) {
                         Id<Link> linkID = delivery.getLocation();
-                        Activity lastActivity = plan.getPlanElements().get(
-                                plan.getPlanElements().size() - 1) instanceof Activity activity ? activity : null;
+                        Activity lastActivity = plan.getPlanElements().getLast(
+						) instanceof Activity activity ? activity : null;
                         if (lastActivity != null && lastActivity.getType().equals("delivery") && lastActivity.getLinkId().equals(linkID)) {
                             lastActivity.setMaximumDuration(
                                     lastActivity.getMaximumDuration().seconds() + delivery.getDuration());
@@ -378,7 +378,7 @@ public class LTLFreightAgentGeneratorRuhr {
                 List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
                         carrierShipment -> carrierShipment.getTo().equals(toLinkId) && carrierShipment.getFrom().equals(fromLink.getId())).toList();
                 if (!existingShipments.isEmpty()) {
-                    CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.get(0).getId());
+                    CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.getFirst().getId());
                     // checks if the waste collection can be combined with the existing shipment and will not exceed the vehicle capacity
                     if (demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, wasteThisJob + existingShipment.getSize()) == 1) {
                         collectionTimeForBins = collectionTimeForBins + existingShipment.getPickupServiceTime();
