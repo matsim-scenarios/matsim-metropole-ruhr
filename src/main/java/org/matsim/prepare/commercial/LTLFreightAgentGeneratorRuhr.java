@@ -258,13 +258,14 @@ public class LTLFreightAgentGeneratorRuhr {
     }
 
     /**
-     * Creates all carriers for LTL freight agents based on the freight demand data.
-     *
-     * @param inputFreightDemandData freight demand data
-     * @param scenario               scenario
-     * @param jspritIterationsForLTL number of iterations for the jsprit algorithm to solve the LTL carriers
-     */
-    public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario, int jspritIterationsForLTL) {
+	 * Creates all carriers for LTL freight agents based on the freight demand data.
+	 *
+	 * @param inputFreightDemandData freight demand data
+	 * @param scenario               scenario
+	 * @param jspritIterationsForLTL number of iterations for the jsprit algorithm to solve the LTL carriers
+	 * @param carrierGoodsType	   the goods type of the carrier
+	 */
+    public void createCarriersForLTL(Population inputFreightDemandData, Scenario scenario, int jspritIterationsForLTL, int carrierGoodsType) {
         Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
 
         TransportModeNetworkFilter filter = new TransportModeNetworkFilter(scenario.getNetwork());
@@ -274,11 +275,15 @@ public class LTLFreightAgentGeneratorRuhr {
         filter.filter(filteredNetwork, modes);
 
         for (Person freightDemandDataRelation : inputFreightDemandData.getPersons().values()) {
-            if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.LTL.toString())) {
+			int thisGoodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
+			// Filter only the goodsTypes of the carrier. If the carrierGoodsType is Integer.MIN_VALUE, we assume that the carrier is for all goods types, except for waste collection and parcel delivery
+			if ((thisGoodsType != carrierGoodsType && carrierGoodsType != Integer.MIN_VALUE) || (carrierGoodsType == Integer.MIN_VALUE && (thisGoodsType == 140 || thisGoodsType == 150)))
+				continue;
+			if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.LTL.toString())) {
                 Id<Carrier> carrierId = createCarrierId(freightDemandDataRelation);
-                if (carriers.getCarriers().containsKey(carrierId)) {
+				if (carriers.getCarriers().containsKey(carrierId)) {
                     Carrier existingCarrier = carriers.getCarriers().get(carrierId);
-                    if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) != 140) {
+                    if (thisGoodsType != 140) {
                         Id<Link> fromLinkId;
                         if (existingCarrier.getShipments().isEmpty()) {
                             fromLinkId = NetworkUtils.getNearestLink(filteredNetwork,
@@ -301,9 +306,9 @@ public class LTLFreightAgentGeneratorRuhr {
                 } else {
                     Carrier newCarrier = CarriersUtils.createCarrier(carrierId);
                     CarriersUtils.setJspritIterations(newCarrier, jspritIterationsForLTL);
-                    newCarrier.getAttributes().putAttribute("goodsType", CommercialTrafficUtils.getGoodsType(freightDemandDataRelation));
+                    newCarrier.getAttributes().putAttribute("goodsType", thisGoodsType);
                     Link vehicleLocation;
-                    if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) != 140) {
+                    if (thisGoodsType != 140) {
                         vehicleLocation = NetworkUtils.getNearestLink(filteredNetwork,
                                 new Coord(CommercialTrafficUtils.getOriginX(freightDemandDataRelation),
                                         CommercialTrafficUtils.getOriginY(freightDemandDataRelation)));
