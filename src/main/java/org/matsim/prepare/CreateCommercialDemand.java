@@ -199,11 +199,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		Path pathCommercialFacilities = output.resolve("commercialFacilities.xml.gz");
 		//here possible to create an implementation for ruhrAGIS data
 		LanduseDataConnectionCreator landuseDataConnectionCreator = new LanduseDataConnectionCreatorForOSM_Data();
+		Path pathDataDistributionFile = output.resolve("dataDistributionPerZone.csv");
 		if (Files.exists(pathCommercialFacilities)) {
 			log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
 		} else {
 			new CreateDataDistributionOfStructureData(landuseDataConnectionCreator).execute(
-				"--pathOutput", output.toString(),
+				"--outputFacilityFile", pathCommercialFacilities.toString(),
+				"--outputDataDistributionFile", pathDataDistributionFile.toString(),
 				"--landuseConfiguration", "useOSMBuildingsAndLanduse",
 				"--regionsShapeFileName", osmDataLocation.resolve("regions_25832.shp").toString(),
 				"--regionsShapeRegionColumn", "GEN",
@@ -230,7 +232,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			//TODO check: Wo wird das Volumen der existierenden Modelle von den erzeugten Potentialen abgezogen?
 			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial).execute(
 				configPath.toString(),
-				"--pathToDataDistributionToZones", output.resolve("dataDistributionPerZone.csv").toString(),
+				"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
 				"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
 				"--sample", String.valueOf(sample),
 				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
