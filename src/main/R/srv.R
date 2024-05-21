@@ -34,8 +34,7 @@ tt <- 17728996
 
 persons <- read_delim("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID/MiD2017_Personen_RVR-Gebiet.csv", delim = ";", 
                       locale = locale(decimal_mark = ",")) %>%
-  filter(kernwo == 2) %>%
-  filter(anzwege3 >= 0 & anzwege3 < 100)
+  filter(ST_WOTAG >= 2 & ST_WOTAG <= 4)
 
 # Avg. number of trips per person per day
 per_day <- weighted.mean(persons$anzwege3, persons$gew_pers)
@@ -62,8 +61,9 @@ order_modes_im <- c("walk", "bike", "pt", "ride", "car", "pt_w_bike_used", "pt_w
 
 # Filter invalid modes and trip distances, also filter for weekdays
 relevant <- trips %>%
-  filter(kernwo == 2) %>%
-  filter(wegkm < 1000) %>%
+  filter(ST_WOTAG >= 2 & ST_WOTAG <= 4) %>%
+  filter(wegkm < 9994) %>%
+  filter(wegmin < 9994) %>%
   filter(hvm < 9) %>%
   mutate(dist=wegkm * 1000) %>%
   mutate(dist_group = cut(dist, breaks=breaks, labels=levels))

@@ -8,7 +8,8 @@ from matsim.scenariogen.data import TripMode, run_create_ref_data
 
 def person_filter(df):
     """ Default person filter for reference data. """
-    return df[df.reporting_day <= 5]
+    # Tuesday to Thursday
+    return df[(df.reporting_day >= 2) & (df.reporting_day <= 4)]
 
 
 def trip_filter(df):
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     result = run_create_ref_data.create("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID",
                                         person_filter, trip_filter,
                                         dist_groups=[0, 1000, 2000, 5000, 10000, 20000, 50000, np.inf],
-                                        invalid_trip_handling=run_create_ref_data.InvalidHandling.REMOVE_PERSONS)
+                                        invalid_trip_handling=run_create_ref_data.InvalidHandling.REMOVE_TRIPS)
+
+    print(result.persons)
+    print(result.trips)
 
     print(result.share)
