@@ -179,6 +179,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--input-crs", shapeCRS,
 				"--target-crs", shapeCRS,
 				"--shp-crs", shapeCRS,
+				"--cut-on-boundary",
 				"--tripType", "TRANSIT"
 			);
 			Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
