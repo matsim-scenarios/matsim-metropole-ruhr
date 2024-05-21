@@ -143,14 +143,14 @@ public class LTLFreightAgentGeneratorRuhr {
                     }
                 }
                 // is the number of sampled tours for this carrier reached, we ignore the rest. If the carrier is not for waste collections or parcel delivery, we use all tours
-                else if (sampledToursForThisCarrier.get() == integratedToursForThisCarrier.get())
+                if (sampledToursForThisCarrier.get() == integratedToursForThisCarrier.get())
                     return;
 
                 integratedToursForThisCarrier.getAndIncrement();
-                if ((int) carrier.getAttributes().getAttribute("goodsType") == 140) {
+                if (goodsType == 140) {
                     integratedToursForWasteCollections.getAndIncrement();
                 }
-                if ((int) carrier.getAttributes().getAttribute("goodsType") == 150) {
+                if (goodsType == 150) {
                     integratedToursForParcelDelivery.getAndIncrement();
                 }
                 Plan plan = PopulationUtils.createPlan();
@@ -208,7 +208,7 @@ public class LTLFreightAgentGeneratorRuhr {
 
                 newPerson.addPlan(plan);
                 PopulationUtils.putSubpopulation(newPerson, subpopulation);
-                newPerson.getAttributes().putAttribute("goodsType", carrier.getAttributes().getAttribute("goodsType"));
+                newPerson.getAttributes().putAttribute("goodsType", goodsType);
 
                 Id<Vehicle> vehicleId = scheduledTour.getVehicle().getId();
 
@@ -220,9 +220,10 @@ public class LTLFreightAgentGeneratorRuhr {
 
             });
         });
-        if (sampledToursForWasteCollections != integratedToursForWasteCollections.get())
+		// because of rounding errors of each carrier, the number of integrated tours for waste collections and parcel delivery should differ at maximum by 1
+        if (Math.abs(sampledToursForWasteCollections - integratedToursForWasteCollections.get()) > 1)
             throw new RuntimeException("The number of integrated tours for waste collections does not match the sampled tours");
-        if (sampledToursForParcelDelivery != integratedToursForParcelDelivery.get())
+        if (Math.abs(sampledToursForParcelDelivery - integratedToursForParcelDelivery.get()) > 1)
             throw new RuntimeException("The number of integrated tours for parcel delivery does not match the sampled tours");
     }
 
