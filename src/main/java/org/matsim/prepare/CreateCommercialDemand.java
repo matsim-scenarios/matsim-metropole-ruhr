@@ -179,6 +179,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--input-crs", shapeCRS,
 				"--target-crs", shapeCRS,
 				"--shp-crs", shapeCRS,
+				"--cut-on-boundary",
 				"--tripType", "TRANSIT"
 			);
 			Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
@@ -283,6 +284,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.qsim().setTrafficDynamics(QSimConfigGroup.TrafficDynamics.kinematicWaves);
 			config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 			config.qsim().setUsePersonIdForMissingVehicleId(false);
+			//to get no traffic jam for the 1 iteration
+			config.qsim().setFlowCapFactor(sample * 4);
+			config.qsim().setStorageCapFactor(sample * 4);
 			config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
 			config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
 			config.getModules().remove("intermodalTripFareCompensators");
