@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 from matsim.scenariogen.data import TripMode, run_create_ref_data
 
 
@@ -14,13 +16,13 @@ def trip_filter(df):
     df.loc[df.main_mode == TripMode.MOTORCYCLE, "main_mode"] = TripMode.CAR
 
     # Other modes are ignored in the total share
-    # Long distance mode are ignored as well
-    return df[(df.main_mode != "other") & (df.gis_length < 100)]
+    return df[df.main_mode != "other"]
 
 
 if __name__ == "__main__":
-    person, trips, share = run_create_ref_data.create("../../../../shared-svn/projects/NaMAV/data/SrV_2018",
-                                                      person_filter, trip_filter,
-                                                      run_create_ref_data.InvalidHandling.REMOVE_PERSONS)
+    result = run_create_ref_data.create("../../../../shared-svn/projects/rvr-metropole-ruhr/data/MID",
+                                        person_filter, trip_filter,
+                                        dist_groups=[0, 1000, 2000, 5000, 10000, 20000, 50000, np.inf],
+                                        invalid_trip_handling=run_create_ref_data.InvalidHandling.REMOVE_PERSONS)
 
-    print(share)
+    print(result.share)
