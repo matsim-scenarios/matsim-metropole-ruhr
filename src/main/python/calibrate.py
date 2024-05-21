@@ -36,10 +36,10 @@ fixed_mode = "walk"
 
 # Initial ASCs
 initial = {
-    "bike": -2.3,
+    "bike": -0.15,
     "pt": 0,
-    "car": 0,
-    "ride": -4.12
+    "car": 0.8,
+    "ride": -2.3
 }
 
 # Modal split target
@@ -55,6 +55,8 @@ region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp"
 
 
 def f(persons):
+    persons = gpd.GeoDataFrame(persons, geometry=gpd.points_from_xy(persons.home_x, persons.home_y))
+
     df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", op="intersects")
     return df
 
@@ -68,7 +70,7 @@ def adjust_trips(df):
     return df
 
 
-study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr-1.0-SNAPSHOT.jar",
+study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr-1.4.1-136d8aa.jar",
                                                  "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
                                                  modes, target,
                                                  initial_asc=initial,

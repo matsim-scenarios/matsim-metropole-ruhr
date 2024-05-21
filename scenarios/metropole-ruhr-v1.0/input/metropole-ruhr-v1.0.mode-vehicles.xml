@@ -10,7 +10,7 @@
 		<doorOperation mode="serial"/>
 		<passengerCarEquivalents pce="1.0"/>
 	</vehicleType>
-		<vehicleType id="ride">
+	<vehicleType id="ride">
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<maximumVelocity meterPerSecond="36.111111"/>
@@ -22,7 +22,7 @@
 	<vehicleType id="bike">
 		<length meter="2.0"/>
 		<width meter="1.0"/>
-		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h --> 
+		<maximumVelocity meterPerSecond="6.82"/> <!-- from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
 		<accessTime secondsPerPerson="1.0"/>
 		<egressTime secondsPerPerson="1.0"/>
 		<doorOperation mode="serial"/>

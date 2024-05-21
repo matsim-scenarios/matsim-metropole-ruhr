@@ -1,8 +1,8 @@
 package org.matsim.run;
 
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
@@ -21,20 +21,18 @@ import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.testcases.MatsimTestUtils;
+import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
-import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TestBicycleRouting {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
     private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz";
 
-    @Rule
+    @RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
     @Test
@@ -56,12 +54,12 @@ public class TestBicycleRouting {
         var personWithElevation = scenarioWithElevation.getPopulation().getPersons().get(personId);
         var personWithoutElevation = scenarioWithoutElevation.getPopulation().getPersons().get(personId);
 
-        assertTrue(personWithElevation.getSelectedPlan().getScore() < personWithoutElevation.getSelectedPlan().getScore());
+        Assertions.assertTrue(personWithElevation.getSelectedPlan().getScore() < personWithoutElevation.getSelectedPlan().getScore());
 
         var bikeRouteWithElevation = getBikeRoute(personWithElevation);
         var bikeRouteWithoutElevation = getBikeRoute(personWithoutElevation);
 
-        assertNotEquals(bikeRouteWithElevation.toString(), bikeRouteWithoutElevation.toString());
+        Assertions.assertNotEquals(bikeRouteWithElevation.toString(), bikeRouteWithoutElevation.toString());
     }
 
     private static NetworkRoute getBikeRoute(Person person) {
@@ -88,8 +86,8 @@ public class TestBicycleRouting {
             preparedConfig.global().setNumberOfThreads(1);
             preparedConfig.qsim().setNumberOfThreads(1);
             preparedConfig.plans().setInputFile(null);
-            preparedConfig.controler().setLastIteration(0);
-            preparedConfig.controler().setRunId(RUN_ID);
+            preparedConfig.controller().setLastIteration(0);
+            preparedConfig.controller().setRunId(RUN_ID);
 
             // Disable PT
             preparedConfig.transit().setVehiclesFile(null);
@@ -147,6 +145,8 @@ public class TestBicycleRouting {
                             node.setCoord(coord);
                         });
             }
+            // this is necessary to get the test to work, the default networkMode of the bicycle vehicle type was set to "car"
+            scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class)).setNetworkMode("bike");
         }
     }
 

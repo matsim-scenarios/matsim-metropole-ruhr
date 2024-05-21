@@ -21,9 +21,9 @@ package org.matsim.run;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.population.PlanElement;
@@ -42,8 +42,8 @@ import java.util.List;
  */
 public class IntermodalPtAnalysisModeIdentifierTest {
 	private static final Logger log = LogManager.getLogger( IntermodalPtAnalysisModeIdentifierTest.class ) ;
-	
-	@Rule public MatsimTestUtils utils = new MatsimTestUtils() ;
+
+	@RegisterExtension public MatsimTestUtils utils = new MatsimTestUtils() ;
 	
 	@Test
 	public final void testSingleModeTrips() {
@@ -63,13 +63,13 @@ public class IntermodalPtAnalysisModeIdentifierTest {
 			planElements.add(factory.createLeg(TransportMode.pt));
 			planElements.add(factory.createActivityFromLinkId(PtConstants.TRANSIT_ACTIVITY_TYPE, null));
 			planElements.add(factory.createLeg(TransportMode.walk));
-			Assert.assertEquals("Wrong mode!", TransportMode.pt, mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(TransportMode.pt, mainModeIdentifier.identifyMainMode(planElements), "Wrong mode!");
 		}
 		
 		{
 			List<PlanElement> planElements = new ArrayList<>();
 			planElements.add(factory.createLeg(TransportMode.car));
-			Assert.assertEquals("Wrong mode!", TransportMode.car, mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(TransportMode.car, mainModeIdentifier.identifyMainMode(planElements), "Wrong mode!");
 		}
 		
 		{
@@ -79,7 +79,7 @@ public class IntermodalPtAnalysisModeIdentifierTest {
 			planElements.add(factory.createLeg(TransportMode.bike));
 			planElements.add(factory.createActivityFromLinkId("drt interaction", null));
 			planElements.add(factory.createLeg(TransportMode.walk));
-			Assert.assertEquals("Wrong mode!", TransportMode.bike, mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(TransportMode.bike, mainModeIdentifier.identifyMainMode(planElements), "Wrong mode!");
 		}
 		
 		log.info("Running test0... Done.");
@@ -107,8 +107,8 @@ public class IntermodalPtAnalysisModeIdentifierTest {
 			planElements.add(factory.createLeg(TransportMode.pt));
 			planElements.add(factory.createActivityFromLinkId(PtConstants.TRANSIT_ACTIVITY_TYPE, null));
 			planElements.add(factory.createLeg(TransportMode.walk));
-			Assert.assertEquals("Wrong mode!", IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_BIKE_USED_FOR_ACCESS_OR_EGRESS, 
-					mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_BIKE_USED_FOR_ACCESS_OR_EGRESS,
+					mainModeIdentifier.identifyMainMode(planElements),"Wrong mode!");
 		}
 		
 		{
@@ -124,8 +124,8 @@ public class IntermodalPtAnalysisModeIdentifierTest {
 			planElements.add(factory.createLeg(TransportMode.pt));
 			planElements.add(factory.createActivityFromLinkId(PtConstants.TRANSIT_ACTIVITY_TYPE, null));
 			planElements.add(factory.createLeg(TransportMode.walk));
-			Assert.assertEquals("Wrong mode!", IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_CAR_USED_FOR_ACCESS_OR_EGRESS,
-					mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_CAR_USED_FOR_ACCESS_OR_EGRESS,
+					mainModeIdentifier.identifyMainMode(planElements), "Wrong mode!");
 		}
 		
 		{
@@ -145,44 +145,51 @@ public class IntermodalPtAnalysisModeIdentifierTest {
 			planElements.add(factory.createLeg(TransportMode.car));
 			planElements.add(factory.createActivityFromLinkId("car interaction", null));
 			planElements.add(factory.createLeg(TransportMode.walk));
-			Assert.assertEquals("Wrong mode!", IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_BIKE_AND_CAR_USED_FOR_ACCESS_OR_EGRESS,
-					mainModeIdentifier.identifyMainMode(planElements));
+			Assertions.assertEquals(IntermodalPtAnalysisModeIdentifier.ANALYSIS_MAIN_MODE_PT_WITH_BIKE_AND_CAR_USED_FOR_ACCESS_OR_EGRESS,
+					mainModeIdentifier.identifyMainMode(planElements), "Wrong mode!");
 		}
 		
 		log.info("Running testIntermodalPtDrtTrip... Done.");
 	}
 
-	@Test(expected = RuntimeException.class)
+	@Test
 	public void testRuntimeExceptionTripWithoutMainMode() {
-		log.info("Running testRuntimeExceptionTripWithoutMainMode...");
-		
-		IntermodalPtAnalysisModeIdentifier mainModeIdentifier = new IntermodalPtAnalysisModeIdentifier();
-		
-		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
-		PopulationFactory factory = scenario.getPopulation().getFactory();
-		
-		List<PlanElement> planElements = new ArrayList<>();
-		planElements.add(factory.createLeg(TransportMode.non_network_walk));
-		planElements.add(factory.createActivityFromLinkId(PtConstants.TRANSIT_ACTIVITY_TYPE, null));
-		planElements.add(factory.createLeg(TransportMode.non_network_walk));
-		// should throw an exception, because main mode cannot be identified
-		mainModeIdentifier.identifyMainMode(planElements);
-		log.info("Running testRuntimeExceptionTripWithoutMainMode... Done.");
+		Exception exception = Assertions.assertThrows(Exception.class, () -> {
+			log.info("Running testRuntimeExceptionTripWithoutMainMode...");
+
+			IntermodalPtAnalysisModeIdentifier mainModeIdentifier = new IntermodalPtAnalysisModeIdentifier();
+
+			Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
+			PopulationFactory factory = scenario.getPopulation().getFactory();
+
+			List<PlanElement> planElements = new ArrayList<>();
+			planElements.add(factory.createLeg(TransportMode.non_network_walk));
+			planElements.add(factory.createActivityFromLinkId(PtConstants.TRANSIT_ACTIVITY_TYPE, null));
+			planElements.add(factory.createLeg(TransportMode.non_network_walk));
+			// should throw an exception, because main mode cannot be identified
+			mainModeIdentifier.identifyMainMode(planElements);
+			log.info("Running testRuntimeExceptionTripWithoutMainMode... Done.");
+		});
+		log.info(exception.getMessage());
 	}
-	
-	@Test(expected = RuntimeException.class)
+
+	@Test
 	public void testRuntimeExceptionOnlyNonNetworkWalk() {
-		log.info("Running testRuntimeExceptionOnlyNonNetworkWalk...");
-		
-		IntermodalPtAnalysisModeIdentifier mainModeIdentifier = new IntermodalPtAnalysisModeIdentifier();
-		
-		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
-		PopulationFactory factory = scenario.getPopulation().getFactory();
-		
-		List<PlanElement> planElements = new ArrayList<>();
-		planElements.add(factory.createLeg(TransportMode.non_network_walk));
-		// should throw an exception, because non_network_walk is not a main mode
-		mainModeIdentifier.identifyMainMode(planElements);
+		Exception exception = Assertions.assertThrows(Exception.class, () -> {
+			log.info("Running testRuntimeExceptionOnlyNonNetworkWalk...");
+
+			IntermodalPtAnalysisModeIdentifier mainModeIdentifier = new IntermodalPtAnalysisModeIdentifier();
+
+			Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
+			PopulationFactory factory = scenario.getPopulation().getFactory();
+
+			List<PlanElement> planElements = new ArrayList<>();
+			planElements.add(factory.createLeg(TransportMode.non_network_walk));
+			// should throw an exception, because non_network_walk is not a main mode
+			mainModeIdentifier.identifyMainMode(planElements);
+		});
+		log.info(exception.getMessage());
+
 	}
 
 }
