@@ -7,5 +7,5 @@ import java.util.List;
 public interface CommercialVehicleSelector {
     List<String> getPossibleVehicleTypes(Person freightDemandDataRelation, String string);
 
-    String getModeForTrip(Person freightDemandDataRelation);
+    String getModeForFTLTrip(Person freightDemandDataRelation);
 }
