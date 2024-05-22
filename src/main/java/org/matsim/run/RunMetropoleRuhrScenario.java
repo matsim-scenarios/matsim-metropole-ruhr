@@ -94,7 +94,7 @@ public class RunMetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public RunMetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
+		super("./scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
 	}
 
 	/**
