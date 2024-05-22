@@ -2,12 +2,12 @@ package org.matsim.prepare;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.gce.geotiff.GeoTiffReader;
-import org.geotools.geometry.DirectPosition2D;
+import org.geotools.geometry.Position2D;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
-import org.opengis.referencing.operation.TransformException;
 
 import java.awt.image.Raster;
 import java.io.File;
@@ -33,7 +33,7 @@ public class ElevationReader {
     public double getElevationAt(Coord coord) {
 
         Coord transformed = transformation.transform(coord);
-        var position = new DirectPosition2D(transformed.getX(), transformed.getY());
+        var position = new Position2D(transformed.getX(), transformed.getY());
 
         for (ElevationMap elevationMap : elevationMaps) {
 
@@ -67,11 +67,11 @@ public class ElevationReader {
             }
         }
 
-        boolean covers(DirectPosition2D position) {
+        boolean covers(Position2D position) {
             return coverage.getEnvelope2D().contains(position.getX(), position.getY());
         }
 
-        double getElevation(DirectPosition2D position) {
+        double getElevation(Position2D position) {
 
             if (!coverage.getEnvelope2D().contains(position.getX(), position.getY())) {
                 throw new IllegalArgumentException("position is not covered by height map. Test with 'covers' first");

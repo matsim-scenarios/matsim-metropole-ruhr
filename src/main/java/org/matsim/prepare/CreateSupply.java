@@ -30,7 +30,7 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
-import org.opengis.feature.simple.SimpleFeature;
+import org.geotools.api.feature.simple.SimpleFeature;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -287,6 +287,7 @@ public class CreateSupply {
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
+		String outputName = "metropole-ruhr-v2.0";
 		new CreateTransitScheduleFromGtfs().execute(
 				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
 				"--date", gtfsDataDate1, gtfsDataDate2,
@@ -294,7 +295,15 @@ public class CreateSupply {
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
-				"--name", "metropole-ruhr-v2.0"
+				"--name", outputName
+		);
+
+		// --------------------------------------------------------------------
+
+		new TagTransitSchedule().execute(
+			"--input", outputDir + "/" + outputName + "-transitSchedule.xml.gz",
+			"--shp", ruhrShape.toString(),
+			"--output", outputDir + "/" + outputName + "-transitSchedule.xml.gz"
 		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------

@@ -22,7 +22,7 @@ import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.collections.QuadTree;
 import org.matsim.core.utils.gis.ShapeFileReader;
-import org.opengis.feature.simple.SimpleFeature;
+import org.geotools.api.feature.simple.SimpleFeature;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,24 +34,24 @@ public class ShpToNetwork {
 	private final double maxSearchRadius = 2.;
 
     public static void main (String[] args) {
-    	
+
     	String rootDirectory = null;
-		
+
 		if (args.length <= 0) {
 			logger.warn("Please set the root directory.");
 		} else {
 			rootDirectory = args[0];
 		}
-		
+
 	    final String inputShapeNetwork = rootDirectory + "shared-svn/projects/rvr-metropole-ruhr/data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp";
 		Network network = new ShpToNetwork().run(Paths.get(inputShapeNetwork));
-		
+
 		NetworkWriter writer = new NetworkWriter(network);
-		
+
 	    final String matSimOutputNetwork ="public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/bicycle-infrastructure/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.xml.gz";
 	    writer.write(rootDirectory + matSimOutputNetwork);
     }
-    	
+
     public Network run(Path inputShapeNetwork) {
     	int helpLinkCounter = 0;
     	String idPrefix = "bike_" + FilenameUtils.removeExtension(inputShapeNetwork.getFileName().toString()) + "_";
@@ -67,34 +67,34 @@ public class ShpToNetwork {
             try {
                 MultiLineString multiLineString = (MultiLineString) geometry;
                 Coordinate[] coordinates = multiLineString.getCoordinates();
-                
+
                 // coord0 -----> coord1 -----> coord2 (length = 3)
 
                 int coordCounter = 0;
                 for (Coordinate coordinate : coordinates) {
-                	
+
                 	Coord coordFrom = new Coord(coordinate.getX(), coordinate.getY());
                     String coordFromString = coordFrom.getX() + "-" + coordFrom.getY();
-                    
+
                     Node n1;
                     if (coordString2nodeId.get(coordFromString) == null) {
                         String fromId = idPrefix + feature.getAttribute("fid") + "_" + coordCounter + "_n1";
     					n1 = NetworkUtils.createNode(Id.createNodeId(fromId), coordFrom );
                         coordString2nodeId.put(coordFromString, n1.getId());
-                        
+
                         // tag first multiLine node
                         if (coordCounter == 0) {
                             n1.getAttributes().putAttribute("multiLineStartOrEnd", true);
                         } else {
                         	n1.getAttributes().putAttribute("multiLineStartOrEnd", false);
                         }
-                        
+
                         network.addNode(n1);
-                     
+
                     } else {
                     	n1 = network.getNodes().get(coordString2nodeId.get(coordFromString));
                     }
-                                            
+
                     if (coordCounter < coordinates.length - 1) {
                     	Coord coordTo = new Coord(coordinates[coordCounter + 1].getX(), coordinates[coordCounter + 1].getY());
                         String coordToString = coordTo.getX() + "-" + coordTo.getY();
@@ -114,7 +114,7 @@ public class ShpToNetwork {
                         } else {
                         	n2 = network.getNodes().get(coordString2nodeId.get(coordToString));
                         }
-                        
+
                         // now create the link to n2
                         double length = NetworkUtils.getEuclideanDistance(n1.getCoord(), n2.getCoord());
                         Link l = createLinkWithAttributes(network.getFactory(), n1, n2, idPrefix + feature.getAttribute("fid") + "_" + coordCounter, length);
@@ -122,7 +122,7 @@ public class ShpToNetwork {
                         Link lReversed = copyWithUUIDAndReverseDirection(network.getFactory(), l);
                         network.addLink(lReversed);
                     }
-                 	
+
                 	coordCounter++;
                 }
 
@@ -168,7 +168,7 @@ public class ShpToNetwork {
         result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
         result.setCapacity(800);
         result.setFreespeed(5.55); // 20km/h
-        result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0); 
+        result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
         result.setNumberOfLanes(1);
         result.setLength(length);
         return result;
