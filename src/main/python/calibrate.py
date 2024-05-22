@@ -1,33 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-
-import pandas as pd
 import geopandas as gpd
-import numpy as np
 
-try:
-    # Use the matsim package if available
-    from matsim import calibration
-except:
-    # Alternatively, import calibration.py from same directory
-    import calibration
-
-# %%
-
-if os.path.exists("mid.csv"):
-    srv = pd.read_csv("mid.csv")
-    sim = pd.read_csv("sim.csv")
-
-    _, adj = calibration.calc_adjusted_mode_share(sim, srv)
-
-    print(srv.groupby("mode").sum())
-
-    print("Adjusted")
-    print(adj.groupby("mode").sum())
-
-    adj.to_csv("mid_adj.csv", index=False)
+from matsim.calibration import create_calibration, ASCCalibrator, utils
 
 # %%
 
@@ -44,11 +20,11 @@ initial = {
 
 # Modal split target
 target = {
-    "walk": 0.205397,
-    "bike": 0.097191,
-    "pt":  0.120314,
-    "car": 0.456896,
-    "ride": 0.120203
+    "walk": 0.232118,
+    "bike": 0.098503,
+    "pt": 0.116146,
+    "car": 0.424297,
+    "ride": 0.128936
 }
 
 region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp").set_crs("EPSG:25832")
@@ -70,14 +46,17 @@ def adjust_trips(df):
     return df
 
 
-study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr-1.4.1-136d8aa.jar",
-                                                 "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
-                                                 modes, target,
-                                                 initial_asc=initial,
-                                                 args="--10pct",
-                                                 jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
-                                                 person_filter=f, map_trips=adjust_trips, chain_runs=True)
+study, obj = create_calibration(
+    "calib",
+    ASCCalibrator(modes, initial, target, lr=utils.linear_scheduler(start=0.3, interval=8)),
+    "matsim-metropole-ruhr-1.4.1-136d8aa.jar",
+    "../scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-3pct.config.xml",
+    args="--3pct",
+    jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
+    transform_persons=f, transform_trips=adjust_trips,
+    chain_runs=utils.default_chain_scheduler, debug=False
+)
 
 # %%
 
-study.optimize(obj, 10)
+study.optimize(obj, 3)

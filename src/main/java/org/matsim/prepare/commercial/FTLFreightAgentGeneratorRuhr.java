@@ -53,7 +53,7 @@ public class FTLFreightAgentGeneratorRuhr {
         double originY = CommercialTrafficUtils.getOriginY(freightDemandDataRelation);
         double destinationX = CommercialTrafficUtils.getDestinationX(freightDemandDataRelation);
         double destinationY = CommercialTrafficUtils.getDestinationY(freightDemandDataRelation);
-        String FTL_mode = commercialVehicleSelector.getModeForTrip(freightDemandDataRelation);
+        String FTL_mode = commercialVehicleSelector.getModeForFTLTrip(freightDemandDataRelation);
         String vehicleType = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation, null).getFirst();
         for (int i = 0; i < numOfTrips; i++) {
             Person person = populationFactory.createPerson(Id.createPersonId("freight_" + tripRelationId + "_" + i + "_" + transportType));

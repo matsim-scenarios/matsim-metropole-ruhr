@@ -22,14 +22,11 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
     }
 
     @Override
-    public String getModeForTrip(Person freightDemandDataRelation) {
-        if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL"))
-            return "truck40t";
-        else
-        if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140)
-            return "truck26t";
-        if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150)
-            return "car"; //TODO truck18t
-        return "truck18t";
-    }
+	public String getModeForFTLTrip(Person freightDemandDataRelation) {
+		// the current assumption is that all FTL trips are done by 40 tones trucks
+		if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL") || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
+			CommercialTrafficUtils.TransportType.FTL_kv.toString()))
+			return "truck40t";
+		return null;
+	}
 }
