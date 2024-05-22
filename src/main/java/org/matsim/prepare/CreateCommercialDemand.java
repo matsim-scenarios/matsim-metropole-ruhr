@@ -97,6 +97,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
 	private Path networkForLongDistanceFreight;
 
+	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
+	private String outputPlansPath;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -252,8 +255,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			// TODO filter relevant agents for the small scale commercial traffic
 		}
 		log.info("7th step - Merge freight and commercial populations");
-		String pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
-			"") + "_merged.plans.xml.gz";
+		String pathMergedPopulation;
+		if (outputPlansPath != null) {
+			pathMergedPopulation = outputPlansPath;
+		} else {
+			pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
+				"") + "_merged.plans.xml.gz";
+		}
 		if (Files.exists(Path.of(pathMergedPopulation))) {
 			log.info("Merged demand already exists. Skipping generation.");
 		} else {

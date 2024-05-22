@@ -22,6 +22,7 @@ import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
