@@ -1,5 +1,6 @@
 package org.matsim.prepare;
 
+import org.geotools.api.referencing.FactoryException;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.referencing.CRS;
@@ -22,8 +23,7 @@ import org.matsim.core.utils.collections.Tuple;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.gis.ShapeFileWriter;
 import org.matsim.testcases.MatsimTestUtils;
-import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.referencing.FactoryException;
+import org.geotools.api.feature.simple.SimpleFeatureType;
 
 import java.util.*;
 import java.util.stream.Collectors;
