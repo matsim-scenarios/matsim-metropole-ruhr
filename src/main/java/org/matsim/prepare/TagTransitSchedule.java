@@ -21,33 +21,35 @@ package org.matsim.prepare;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.application.MATSimAppCommand;
+import org.matsim.application.options.ShpOptions;
 import org.matsim.contrib.gtfs.RouteType;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.utils.io.IOUtils;
 import org.matsim.extensions.pt.utils.TransitStopTagger;
 import org.matsim.pt.transitSchedule.api.*;
+import picocli.CommandLine;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Set;
 
-public class TagTransitSchedule {
+@CommandLine.Command(name = "tag-transit-schedule")
+public class TagTransitSchedule implements MATSimAppCommand {
+
+	@CommandLine.Option(names = "--input")
+	private String input;
+
+	@CommandLine.Command(name = "--output")
+	private Path output;
+
+	@CommandLine.Mixin
+	private ShpOptions shp;
 
     public static void main(String[] args) {
-        String scheduleFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-transitSchedule.xml.gz";
-
-        Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
-        new TransitScheduleReader(scenario).readFile(scheduleFile);
-        TransitSchedule transitSchedule = scenario.getTransitSchedule();
-        Set<String> filterModes = Set.of(RouteType.RAIL.getSimpleTypeName());
-        URL ruhrShapeUrl;
-        try {
-            ruhrShapeUrl = new URL("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
-        tagIntermodalStops(transitSchedule, filterModes, ruhrShapeUrl);
+		new TagTransitSchedule().execute(args);
     }
 
     static void tagIntermodalStops (TransitSchedule transitSchedule, Set<String> filterModes, URL ruhrShapeUrl) {
@@ -152,11 +154,28 @@ public class TagTransitSchedule {
         //Y	5719160.550863991
         tagTransitStop(transitSchedule, Id.create("nwlde:05978:60867_Parent", TransitStopFacility.class), newAttributeName, newAttributeValue);
 
-        new TransitScheduleWriter(transitSchedule).writeFile("./scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4-transitSchedule-attributed.xml.gz");
     }
 
     private static void tagTransitStop(TransitSchedule transitSchedule, Id<TransitStopFacility> stopFacilityId,
                                 String newAttributeName, String newAttributeValue) {
         transitSchedule.getFacilities().get(stopFacilityId).getAttributes().putAttribute(newAttributeName, newAttributeValue);
     }
+
+	@Override
+	public Integer call() throws Exception {
+
+		if (!shp.isDefined())
+			throw new IllegalArgumentException("Shp file must be defined [--shp]");
+
+		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
+		new TransitScheduleReader(scenario).readFile(input);
+		TransitSchedule transitSchedule = scenario.getTransitSchedule();
+		Set<String> filterModes = Set.of(RouteType.RAIL.getSimpleTypeName());
+
+		tagIntermodalStops(transitSchedule, filterModes, IOUtils.resolveFileOrResource(shp.getShapeFile()));
+
+		new TransitScheduleWriter(transitSchedule).writeFile(output.toString());
+
+		return 0;
+	}
 }
