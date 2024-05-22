@@ -30,7 +30,7 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
-import org.opengis.feature.simple.SimpleFeature;
+import org.geotools.api.feature.simple.SimpleFeature;
 
 import java.io.FileReader;
 import java.io.IOException;
