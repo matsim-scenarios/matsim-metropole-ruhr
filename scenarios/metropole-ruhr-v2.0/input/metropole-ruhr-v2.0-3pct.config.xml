@@ -2,7 +2,7 @@
 <!DOCTYPE config SYSTEM "http://www.matsim.org/files/dtd/config_v2.dtd">
 <config>
 	<module name="timeAllocationMutator" >
-		<param name="mutationRange" value="7200.0" />
+		<param name="mutationRange" value="900.0" />
 	</module>
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
@@ -69,22 +69,22 @@
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="ChangeExpBeta"/>
 			<param name="subpopulation" value="person"/>
-			<param name="weight" value="0.85"/>
+			<param name="weight" value="1.0"/>
 		</parameterset>
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="ReRoute"/>
 			<param name="subpopulation" value="person"/>
-			<param name="weight" value="0.10"/>
+			<param name="weight" value="0.15"/>
 		</parameterset>
 		<parameterset type="strategysettings">
 			<param name="strategyName" value="SubtourModeChoice"/>
 			<param name="subpopulation" value="person"/>
-			<param name="weight" value="0.10"/>
+			<param name="weight" value="0.15"/>
 		</parameterset>
 		<parameterset type="strategysettings" >
 			<param name="strategyName" value="TimeAllocationMutator" />
 			<param name="subpopulation" value="person"/>
-			<param name="weight" value="0.05" />
+			<param name="weight" value="0.15" />
 			<param name="disableAfterIteration" value="350" />
 		</parameterset>
 	</module>
@@ -106,7 +106,7 @@
 		<param name="vspDefaultsCheckingLevel" value="abort" />
 	</module>
 	<module name="scoring">
-		<param name="fractionOfIterationsToStartScoreMSA" value="1.0" />
+		<param name="fractionOfIterationsToStartScoreMSA" value="0.9" />
 		<parameterset type="scoringParameters" >
 			<param name="marginalUtilityOfMoney" value="1.0"/>
 			<!-- car prices 2012->2022: inflation (110.2-91.7)/91.7 = 0.2017448
@@ -237,4 +237,24 @@
 			<param name="ptModes" value="pt" />
 		</parameterset>
 	</module>
+
+	<module name="ReplanningAnnealer" >
+		<param name="activateAnnealingModule" value="false" />
+		<parameterset type="AnnealingVariable" >
+			<param name="annealParameter" value="globalInnovationRate" />
+			<param name="annealType" value="sigmoid" />
+			<param name="defaultSubpopulation" value="person" />
+			<!-- this parameter enters the exponential and sigmoid formulas. May be an iteration or a share, i.e. 0.5 for halfLife at 50% of iterations. Exponential: startValue / exp(it/halfLife) -->
+			<param name="halfLife" value="0.5" />
+			<!-- sigmoid: 1/(1+e^(shapeFactor*(it - halfLife))); geometric: startValue * shapeFactor^it; msa: startValue / it^shapeFactor -->
+			<param name="shapeFactor" value="0.01" />
+			<param name="startValue" value="0.6" />
+			<param name="endValue" value="0.01" />
+		</parameterset>
+	</module>
+	<module name="strategy">
+		<param name="fractionOfIterationsToDisableInnovation" value="0.8"/>
+		<!-- Strategies are added in code -->
+	</module>
+
 </config>
