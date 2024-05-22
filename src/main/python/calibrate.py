@@ -50,8 +50,8 @@ study, obj = create_calibration(
     "calib",
     ASCCalibrator(modes, initial, target, lr=utils.linear_scheduler(start=0.3, interval=8)),
     "matsim-metropole-ruhr-1.4.1-136d8aa.jar",
-    "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
-    args="--10pct",
+    "../scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-3pct.config.xml",
+    args="--3pct",
     jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
     transform_persons=f, transform_trips=adjust_trips,
     chain_runs=utils.default_chain_scheduler, debug=False
@@ -59,4 +59,4 @@ study, obj = create_calibration(
 
 # %%
 
-study.optimize(obj, 10)
+study.optimize(obj, 3)
