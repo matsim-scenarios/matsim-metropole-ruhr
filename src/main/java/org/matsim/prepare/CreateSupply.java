@@ -275,10 +275,23 @@ public class CreateSupply {
 				NetworkUtils.setLinkEgressTime(link, TransportMode.bike, 0.0);
 				NetworkUtils.setLinkAccessTime(link, TransportMode.ride, 0.0);
 				NetworkUtils.setLinkEgressTime(link, TransportMode.ride, 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck8t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck8t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck18t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck18t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck26t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck26t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck40t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck40t", 0.0);
+
 			}
 		}
 
 		String networkOut = outputDir.resolve("metropole-ruhr-v2.0.network_resolution" + networkResolution + ".xml.gz").toString();
+
+		fixLinks(network);
+		addCommercialTrafficModes(network);
+
 		new NetworkWriter(network).write(networkOut);
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
@@ -301,7 +314,7 @@ public class CreateSupply {
 		new TagTransitSchedule().execute(
 			"--input", outputDir + "/" + outputName + "-transitSchedule.xml.gz",
 			"--shp", rootDirectory.resolve(ruhrShape).toString(),
-			"--output", outputDir + "/" + outputName + "-transitSchedule-tagged.xml.gz"
+			"--output", outputDir + "/" + outputName + "-transitSchedule.xml.gz"
 		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
@@ -341,6 +354,31 @@ public class CreateSupply {
 		// Based on 2015 count data, won't be used in the new model
 		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v2.0.counts-old.xml.gz"),
 				longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
+	}
+
+	/**
+	 * Fix links with speed 0
+	 */
+	private void fixLinks(Network network) {
+		for (Link link : network.getLinks().values()) {
+			// set freespeed to 10 km/h if it is 0
+			if (link.getFreespeed() == 0) {
+				link.setFreespeed(10 / 3.6);
+			}
+		}
+	}
+
+	/**
+	 * Add network modes required by commercial traffic
+	 */
+	private void addCommercialTrafficModes(Network network) {
+		for (Link link : network.getLinks().values()) {
+			if (link.getAllowedModes().contains(TransportMode.car)) {
+				var modes = new HashSet<>(link.getAllowedModes());
+				modes.addAll(Set.of("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+				link.setAllowedModes(modes);
+			}
+		}
 	}
 
 	private boolean isIncludeLink(Coord coord, int level, Collection<Geometry> ruhrGeometries, List<Geometry> nrwGeometries) {

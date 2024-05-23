@@ -72,7 +72,7 @@ public class TestBicycleRouting {
                 .orElseThrow();
     }
 
-    public static class TestApplication extends RunMetropoleRuhrScenario {
+    public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useElevation", description = "Overwrite output folder defined by the application")
         protected boolean isUseElevation;

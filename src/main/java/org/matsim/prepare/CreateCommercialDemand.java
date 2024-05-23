@@ -97,6 +97,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
 	private Path networkForLongDistanceFreight;
 
+	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
+	private String outputPlansPath;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -179,6 +182,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--input-crs", shapeCRS,
 				"--target-crs", shapeCRS,
 				"--shp-crs", shapeCRS,
+				"--cut-on-boundary",
 				"--tripType", "TRANSIT"
 			);
 			Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
@@ -251,8 +255,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			// TODO filter relevant agents for the small scale commercial traffic
 		}
 		log.info("7th step - Merge freight and commercial populations");
-		String pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
-			"") + "_merged.plans.xml.gz";
+		String pathMergedPopulation;
+		if (outputPlansPath != null) {
+			pathMergedPopulation = outputPlansPath;
+		} else {
+			pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
+				"") + "_merged.plans.xml.gz";
+		}
 		if (Files.exists(Path.of(pathMergedPopulation))) {
 			log.info("Merged demand already exists. Skipping generation.");
 		} else {
@@ -283,6 +292,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.qsim().setTrafficDynamics(QSimConfigGroup.TrafficDynamics.kinematicWaves);
 			config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 			config.qsim().setUsePersonIdForMissingVehicleId(false);
+			//to get no traffic jam for the 1 iteration
+			config.qsim().setFlowCapFactor(sample * 4);
+			config.qsim().setStorageCapFactor(sample * 4);
 			config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
 			config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
 			config.getModules().remove("intermodalTripFareCompensators");
@@ -291,7 +303,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 
 			//prepare the different modes
-			ArrayList<String> newModes = new ArrayList<>(List.of("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+			ArrayList<String> newModes = new ArrayList<>(List.of("truck8t", "truck18t", "truck26t", "truck40t"));
 			Collection<String> allModes = config.qsim().getMainModes();
 			allModes.addAll(newModes);
 			config.qsim().setMainModes(allModes);

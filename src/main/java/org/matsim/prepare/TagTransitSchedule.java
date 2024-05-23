@@ -20,6 +20,8 @@
 package org.matsim.prepare;
 
 import org.matsim.api.core.v01.Coord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.application.MATSimAppCommand;
@@ -43,7 +45,9 @@ import java.util.Set;
 @CommandLine.Command(name = "tag-transit-schedule")
 public class TagTransitSchedule implements MATSimAppCommand {
 
-	@CommandLine.Option(names = "--input")
+	private static final Logger log = LogManager.getLogger(TagTransitSchedule.class);
+
+	@CommandLine.Option(names = "--input", description = "Path to input transit schedule", required = true)
 	private String input;
 
 	@CommandLine.Option(names = "--output")
@@ -54,30 +58,30 @@ public class TagTransitSchedule implements MATSimAppCommand {
 
 	public static void main(String[] args) {
 		new TagTransitSchedule().execute(args);
-    }
+	}
 
     private void tagIntermodalStops (TransitSchedule transitSchedule, Set<String> filterModes, URL ruhrShapeUrl) {
         String modeFilterAttribute = "selected_modes_stop";
         String modeFilterValue = "true";
 
-        for (TransitLine line: transitSchedule.getTransitLines().values()) {
-            for (TransitRoute route : line.getRoutes().values()) {
-                String gtfsRouteType = (String) route.getAttributes().getAttribute("simple_route_type");
-                if (filterModes.contains(gtfsRouteType)) {
-                    for (TransitRouteStop routeStop : route.getStops()) {
-                        routeStop.getStopFacility().getAttributes().putAttribute(modeFilterAttribute, modeFilterValue);
-                    }
-                }
-            }
-        }
+		for (TransitLine line : transitSchedule.getTransitLines().values()) {
+			for (TransitRoute route : line.getRoutes().values()) {
+				String gtfsRouteType = (String) route.getAttributes().getAttribute("simple_route_type");
+				if (filterModes.contains(gtfsRouteType)) {
+					for (TransitRouteStop routeStop : route.getStops()) {
+						routeStop.getStopFacility().getAttributes().putAttribute(modeFilterAttribute, modeFilterValue);
+					}
+				}
+			}
+		}
 
-        String newAttributeName = "car_bike_accessible";
-        String newAttributeValue = "true";
+		String newAttributeName = "car_bike_accessible";
+		String newAttributeValue = "true";
 
-        double bufferAroundServiceArea = 1000;
+		double bufferAroundServiceArea = 1000;
 
-        TransitStopTagger.tagTransitStopsInShpFile(transitSchedule, newAttributeName, newAttributeValue,
-                ruhrShapeUrl, modeFilterAttribute, modeFilterValue, bufferAroundServiceArea);
+		TransitStopTagger.tagTransitStopsInShpFile(transitSchedule, newAttributeName, newAttributeValue,
+			ruhrShapeUrl, modeFilterAttribute, modeFilterValue, bufferAroundServiceArea);
 
 		QuadTree<TransitStopFacility> stopsQT = TransitScheduleUtils.createQuadTreeOfTransitStopFacilities(transitSchedule.getFacilities().values());
 
