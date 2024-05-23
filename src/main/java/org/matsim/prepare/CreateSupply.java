@@ -275,6 +275,15 @@ public class CreateSupply {
 				NetworkUtils.setLinkEgressTime(link, TransportMode.bike, 0.0);
 				NetworkUtils.setLinkAccessTime(link, TransportMode.ride, 0.0);
 				NetworkUtils.setLinkEgressTime(link, TransportMode.ride, 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck8t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck8t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck18t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck18t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck26t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck26t", 0.0);
+				NetworkUtils.setLinkAccessTime(link, "truck40t", 0.0);
+				NetworkUtils.setLinkEgressTime(link, "truck40t", 0.0);
+
 			}
 		}
 
