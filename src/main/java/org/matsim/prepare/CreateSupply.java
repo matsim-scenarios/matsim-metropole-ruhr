@@ -291,6 +291,8 @@ public class CreateSupply {
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
+				"--copy-late-early", "true",
+				"--validate", "true",
 				"--name", outputName
 		);
 
