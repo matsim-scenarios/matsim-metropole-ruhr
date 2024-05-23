@@ -303,7 +303,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 
 			//prepare the different modes
-			ArrayList<String> newModes = new ArrayList<>(List.of("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+			ArrayList<String> newModes = new ArrayList<>(List.of("truck8t", "truck18t", "truck26t", "truck40t"));
 			Collection<String> allModes = config.qsim().getMainModes();
 			allModes.addAll(newModes);
 			config.qsim().setMainModes(allModes);
