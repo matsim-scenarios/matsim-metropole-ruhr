@@ -287,7 +287,7 @@ public class CreateSupply {
 		new CreateTransitScheduleFromGtfs().execute(
 				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
 				"--date", gtfsDataDate1, gtfsDataDate2,
-				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix + "," + gtfsData2Prefix,
+				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix,
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
@@ -301,7 +301,7 @@ public class CreateSupply {
 		new TagTransitSchedule().execute(
 			"--input", outputDir + "/" + outputName + "-transitSchedule.xml.gz",
 			"--shp", rootDirectory.resolve(ruhrShape).toString(),
-			"--output", outputDir + "/" + outputName + "-transitSchedule.xml.gz"
+			"--output", outputDir + "/" + outputName + "-transitSchedule-tagged.xml.gz"
 		);
 
 		// --------------------------------------- Create Counts -------------------------------------------------------
