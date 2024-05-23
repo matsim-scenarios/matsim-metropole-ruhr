@@ -46,7 +46,7 @@ public class TagTransitSchedule implements MATSimAppCommand {
 	@CommandLine.Option(names = "--input")
 	private String input;
 
-	@CommandLine.Command(name = "--output")
+	@CommandLine.Option(names = "--output")
 	private String output;
 
 	@CommandLine.Mixin
