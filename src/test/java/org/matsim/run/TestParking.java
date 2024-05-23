@@ -60,7 +60,7 @@ public class TestParking {
     }
 
 
-    public static class TestApplication extends RunMetropoleRuhrScenario {
+    public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useParking", description = "Overwrite output folder defined by the application")
         protected boolean useParking;

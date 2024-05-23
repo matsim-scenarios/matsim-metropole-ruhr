@@ -9,7 +9,7 @@ import org.matsim.core.population.io.StreamingPopulationWriter;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
-import org.matsim.run.RunMetropoleRuhrScenario;
+import org.matsim.run.MetropoleRuhrScenario;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +23,7 @@ public class CreateDemand {
 	private static final Path rootFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
 	private static final Path heightData = rootFolder.resolve("./original-data/2021-05-29_RVR_Grid_10m.tif");
 
-	private static final Path outputFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/input");
+	private static final Path outputFolder = Paths.get("../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input");
 
 	public static void main(String[] args) {
 
@@ -31,13 +31,14 @@ public class CreateDemand {
 		boolean closedModel = args.length > 0 && args[0].equalsIgnoreCase("True");
 
 		String name = closedModel ? "closed-plans" : "plans";
-		String outputPlans = outputFolder.resolve("metropole-ruhr-" + RunMetropoleRuhrScenario.VERSION + "-25pct." + name + ".xml.gz").toString();
+		String outputPlans = outputFolder.resolve("metropole-ruhr-" + MetropoleRuhrScenario.VERSION + "-25pct." + name + ".xml.gz").toString();
 
 		if (closedModel)
 			outputPlans = outputPlans.replace(".plans", ".proprietary-plans");
 
 		String input;
 		if (closedModel) {
+			System.out.println("Creating plans for proprietary model");
 			input = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/population.xml.gz";
 		} else {
 			input = "../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20230918_OpenData_Ruhr_300m/populaton.xml.gz";
@@ -89,7 +90,7 @@ public class CreateDemand {
 		new XYToLinks().execute(
 			"--input=" + tmp,
 			"--output=" + tmp,
-			"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v1.4.network_resolutionHigh.xml.gz",
+			"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.network_resolutionHigh.xml.gz",
 			"--car-only"
 		);
 
@@ -136,22 +137,22 @@ public class CreateDemand {
 			"--samples", "0.1", "0.03", "0.01", "0.001"
 		);
 
+		// TODO: 25pct commercial traffic was not yet created
 		for (String s : List.of("10", "1", "3", "0.1")) {
-			String sampledPlans = outputPlans.replace("25pct", s + "pct");
+			// 0.1 sample will be named 0pct
+			String sampledPlans = outputPlans.replace("25pct", (s.equals("0.1") ? "0" : s) + "pct");
 			new MergePopulations().execute(
 				sampledPlans,
-				String.format("metropole-ruhr-v2.0-%spct.plans-commercial.xml.gz", s),
+				outputFolder.resolve(String.format("metropole-ruhr-v2.0-%spct.plans-commercial.xml.gz", s)).toString(),
 				"--output", sampledPlans
 			);
 		}
-
 
 		new CheckPopulation().execute(outputPlans,
 			"--input-crs=EPSG:25832",
 			"--shp=../../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp",
 			"--shp-crs=EPSG:25832"
 		);
-
 
 	}
 

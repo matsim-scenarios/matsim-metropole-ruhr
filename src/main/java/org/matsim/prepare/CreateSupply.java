@@ -302,7 +302,7 @@ public class CreateSupply {
 
 		new TagTransitSchedule().execute(
 			"--input", outputDir + "/" + outputName + "-transitSchedule.xml.gz",
-			"--shp", ruhrShape.toString(),
+			"--shp", rootDirectory.resolve(ruhrShape).toString(),
 			"--output", outputDir + "/" + outputName + "-transitSchedule.xml.gz"
 		);
 
