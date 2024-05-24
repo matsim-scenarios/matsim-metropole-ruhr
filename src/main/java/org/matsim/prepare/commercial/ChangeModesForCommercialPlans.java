@@ -20,8 +20,11 @@ public class ChangeModesForCommercialPlans {
 		String pathPopulation = "scenarios/metropole-ruhr-v2.0/output/rvr/commercial_3pct_V2/ruhr_freightPlans_3pct_merged.plans.xml.gz";
 		String pathOutputPopulation = "scenarios/metropole-ruhr-v2.0/output/rvr/commercial_3pct_V2/ruhr_commercial_3pct.plans.xml.gz";
 		Population population = PopulationUtils.readPopulation(pathPopulation);
+		Object2DoubleMap<String> subpopulationsCount = new Object2DoubleOpenHashMap<>();
 
 		for (Person person : population.getPersons().values()) {
+			subpopulationsCount.mergeDouble(PopulationUtils.getSubpopulation(person), 1, Double::sum);
+
 			String newMode = "";
 			if (PopulationUtils.getSubpopulation(person).equals("longDistanceFreight"))
 				newMode = "truck40t";
@@ -51,6 +54,11 @@ public class ChangeModesForCommercialPlans {
 				continue;
 			changeLegModes(person, newMode);
 		}
+
+		for (Object2DoubleMap.Entry<String> entry : subpopulationsCount.object2DoubleEntrySet()) {
+			System.out.println("Subpopulation: " + entry.getKey() + ": Number of Agents: " + entry.getDoubleValue());
+		}
+
 		PopulationUtils.writePopulation(population, pathOutputPopulation);
 	}
 
