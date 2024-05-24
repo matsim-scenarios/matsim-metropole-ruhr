@@ -60,7 +60,7 @@ public class CreateSupply {
 	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
 
 	//new gtfs file provided by the rvr
-	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids.zip");
+	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids_korrektur1.zip");
 	//private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
 	//private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
 	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
@@ -300,10 +300,12 @@ public class CreateSupply {
 		new CreateTransitScheduleFromGtfs().execute(
 				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
 				"--date", gtfsDataDate1, gtfsDataDate2,
-				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix + "," + gtfsData2Prefix,
+				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix,
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
+				"--copy-late-early=true",
+				"--validate=true",
 				"--name", outputName
 		);
 
