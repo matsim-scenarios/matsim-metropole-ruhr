@@ -304,8 +304,8 @@ public class CreateSupply {
 				"--target-crs", "EPSG:25832",
 				"--network", networkOut,
 				"--output", outputDir.toString(),
-//				"--copy-late-early", "true", // TODO: this and the following command option are interpreted as 3rd and 4th gtfs data set which causes exceptions
-//				"--validate", "true",
+				"--copy-late-early=true",
+				"--validate=true",
 				"--name", outputName
 		);
 
