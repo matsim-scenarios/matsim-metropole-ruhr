@@ -30,11 +30,14 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
     @CommandLine.Option(names = "--pathCommercialPopulation", description = "Path to the commercial population file", required = true, defaultValue = "../../tubCloud/rvrWirtschaftsverkehr/ruhr_commercial_0.1pct.plans.xml.gz")
     private Path pathCommercialPopulation;
 
-    @CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "../../tubCloud/rvrWirtschaftsverkehr/metropole-ruhr-v2.0_network.xml.gz")
+    @CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "../../tubCloud/rvrWirtschaftsverkehr/metropole-ruhr-v1.x_network.xml.gz")
     private Path networkPath;
 
     @CommandLine.Option(names = "--output", description = "Path to the output directory", required = true, defaultValue = "output/")
     private Path output;
+
+    @CommandLine.Option(names = "--pathVehicleTypes", description = "Path to the vehicle types file", required = true, defaultValue = "../../tubCloud/rvrWirtschaftsverkehr/metropole-ruhr-v1.x.mode-vehicles.xml")
+    private Path pathVehicleTypes;
 
     @CommandLine.Option(names = "--sample", description = "Sample size", required = true, defaultValue = "0.001")
     private double sample;
@@ -50,6 +53,7 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
         config.plans().setInputFile(configPath.getParent().relativize(pathCommercialPopulation).toString());
         config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
         config.network().setInputFile(configPath.getParent().relativize(networkPath).toString());
+        config.vehicles().setVehiclesFile(configPath.getParent().relativize(pathVehicleTypes).toString());
         config.controler().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
         config.controler().setLastIteration(0);
         config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
@@ -62,9 +66,12 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
         config.qsim().setTrafficDynamics(QSimConfigGroup.TrafficDynamics.kinematicWaves);
         config.qsim().setUsingTravelTimeCheckInTeleportation(true);
         config.qsim().setUsePersonIdForMissingVehicleId(false);
-        //to get no traffic jam for the 1 iteration
-        config.qsim().setFlowCapFactor(sample * 4);
-        config.qsim().setStorageCapFactor(sample * 4);
+        //to get no traffic jam for the iteration 0
+        if (config.controler().getLastIteration() == 0){
+            config.qsim().setFlowCapFactor(1.0);
+            config.qsim().setStorageCapFactor(1.0);
+            log.warn("Setting flowCapFactor and storageCapFactor to 1.0 because we have only the iteration 0 and we dont want to have traffic jams.");
+        }
         config.strategy().setFractionOfIterationsToDisableInnovation(0.8);
         config.planCalcScore().setFractionOfIterationsToStartScoreMSA(0.8);
         config.getModules().remove("intermodalTripFareCompensators");
