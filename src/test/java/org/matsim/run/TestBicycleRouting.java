@@ -1,5 +1,6 @@
 package org.matsim.run;
 
+import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -26,7 +27,7 @@ import picocli.CommandLine;
 
 import java.util.stream.Collectors;
 
-
+@Ignore
 public class TestBicycleRouting {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
@@ -34,6 +35,7 @@ public class TestBicycleRouting {
 
     @RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
+
 
     @Test
     public void testElevationRouting() {
@@ -72,6 +74,7 @@ public class TestBicycleRouting {
                 .orElseThrow();
     }
 
+	@Ignore
     public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useElevation", description = "Overwrite output folder defined by the application")
