@@ -2,6 +2,7 @@ package org.matsim.run;
 
 import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
@@ -31,7 +32,7 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
-@Ignore
+@Disabled
 public class TestParking {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
@@ -42,7 +43,6 @@ public class TestParking {
 
 
     @Test
-    @Ignore
 	public void testParking() {
 
         var outputDir = testUtils.getOutputDirectory();
@@ -63,7 +63,6 @@ public class TestParking {
 		Assertions.assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
     }
 
-	@Ignore
     public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useParking", description = "Overwrite output folder defined by the application")
