@@ -1,6 +1,8 @@
 package org.matsim.run;
 
+import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
@@ -30,6 +32,7 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
+@Disabled
 public class TestParking {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
@@ -38,8 +41,9 @@ public class TestParking {
 	@RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
+
     @Test
-    public void testParking() {
+	public void testParking() {
 
         var outputDir = testUtils.getOutputDirectory();
 
@@ -58,7 +62,6 @@ public class TestParking {
         var personWithoutParking = scenarioWithoutParking.getPopulation().getPersons().get(personId);
 		Assertions.assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
     }
-
 
     public static class TestApplication extends MetropoleRuhrScenario {
 

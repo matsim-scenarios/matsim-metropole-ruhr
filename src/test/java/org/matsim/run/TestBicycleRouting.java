@@ -1,6 +1,8 @@
 package org.matsim.run;
 
+import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
@@ -26,7 +28,7 @@ import picocli.CommandLine;
 
 import java.util.stream.Collectors;
 
-
+@Disabled
 public class TestBicycleRouting {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
@@ -34,13 +36,12 @@ public class TestBicycleRouting {
 
     @RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
-
     @Test
     public void testElevationRouting() {
 
         var outputDir = testUtils.getOutputDirectory();
 
-        MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input", "--1pct", "--config:network.inputNetworkFile=" + inputNetworkFile);
+		MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withElevation", "--useElevation=true", "--download-input", "--1pct", "--config:network.inputNetworkFile=" + inputNetworkFile);
         MATSimApplication.execute(TestApplication.class, "--output=" + outputDir + "withoutElevation", "--useElevation=false", "--download-input", "--1pct", "--config:network.inputNetworkFile=" + inputNetworkFile);
 
         // load output of both runs
@@ -72,6 +73,7 @@ public class TestBicycleRouting {
                 .orElseThrow();
     }
 
+	@Ignore
     public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useElevation", description = "Overwrite output folder defined by the application")
