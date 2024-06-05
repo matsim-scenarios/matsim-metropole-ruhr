@@ -22,6 +22,7 @@ import org.matsim.contrib.osm.networkReader.OsmTags;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.algorithms.NetworkSimplifier;
 import org.matsim.core.scenario.ProjectionUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
@@ -182,6 +183,10 @@ public class CreateSupply {
 		Network network3 = new ShpToNetwork().run(rootDirectory.resolve(inputShapeNetwork3));
 		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v2.0.network-onlyBikeNetwork3.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
+
+		var simplifier = new NetworkSimplifier();
+
+		simplifier.run(network);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
 		cleaner.run(Set.of(TransportMode.car));
