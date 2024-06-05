@@ -4,6 +4,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.geotools.api.feature.simple.SimpleFeature;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
@@ -21,6 +22,7 @@ import org.matsim.contrib.osm.networkReader.OsmTags;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.scenario.ProjectionUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
@@ -30,7 +32,6 @@ import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
 import org.matsim.prepare.counts.ShortTermCountsCreator;
-import org.geotools.api.feature.simple.SimpleFeature;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -292,7 +293,9 @@ public class CreateSupply {
 		fixLinks(network);
 		addCommercialTrafficModes(network);
 
-		new NetworkWriter(network).write(networkOut);
+		ProjectionUtils.putCRS(network, "EPSG:25832");
+
+		NetworkUtils.writeNetwork(network, networkOut);
 
 		// --------------------------------------- Create Pt -----------------------------------------------------------
 
@@ -364,6 +367,10 @@ public class CreateSupply {
 			// set freespeed to 10 km/h if it is 0
 			if (link.getFreespeed() == 0) {
 				link.setFreespeed(10 / 3.6);
+			}
+
+			if (link.getLength() == 0) {
+				link.setLength(1);
 			}
 		}
 	}
