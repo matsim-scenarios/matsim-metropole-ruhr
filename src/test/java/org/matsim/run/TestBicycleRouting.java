@@ -1,6 +1,5 @@
 package org.matsim.run;
 
-import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -73,7 +72,6 @@ public class TestBicycleRouting {
                 .orElseThrow();
     }
 
-	@Ignore
     public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useElevation", description = "Overwrite output folder defined by the application")
