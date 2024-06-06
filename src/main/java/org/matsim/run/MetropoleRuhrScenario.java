@@ -263,6 +263,19 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		// snz activity types that are always the same, Differentiated by typical duration
 		SnzActivities.addScoringParams(config);
 
+		//ride scoring params
+
+		// alpha can be calibrated
+		double alpha = 2.0;
+		//gamma must stay one
+		double gamma = 1.0;
+		double monetaryDistanceRateRide =  config.scoring().getOrCreateModeParams(TransportMode.car).getMonetaryDistanceRate() * alpha;
+		double marginalUtilityOfTravelingRide = (alpha + gamma) * -(config.scoring().getPerforming_utils_hr()) + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling() * (1.0 + alpha) ;
+		double marginalUtilityOfDistanceRide = (alpha + 1.0) * config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfDistance();
+		config.scoring().getOrCreateModeParams(TransportMode.ride).setMonetaryDistanceRate(monetaryDistanceRateRide);
+		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfDistance(marginalUtilityOfDistanceRide);
+		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfTraveling(marginalUtilityOfTravelingRide);
+
 		prepareCommercialTrafficConfig(config);
 
 		return config;
