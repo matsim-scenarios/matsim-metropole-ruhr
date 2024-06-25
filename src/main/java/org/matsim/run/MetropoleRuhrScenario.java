@@ -258,6 +258,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setStorageCapFactor(sample.getSample());
 
 			simWrapperConfigGroup.sampleSize = sample.getSample();
+
+			config.counts().setCountsScaleFactor(sample.getSample());
 		}
 
 		// snz activity types that are always the same, Differentiated by typical duration

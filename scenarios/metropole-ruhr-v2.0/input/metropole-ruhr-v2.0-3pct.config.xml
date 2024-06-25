@@ -39,6 +39,10 @@
 		<param name="vehiclesFile"
 			   value="./metropole-ruhr-v2.0-transitVehicles.xml.gz"/>
 	</module>
+	<module name="counts">
+		<param name="inputCountsFile" value="./metropole-ruhr-v2.0.counts.xml.gz"/>
+		<param name="countsScaleFactor" value="0.03"/>
+	</module>
 	<module name="routing">
 		<param name="networkModes" value="car,ride,bike"/>
 		<parameterset type="teleportedModeParameters">
@@ -58,12 +62,23 @@
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.0333" />
-		<param name="flowCapacityFactor" value="0.0333"/>
+		<param name="storageCapacityFactor" value="0.03" />
+		<param name="flowCapacityFactor" value="0.03"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>
 		<param name="insertingWaitingVehiclesBeforeDrivingVehicles" value="true"/>
+	</module>
+
+	<module name="simwrapper" >
+		<parameterset type="params" >
+			<param name="context" value="" />
+			<!-- TODO: predefine view
+			<param name="mapCenter" value="13.39,52.51" />
+			<param name="mapZoomLevel" value="9.1" /> -->
+			<param name="sampleSize" value="0.03" />
+			<param name="shp" value="./area/area.shp" />
+		</parameterset>
 	</module>
 
 	<module name="replanningAnnealer" >
