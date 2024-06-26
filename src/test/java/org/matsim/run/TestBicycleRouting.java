@@ -36,6 +36,7 @@ import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Disabled
@@ -265,9 +266,9 @@ public class TestBicycleRouting {
 	private static class ScoringEventHandler implements PersonScoreEventHandler {
 
 
-		ArrayList<PersonScoreEvent> personsScoreEvents = new ArrayList<>();
+		List<PersonScoreEvent> personsScoreEvents = new ArrayList<>();
 
-		private ArrayList<PersonScoreEvent> getPersonsScoreEvents() {
+		private List<PersonScoreEvent> getPersonsScoreEvents() {
 			return personsScoreEvents;
 		}
 
