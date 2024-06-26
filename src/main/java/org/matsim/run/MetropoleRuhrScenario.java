@@ -25,6 +25,7 @@ import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.locationtech.jts.util.Assert;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
@@ -270,13 +271,21 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		// alpha can be calibrated
 		double alpha = 2.0;
 		//gamma must stay one
-		double gamma = 1.0;
+		double gamma = 0.0;
 		double monetaryDistanceRateRide =  config.scoring().getOrCreateModeParams(TransportMode.car).getMonetaryDistanceRate() * alpha;
-		double marginalUtilityOfTravelingRide = (alpha + gamma) * -(config.scoring().getPerforming_utils_hr()) + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling() * (1.0 + alpha) ;
+
+		double marginalUtilityOfTravllingRide = config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling(); //marginal disutility of passenger
+		marginalUtilityOfTravllingRide += alpha * (-config.scoring().getPerforming_utils_hr() + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling()); // Zeitverbrauch des Fahrers
+		//marginalUtilityOfTravllingRide += gamma * -config.scoring().getPerforming_utils_hr(); //we prefer not using this term
+
+		double tmp = (alpha + gamma) * -(config.scoring().getPerforming_utils_hr()) + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling() * (1.0 + alpha) ;
+
+		Assert.isTrue(tmp==marginalUtilityOfTravllingRide);
+
 		double marginalUtilityOfDistanceRide = (alpha + 1.0) * config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfDistance();
 		config.scoring().getOrCreateModeParams(TransportMode.ride).setMonetaryDistanceRate(monetaryDistanceRateRide);
 		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfDistance(marginalUtilityOfDistanceRide);
-		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfTraveling(marginalUtilityOfTravelingRide);
+		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfTraveling(marginalUtilityOfTravllingRide);
 
 		prepareCommercialTrafficConfig(config);
 
