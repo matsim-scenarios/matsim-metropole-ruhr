@@ -29,7 +29,7 @@ public class DefaultDepartureTimeCalculator implements DepartureTimeCalculator {
                 return rnd.nextInt(8 * 3600, 12 * 3600);
             else if (CommercialTrafficUtils.getParcelOperator(freightDemandDataRelation).equals("gls"))
                 return rnd.nextInt(8 * 3600, 10 * 3600);
-        return rnd.nextInt(6 * 3600, 12 * 3600); // TODO add assumptions for other goods types
+        return rnd.nextInt(6 * 3600, 12 * 3600); // possibility to add assumptions for other goods types
     }
 
 }
