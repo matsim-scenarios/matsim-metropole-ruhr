@@ -6,6 +6,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.application.prepare.freight.tripGeneration.DefaultNumberOfTripsCalculator;
+import org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.vehicles.VehicleType;
@@ -14,6 +15,7 @@ import org.matsim.vehicles.VehicleUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Generates freight agents for full truck load (FTL) trips in the Ruhr area.
@@ -21,10 +23,10 @@ import java.util.Map;
  * @Author Ricardo Ewert
  */
 public class FTLFreightAgentGeneratorRuhr {
-    private final DepartureTimeCalculator departureTimeCalculator;
-    private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator;
-    private final PopulationFactory populationFactory;
-    private final CommercialVehicleSelector commercialVehicleSelector;
+	private final DepartureTimeCalculator departureTimeCalculator;
+	private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator;
+	private final PopulationFactory populationFactory;
+	private final CommercialVehicleSelector commercialVehicleSelector;
 
 	/**
 	 * FTLLightFreightAgentGeneratorRuhr constructor to
@@ -48,7 +50,6 @@ public class FTLFreightAgentGeneratorRuhr {
         createFreightFTLAgentWithPlan(freightDemandDataRelation, createdFreightAgentsForThisRelation, maxKilometerForReturnJourney);
 
         return createdFreightAgentsForThisRelation;
-
     }
 
     /**

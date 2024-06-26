@@ -47,7 +47,7 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
     public Integer call() throws Exception {
 
         log.info("preparing freight agent generator for FTL trips...");
-        FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL = new FTLFreightAgentGeneratorRuhr(averageTruckLoad, workingDays, sample);
+        FTLFreightAgentGeneratorRuhr freightAgentGeneratorFTL = new FTLFreightAgentGeneratorRuhr(averageTruckLoad, workingDays, sample, null, null, null);
         log.info("Freight agent generator for FTL trips successfully created!");
 
         log.info("Reading freight data...");
