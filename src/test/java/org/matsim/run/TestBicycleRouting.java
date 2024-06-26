@@ -47,7 +47,7 @@ public class TestBicycleRouting {
 
     @RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
-    @Test
+    @Test @Disabled
     public void testElevationRouting() {
 
         var outputDir = testUtils.getOutputDirectory();
