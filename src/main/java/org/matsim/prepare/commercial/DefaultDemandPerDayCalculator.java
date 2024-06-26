@@ -66,8 +66,7 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
 		//if zone has a waste collection on this day, calculate the demand
         if (zonesWithWasteCollectionsOnThisDay.get(destination).contains(originCell)){
 			int numberOfCollectionsPerWeek = 1;
-			double shareOfPersonalWaste = 0.15; //TODO the current matrix has a wrong demand, because the tons per year are inclusive commercial/construction waste -> the share of personal waste is 0.15
-			double tonsPerYear = CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation) * shareOfPersonalWaste;
+			double tonsPerYear = CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation);
 			double kilogramsPerDay = tonsPerYear * 1000 / (52 * numberOfCollectionsPerWeek);
 			kilogramsPerDay = Math.floor(kilogramsPerDay + this.rnd.nextDouble());
 			return (int) kilogramsPerDay;
