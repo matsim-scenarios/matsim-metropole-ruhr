@@ -14,10 +14,7 @@ import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,19 +24,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Ricardo Ewert
  */
 public class LTLFreightAgentGeneratorRuhr {
-    private static DepartureTimeCalculator departureTimeCalculator;
-    private static DemandPerDayCalculator demandPerDayCalculator;
-    private static CommercialVehicleSelector commercialVehicleSelector;
-    private static CommercialServiceTimeCalculator commercialServiceTimeCalculator;
+    private final DepartureTimeCalculator departureTimeCalculator;
+    private final DemandPerDayCalculator demandPerDayCalculator;
+    private final CommercialVehicleSelector commercialVehicleSelector;
+    private final CommercialServiceTimeCalculator commercialServiceTimeCalculator;
     private static double sample;
 
-    public LTLFreightAgentGeneratorRuhr(int workingDays, double sample) {
-        departureTimeCalculator = new DefaultDepartureTimeCalculator();
-        demandPerDayCalculator = new DefaultDemandPerDayCalculator(workingDays, sample);
-        commercialVehicleSelector = new DefaultCommercialVehicleSelector();
-        commercialServiceTimeCalculator = new DefaultCommercialServiceTimeCalculator();
-        this.sample = sample;
-    }
+	public LTLFreightAgentGeneratorRuhr(int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator,
+										DemandPerDayCalculator demandPerDayCalculator, CommercialVehicleSelector commercialVehicleSelector,
+										CommercialServiceTimeCalculator commercialServiceTimeCalculator) {
+		this.departureTimeCalculator = Objects.requireNonNullElseGet(departureTimeCalculator, DefaultDepartureTimeCalculator::new);
+		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, DefaultCommercialVehicleSelector::new);
+		this.commercialServiceTimeCalculator = Objects.requireNonNullElseGet(commercialServiceTimeCalculator, DefaultCommercialServiceTimeCalculator::new);
+		this.demandPerDayCalculator = Objects.requireNonNullElseGet(demandPerDayCalculator, () -> new DefaultDemandPerDayCalculator(workingDays, sample));
+		this.sample = sample;
+	}
 
     /**
      * Creates the CarrierVehicle for a carrier.
@@ -48,7 +47,7 @@ public class LTLFreightAgentGeneratorRuhr {
      * @param newCarrier        carrier
      * @param nearestLinkOrigin link of the depot
      */
-    private static void createFreightVehicles(Scenario scenario, Carrier newCarrier, Id<Link> nearestLinkOrigin, Person freightDemandDataRelation) {
+    private void createFreightVehicles(Scenario scenario, Carrier newCarrier, Id<Link> nearestLinkOrigin, Person freightDemandDataRelation) {
 
         CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
 
@@ -232,7 +231,7 @@ public class LTLFreightAgentGeneratorRuhr {
      *
      * @return Creates a carrier id based on the freight demand data.
      */
-    private static Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
+    private Id<Carrier> createCarrierId(Person freightDemandDataRelation) {
 
         int goodsType = CommercialTrafficUtils.getGoodsType(freightDemandDataRelation);
 

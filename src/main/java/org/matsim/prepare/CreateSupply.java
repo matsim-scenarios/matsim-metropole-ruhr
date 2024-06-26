@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import static org.matsim.prepare.RuhrUtils.*;
@@ -186,7 +187,12 @@ public class CreateSupply {
 
 		var simplifier = new NetworkSimplifier();
 
-		simplifier.run(network);
+		Set<String> bikeOnly = Set.of(TransportMode.bike);
+
+		// Original bike network is not merged
+		BiPredicate<Link, Link> isMergeable = (link1, link2) -> !link1.equals(bikeOnly) && !link2.equals(bikeOnly);
+
+		simplifier.run(network, isMergeable, NetworkSimplifier.DEFAULT_TRANSFER_ATTRIBUTES_CONSUMER);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
 		cleaner.run(Set.of(TransportMode.car));
