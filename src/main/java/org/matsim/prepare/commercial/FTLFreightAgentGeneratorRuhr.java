@@ -15,17 +15,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Generates freight agents for full truck load (FTL) trips in the Ruhr area.
+ *
+ * @Author Ricardo Ewert
+ */
 public class FTLFreightAgentGeneratorRuhr {
     private final DepartureTimeCalculator departureTimeCalculator;
     private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator;
     private final PopulationFactory populationFactory;
     private final CommercialVehicleSelector commercialVehicleSelector;
 
-    public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample) {
-        this.departureTimeCalculator = new DefaultDepartureTimeCalculator();
-        this.numOfTripsCalculator = new DefaultNumberOfTripsCalculator(averageLoad, workingDays, sample);
-        this.commercialVehicleSelector = new DefaultCommercialVehicleSelector();
-        this.populationFactory = PopulationUtils.getFactory();
+	/**
+	 * FTLLightFreightAgentGeneratorRuhr constructor to
+	 *
+	 * @param averageLoad               the average load of a truck in tons
+	 * @param workingDays               the number of working days per year
+	 * @param sample                    the scaling factor of the freight traffic (0, 1)
+	 * @param departureTimeCalculator   the departure time calculator, if null, a default implementation is used
+	 * @param numOfTripsCalculator      the number of trips calculator, if null, a default implementation is used
+	 * @param commercialVehicleSelector the commercial vehicle selector, if null, a default implementation is used
+	 */
+    public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator, FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator, CommercialVehicleSelector commercialVehicleSelector) {
+		this.departureTimeCalculator = Objects.requireNonNullElseGet(departureTimeCalculator, DefaultDepartureTimeCalculator::new);
+		this.numOfTripsCalculator = Objects.requireNonNullElseGet(numOfTripsCalculator, () -> new DefaultNumberOfTripsCalculator(averageLoad, workingDays, sample));
+		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, DefaultCommercialVehicleSelector::new);
+		this.populationFactory = PopulationUtils.getFactory();
     }
 
     public List<Person> generateFreightFTLAgents(Person freightDemandDataRelation, int maxKilometerForReturnJourney) {

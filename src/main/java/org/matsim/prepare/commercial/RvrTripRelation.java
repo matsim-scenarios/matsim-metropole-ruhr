@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * //TODO: Add description
+ * Represents a relation between two locations for a commercial trip.
+ *
+ * @Author Ricardo Ewert
  */
 public class RvrTripRelation {
     public static final String column_originCellId = "quell_vz_nr";

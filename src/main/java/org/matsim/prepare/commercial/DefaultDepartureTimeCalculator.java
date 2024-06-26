@@ -4,6 +4,12 @@ import org.matsim.api.core.v01.population.Person;
 
 import java.util.Random;
 
+/**
+ * Default implementation of the {@link DepartureTimeCalculator}.
+ * Calculates the departure time of a tour for a given freight demand data relation.
+ *
+ * @Author Ricardo Ewert
+ */
 public class DefaultDepartureTimeCalculator implements DepartureTimeCalculator {
 
     private final Random rnd = new Random(1111);
