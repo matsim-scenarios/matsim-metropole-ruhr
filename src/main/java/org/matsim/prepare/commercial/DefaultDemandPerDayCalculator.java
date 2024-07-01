@@ -8,6 +8,11 @@ import org.matsim.freight.carriers.CarrierVehicle;
 
 import java.util.*;
 
+/**
+ * Calculates the demand per day for a given freight demand data relation.
+ *
+ * @Author Ricardo Ewert
+ */
 public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
     private final Random rnd = new Random(1234L);
     private final int workingDays;
@@ -24,6 +29,12 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         this.zonesWithWasteCollectionsOnThisDay = new HashMap<>();
     }
 
+	/**
+	 * Calculate the kilograms per day.
+	 *
+	 * @param tonsPerYear the tons per year
+	 * @return the kilograms per day
+	 */
     @Override
     public int calculateKilogramsPerDay(double tonsPerYear) {
         double kilogramsPerDay = this.sample * tonsPerYear * 1000 / ((double) this.workingDays);
@@ -31,13 +42,14 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         return (int) kilogramsPerDay;
     }
 
-    /**
-     * Calculate the waste demand per day.
+
+	/**
+	 * Calculate the waste demand per day.
 	 * The assumption is that waste is collected once a week and is collected in 20% of the zones on each day.
-     *
-     * @param freightDemandDataRelation the freight demand data relation
-     * @return the waste demand per day
-     */
+	 *
+	 * @param freightDemandDataRelation the freight demand data relation
+	 * @return the waste demand per day
+	 */
     @Override
     public int calculateWasteDemandPerDay(Person freightDemandDataRelation) {
         String destination = CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation);
@@ -54,8 +66,7 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
 		//if zone has a waste collection on this day, calculate the demand
         if (zonesWithWasteCollectionsOnThisDay.get(destination).contains(originCell)){
 			int numberOfCollectionsPerWeek = 1;
-			double shareOfPersonalWaste = 0.15; //TODO the current matrix has a wrong demand, because the tons per year are inclusive commercial/construction waste -> the share of personal waste is 0.15
-			double tonsPerYear = CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation) * shareOfPersonalWaste;
+			double tonsPerYear = CommercialTrafficUtils.getTonsPerYear(freightDemandDataRelation);
 			double kilogramsPerDay = tonsPerYear * 1000 / (52 * numberOfCollectionsPerWeek);
 			kilogramsPerDay = Math.floor(kilogramsPerDay + this.rnd.nextDouble());
 			return (int) kilogramsPerDay;
@@ -63,21 +74,25 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         return 0;
     }
 
-    /**
-     * @param parcelsPerYear the number of parcels per year. This demand calculation contains no sampling. This results in a 100% demand.
-     * @return the number of parcels per day
-     */
+	/**
+	 * Calculate the number of parcels per day.
+	 *
+	 * @param parcelsPerYear the number of parcels per year. This demand calculation contains no sampling. This results in a 100% demand.
+	 * @return the number of parcels per day
+	 */
     @Override
     public int calculateParcelsPerDay(int parcelsPerYear) {
         int deliveryDaysPerWeek = 5;
         return (int) Math.floor((double) parcelsPerYear / (52 * deliveryDaysPerWeek));
     }
 
-    /**
-     * @param existingCarrier  the carrier
-     * @param demand the demand in kilograms
-     * @return the number of jobs
-     */
+	/**
+	 * Calculate the number of jobs for a given demand and carrier.
+	 *
+	 * @param existingCarrier the carrier
+	 * @param demand          the demand in kilograms
+	 * @return the number of jobs
+	 */
     @Override
     public int calculateNumberOfJobsForDemand(Carrier existingCarrier, int demand) {
         double largestVehicleCapacity = 0;
@@ -92,5 +107,4 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
         }
         return 1;
     }
-
 }

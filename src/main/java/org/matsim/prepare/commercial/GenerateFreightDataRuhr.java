@@ -53,7 +53,7 @@ public class GenerateFreightDataRuhr implements MATSimAppCommand {
     private static final Logger log = LogManager.getLogger(GenerateFreightDataRuhr.class);
 
     @CommandLine.Option(names = "--data", description = "Path to buw data",
-            defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V2.csv")
+            defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
     private Path dataFolderPath;
 
     @CommandLine.Option(names = "--KEPdata", description = "Path to buw KEP data",
