@@ -56,7 +56,7 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 	@Override
     public String getVehicleTypeForPlan(Person freightDemandDataRelation, String carrierId) {
 
-        if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL"))
+        if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL") || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.FTL_kv.toString()))
 			return vehicleDistributionFTL.sample().vehicleType;
         else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) // waste collection
             return vehicleDistributionWaste.sample().vehicleType;
@@ -70,6 +70,7 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 
 	/**
 	 * Gets the possible vehicle types for the given carrier.
+	 * TODO perhaps add vehicleTypes file to this implementation to get the mode from the selected vehicle type
 	 *
 	 * @param freightDemandDataRelation the freight demand data relation
 	 * @param carrierId                 the carrier id
