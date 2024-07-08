@@ -21,9 +21,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TransferRestrictions {
+public class ChangeNetworkModesForRestrictions {
     /*
-    Transfers Restrictions from the shapefile to the given Network.
+    This class reads in a network and a shapefile containing restrictions for different network modes (e.g. car, truck8t, truck18t, truck26t, truck40t).
+    As a result, the network is updated, so that the links, which are restricted for certain vehicle categories, are not allowed to be used by these vehicles.
      */
 
     private static final String ruhrNetworkPath = "D:\\Projects\\VSP\\RUHR\\metropole-ruhr-v2.0.network_resolutionHigh-with-pt.xml";
