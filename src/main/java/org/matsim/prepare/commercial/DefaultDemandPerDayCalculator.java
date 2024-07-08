@@ -31,6 +31,7 @@ public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
 
 	/**
 	 * Calculate the kilograms per day.
+	 * //TODO also move sampling behind jsprit to get more realistic tours
 	 *
 	 * @param tonsPerYear the tons per year
 	 * @return the kilograms per day
