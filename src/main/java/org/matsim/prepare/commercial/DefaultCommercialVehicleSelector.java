@@ -5,6 +5,7 @@ import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.Pair;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.freight.carriers.CarrierCapabilities;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +57,7 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 	@Override
     public String getVehicleTypeForPlan(Person freightDemandDataRelation, String carrierId) {
 
-        if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL"))
+        if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL") || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(CommercialTrafficUtils.TransportType.FTL_kv.toString()))
 			return vehicleDistributionFTL.sample().vehicleType;
         else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) // waste collection
             return vehicleDistributionWaste.sample().vehicleType;
@@ -69,27 +70,41 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
     }
 
 	/**
-	 * Gets the possible vehicle types for the given carrier.
+	 * Gets the possible vehicle types for the given carrier. If the fleet size is finite, only one vehicle type based on the distribution is returned.
+	 * Otherwise, all possible vehicle types are returned.
+	 * TODO perhaps add vehicleTypes file to this implementation to get the mode from the selected vehicle type
 	 *
 	 * @param freightDemandDataRelation the freight demand data relation
 	 * @param carrierId                 the carrier id
+	 * @param fleetSize 			  	the fleet size
 	 * @return the possible vehicle types for this carrier
 	 */
 	@Override
-	public List<String> getPossibleVehicleTypes(Person freightDemandDataRelation, String carrierId) {
+	public List<String> getPossibleVehicleTypes(Person freightDemandDataRelation, String carrierId, CarrierCapabilities.FleetSize fleetSize) {
 		List<String> allVehicleTypes = new ArrayList<>();
 		if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL"))
 			allVehicleTypes.addAll(vehicleDistributionFTL.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
 		else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140) // waste collection
-			allVehicleTypes.addAll(vehicleDistributionWaste.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
+			if (fleetSize == CarrierCapabilities.FleetSize.FINITE)
+				allVehicleTypes.add(vehicleDistributionWaste.sample().vehicleType);
+			else
+				allVehicleTypes.addAll(vehicleDistributionWaste.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
 		else if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 150) // parcel delivery
 			if (carrierId.contains("_truck18t"))
-				allVehicleTypes.addAll(
-					vehicleDistributionParcel_truck.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
+				if (fleetSize == CarrierCapabilities.FleetSize.FINITE)
+					allVehicleTypes.add(vehicleDistributionParcel_truck.sample().vehicleType);
+				else
+					allVehicleTypes.addAll(vehicleDistributionParcel_truck.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
 			else
-				allVehicleTypes.addAll(vehicleDistributionParcel.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
-		else allVehicleTypes.addAll(vehicleDistributionRest.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
-
+				if (fleetSize == CarrierCapabilities.FleetSize.FINITE)
+					allVehicleTypes.add(vehicleDistributionParcel.sample().vehicleType);
+				else
+					allVehicleTypes.addAll(vehicleDistributionParcel.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
+		else
+			if (fleetSize == CarrierCapabilities.FleetSize.FINITE)
+				allVehicleTypes.add(vehicleDistributionRest.sample().vehicleType);
+			else
+				allVehicleTypes.addAll(vehicleDistributionRest.getPmf().stream().map(Pair::getFirst).map(VehicleSelection::vehicleType).toList());
 		return allVehicleTypes;
 	}
 

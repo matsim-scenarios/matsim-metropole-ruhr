@@ -57,7 +57,7 @@ public class LTLFreightAgentGeneratorRuhr {
         int earliestVehicleStartTime = (int) departureTimeCalculator.calculateDepartureTime(freightDemandDataRelation);
         int latestVehicleEndTime = earliestVehicleStartTime + 9 * 3600; //assumption that working only max 9hours
         List<String> possibleVehicleTypeIds = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation,
-                newCarrier.getId().toString());
+                newCarrier.getId().toString(), carrierCapabilities.getFleetSize());
         possibleVehicleTypeIds.forEach(vehicleTypeId -> {
             VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create(vehicleTypeId, VehicleType.class));
             // Waste collection and parcel delivery tours we will not sample. That's why we adjust the pcu equivalents
