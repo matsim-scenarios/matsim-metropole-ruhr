@@ -16,7 +16,7 @@
  *   See also COPYING, LICENSE and WARRANTY file                           *
  *                                                                         *
  * *********************************************************************** */
-package org.matsim.analysis.vtts;
+package org.matsim.analysis;
 
 import org.matsim.api.core.v01.population.Activity;
 //import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;

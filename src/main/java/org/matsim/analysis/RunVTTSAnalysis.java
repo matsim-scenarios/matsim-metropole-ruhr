@@ -1,4 +1,4 @@
-package org.matsim.analysis.vtts;
+package org.matsim.analysis;
 
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -15,7 +15,7 @@ public class RunVTTSAnalysis {
 		SnzActivities.addScoringParams(kelheimConfig);
 		Scenario kelheimScenario = ScenarioUtils.loadScenario(kelheimConfig);
 
-		VTTSHandler handler = new VTTSHandler(kelheimScenario, new String[]{}, "interaction");
+		org.matsim.analysis.VTTSHandler handler = new org.matsim.analysis.VTTSHandler(kelheimScenario, new String[]{}, "interaction");
 		EventsManager manager = EventsUtils.createEventsManager();
 		manager.addHandler(handler);
 

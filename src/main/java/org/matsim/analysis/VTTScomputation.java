@@ -17,7 +17,7 @@
  *                                                                         *
  * *********************************************************************** */
 
-package org.matsim.analysis.vtts;
+package org.matsim.analysis;
 
 import org.matsim.core.controler.events.AfterMobsimEvent;
 import org.matsim.core.controler.events.StartupEvent;

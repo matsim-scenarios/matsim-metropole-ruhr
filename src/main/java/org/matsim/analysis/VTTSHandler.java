@@ -17,7 +17,7 @@
  *                                                                         *
  * *********************************************************************** */
 
-package org.matsim.analysis.vtts;
+package org.matsim.analysis;
 
 import java.io.BufferedWriter;
 import java.io.File;
