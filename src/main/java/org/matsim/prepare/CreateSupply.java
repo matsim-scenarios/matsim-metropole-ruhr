@@ -8,6 +8,7 @@ import org.geotools.api.feature.simple.SimpleFeature;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -38,10 +39,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
@@ -52,49 +50,35 @@ import static org.matsim.prepare.RuhrUtils.*;
  */
 public class CreateSupply {
 
-	public enum NetworkResolution {Low, Medium, High}
-
 	private static final NetworkResolution networkResolution = NetworkResolution.High;
-
 	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/germany-coarse_nordrhein-westfalen-2021-07-09_merged.osm.pbf");
 	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
 	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
-
 	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
-
 	//new gtfs file provided by the rvr
 	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids_korrektur1.zip");
 	//private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
 	//private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
 	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
-
 	private static final String gtfsDataDate1 = "2023-01-17";
 	//private static final String gtfsDataDate2 = "2021-02-04";
 	private static final String gtfsDataDate2 = "2021-08-19";
-
 	private static final String gtfsData1Prefix = "nrw";
 	//private static final String gtfsData2Prefix = "nwl";
 	private static final String gtfsData2Prefix = "fern";
-
 	private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
 	private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
 	private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz/2021-08-19_RRWN_Bestandsnetz.shp");
+	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/");
 	// for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
 	// private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
-
-	private static final Path outputDirPublic = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/");
-
 	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/input/");
-
 	private static final Path bastCountsRoot = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/BASt");
 	private static final Path longTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
 	private static final Path shortTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-short-term-counts.csv");
-
 	private static final Path parkingShapeFile = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/Parkraum_20220902/Parkraum.shp");
-
-
 	// we use UTM-32 as coordinate system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
 	private static final Logger logger = LogManager.getLogger(CreateSupply.class);
@@ -127,16 +111,16 @@ public class CreateSupply {
 		}
 
 		var ruhrGeometries = ShapeFileReader.getAllFeatures(rootDirectory.resolve(ruhrShape).toString()).stream()
-				.map(feature -> (Geometry) feature.getDefaultGeometry())
-				.collect(Collectors.toList());
+			.map(feature -> (Geometry) feature.getDefaultGeometry())
+			.collect(Collectors.toList());
 
 		var nrwGeometries = ShapeFileReader.getAllFeatures(rootDirectory.resolve(nrwShape).toString()).stream()
-				.map(feature -> (Geometry) feature.getDefaultGeometry())
-				.collect(Collectors.toList());
+			.map(feature -> (Geometry) feature.getDefaultGeometry())
+			.collect(Collectors.toList());
 
 		var nodeIdsToKeep = List.of(parseNodeIdsToKeep(rootDirectory.resolve(longTermCountsIdMapping)), parseNodeIdsToKeep(rootDirectory.resolve(shortTermCountsIdMapping))).stream()
-				.flatMap(Collection::stream)
-				.collect(Collectors.toSet());
+			.flatMap(Collection::stream)
+			.collect(Collectors.toSet());
 
 		// ----------------------------------------- Create Network ----------------------------------------------------
 
@@ -144,18 +128,18 @@ public class CreateSupply {
 		// based on the paper "Road network free flow speed estimation using microscopic simulation and point-to-point travel times"
 		// the free speed factor was set to a mean of urban, metropolitan and rural areas
 		var networkBuilder = new OsmBicycleReader.Builder()
-				.setFreeSpeedFactor(0.75)
-				.setCoordinateTransformation(transformation)
-				.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
-				.setPreserveNodeWithId(nodeIdsToKeep::contains)
-				.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
-				.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level for service roads to 10 to exclude them
+			.setFreeSpeedFactor(0.75)
+			.setCoordinateTransformation(transformation)
+			.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
+			.setPreserveNodeWithId(nodeIdsToKeep::contains)
+			.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
+			.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level for service roads to 10 to exclude them
 
 		if (networkResolution == NetworkResolution.Low) {
 			// exclude tracks and cycleways
 			networkBuilder
-					.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level to 10 to exclude them
-					.addOverridingLinkProperties(OsmTags.CYCLEWAY, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
+				.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)) // set hierarchy level to 10 to exclude them
+				.addOverridingLinkProperties(OsmTags.CYCLEWAY, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
 		} else if (networkResolution == NetworkResolution.Medium) {
 			// exclude tracks
 			networkBuilder.addOverridingLinkProperties(OsmTags.TRACK, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level to 10 to exclude them
@@ -166,8 +150,8 @@ public class CreateSupply {
 		}
 
 		var network = networkBuilder
-				.build()
-				.read(rootDirectory.resolve(osmData));
+			.build()
+			.read(rootDirectory.resolve(osmData));
 
 		//new NetworkWriter(network).write(rootDirectory.resolve(outputDir.resolve("metropole-ruhr-v1.0.network-only-OSM-and-PT_resolution" + networkResolution + ".xml.gz")).toString());
 
@@ -187,12 +171,18 @@ public class CreateSupply {
 
 		var simplifier = new NetworkSimplifier();
 
-		Set<String> bikeOnly = Set.of(TransportMode.bike);
-
 		// Original bike network is not merged
-		BiPredicate<Link, Link> isMergeable = (link1, link2) -> !link1.equals(bikeOnly) && !link2.equals(bikeOnly);
+		BiPredicate<Link, Link> isMergeable = (link1, link2) -> !link1.getId().toString().startsWith("bike") && !link2.getId().toString().startsWith("bike");
 
 		simplifier.run(network, isMergeable, NetworkSimplifier.DEFAULT_TRANSFER_ATTRIBUTES_CONSUMER);
+
+		// Clean unused nodes
+		List<Id<Node>> toRemove = network.getNodes().values().stream()
+			.filter(node -> node.getOutLinks().isEmpty() && node.getInLinks().isEmpty())
+			.map(Node::getId)
+			.toList();
+
+		toRemove.forEach(network::removeNode);
 
 		var cleaner = new MultimodalNetworkCleaner(network);
 		cleaner.run(Set.of(TransportMode.car));
@@ -312,15 +302,15 @@ public class CreateSupply {
 
 		String outputName = "metropole-ruhr-v2.0";
 		new CreateTransitScheduleFromGtfs().execute(
-				rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
-				"--date", gtfsDataDate1, gtfsDataDate2,
-				"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix,
-				"--target-crs", "EPSG:25832",
-				"--network", networkOut,
-				"--output", outputDir.toString(),
-				"--copy-late-early=true",
-				"--validate=true",
-				"--name", outputName
+			rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
+			"--date", gtfsDataDate1, gtfsDataDate2,
+			"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix,
+			"--target-crs", "EPSG:25832",
+			"--network", networkOut,
+			"--output", outputDir.toString(),
+			"--copy-late-early=true",
+			"--validate=true",
+			"--name", outputName
 		);
 
 		// --------------------------------------------------------------------
@@ -334,31 +324,33 @@ public class CreateSupply {
 		// --------------------------------------- Create Counts -------------------------------------------------------
 
 		var longTermCounts = new LongTermCountsCreator.Builder()
-				.setLoggingFolder(outputDirForCounts + "/")
-				.withNetwork(network)
-				.withRootDir(rootDirectory.resolve(longTermCountsRoot).toString())
-				.withIdMapping(rootDirectory.resolve(longTermCountsIdMapping).toString())
-				.withStationIdsToOmit(5002L, 50025L)
-				.useCountsWithinGeometry(rootDirectory.resolve(ruhrShape).toString())
-				.build()
-				.run();
+			.setLoggingFolder(outputDirForCounts + "/")
+			.withNetwork(network)
+			.withRootDir(rootDirectory.resolve(longTermCountsRoot).toString())
+			.withIdMapping(rootDirectory.resolve(longTermCountsIdMapping).toString())
+			.withStationIdsToOmit(5002L, 50025L)
+			.useCountsWithinGeometry(rootDirectory.resolve(ruhrShape).toString())
+			.build()
+			.run();
 
 		var shortTermCounts = new ShortTermCountsCreator.Builder()
-				.setLoggingFolder(outputDirForCounts + "/")
-				.withNetwork(network)
-				.withRootDir(rootDirectory.resolve(shortTermCountsRoot).toString())
-				.withIdMapping(rootDirectory.resolve(shortTermCountsIdMapping).toString())
-				.withStationIdsToOmit(5002L, 50025L)
-				.useCountsWithinGeometry(rootDirectory.resolve(ruhrShape).toString())
-				.build()
-				.run();
+			.setLoggingFolder(outputDirForCounts + "/")
+			.withNetwork(network)
+			.withRootDir(rootDirectory.resolve(shortTermCountsRoot).toString())
+			.withIdMapping(rootDirectory.resolve(shortTermCountsIdMapping).toString())
+			.withStationIdsToOmit(5002L, 50025L)
+			.useCountsWithinGeometry(rootDirectory.resolve(ruhrShape).toString())
+			.build()
+			.run();
 
 
 		new CreateCountsFromBAStData().execute(
 			"--network", networkOut,
 			"--year", "2022",
+			"--shp", rootDirectory.resolve(ruhrShape).toString(),
+			"--shp-crs", "EPSG:25832",
 			"--counts-mapping", rootDirectory.resolve(bastCountsRoot).resolve("bast-mapping.csv").toString(),
-			"--motorway-data",  rootDirectory.resolve(bastCountsRoot).resolve("2022_A_S.zip").toString(),
+			"--motorway-data", rootDirectory.resolve(bastCountsRoot).resolve("2022_A_S.zip").toString(),
 			"--primary-data", rootDirectory.resolve(bastCountsRoot).resolve("2022_B_S.zip").toString(),
 			"--station-data", rootDirectory.resolve(bastCountsRoot).resolve("Jawe2022.csv").toString(),
 			"--output", rootDirectory.resolve(outputDirPublic).resolve("metropole-ruhr-v2.0.counts.xml.gz").toString()
@@ -367,7 +359,7 @@ public class CreateSupply {
 
 		// Based on 2015 count data, won't be used in the new model
 		CombinedCountsWriter.writeCounts(outputDirForCounts.resolve("metropole-ruhr-v2.0.counts-old.xml.gz"),
-				longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
+			longTermCounts.get(RawDataVehicleTypes.Pkw.toString()), shortTermCounts.get(RawDataVehicleTypes.Pkw.toString()));
 	}
 
 	/**
@@ -456,5 +448,7 @@ public class CreateSupply {
 		}
 		return result;
 	}
+
+	public enum NetworkResolution {Low, Medium, High}
 
 }
