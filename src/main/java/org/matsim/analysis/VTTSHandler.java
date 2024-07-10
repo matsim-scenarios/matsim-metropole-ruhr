@@ -79,7 +79,7 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 
 	//Persons, acts and modes that should not be considered for VTTS
 	private final Set<Id<Person>> personIdsToBeIgnored = new HashSet<>();
-	private final String stageActivitySubString;
+	private final String[] stageActivitiesSubStrings;
 	private final String[] modesToBeSkipped;
 
 	private final Set<Id<Person>> departedPersonIds = new HashSet<>();							//Map of all agents (which are currently travelling) #!
@@ -113,13 +113,36 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 //			log.warn("The marginal utility of money must not be 0.0. The VTTS is computed in Money per Time.");
 		}
 		this.modesToBeSkipped = helpLegModes;
-		this.stageActivitySubString = stageActivitySubString;
+		this.stageActivitiesSubStrings = new String[]{stageActivitySubString};
 		this.scenario = scenario;
 		this.currentIteration = Integer.MIN_VALUE;
 		this.defaultVTTS_moneyPerHour =
 				(this.scenario.getConfig().scoring().getPerforming_utils_hr()
 				+ this.scenario.getConfig().scoring().getModes().get( TransportMode.car ).getMarginalUtilityOfTraveling() * (-1.0)
 				) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney();
+	}
+
+	/**
+	 * Returns an {@link EventHandler}-child for the VTTS-computation of a scenario for all agents.
+	 * After reading an EventFile the <i>print</i>-methods ({@link #printVTTS}, {@link #printCarVTTS},
+	 * {@link #printAvgVTTSperPerson}, {@link #printVTTSstatistics} ) can be used to save the results into a csv-file.
+	 * @param scenario Scenario with config and population.
+	 *                 PlanCalcScore-module or {@link SnzActivities#addScoringParams} should be included. Otherwise, the calculation may crash!
+	 * @param helpLegModes List of modes to ignore during the VTTS calculation
+	 * @param stageActivitiesSubStrings If an activity contains one of these substrings, it will be ignored (For Standard MATSim configuration use {@code "interaction"}).
+	 */
+	public VTTSHandler(Scenario scenario, String[] helpLegModes, String[] stageActivitiesSubStrings) {
+		if (scenario.getConfig().scoring().getMarginalUtilityOfMoney() == 0.) {
+//			log.warn("The marginal utility of money must not be 0.0. The VTTS is computed in Money per Time.");
+		}
+		this.modesToBeSkipped = helpLegModes;
+		this.stageActivitiesSubStrings = stageActivitiesSubStrings;
+		this.scenario = scenario;
+		this.currentIteration = Integer.MIN_VALUE;
+		this.defaultVTTS_moneyPerHour =
+			(this.scenario.getConfig().scoring().getPerforming_utils_hr()
+				+ this.scenario.getConfig().scoring().getModes().get( TransportMode.car ).getMarginalUtilityOfTraveling() * (-1.0)
+			) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney();
 	}
 
 	// ===== Parsing-methods =========================================================================================================================
@@ -803,10 +826,9 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 	}
 
 	private boolean isActivityToBeSkipped(String actType) {
-		if (actType.contains(stageActivitySubString)) {
-			return true;
-		} else {
-			return false;
+		for(String toIgnore : stageActivitiesSubStrings){
+			if (actType.contains(toIgnore)) return true;
 		}
+		return false;
 	}
 }
