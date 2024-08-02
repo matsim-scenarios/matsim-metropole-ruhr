@@ -270,22 +270,26 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		// alpha can be calibrated
 		double alpha = 2.0;
-		//gamma must stay one
-		double gamma = 0.0;
+
 		double monetaryDistanceRateRide =  config.scoring().getOrCreateModeParams(TransportMode.car).getMonetaryDistanceRate() * alpha;
 
-		double marginalUtilityOfTravllingRide = config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling(); //marginal disutility of passenger
-		marginalUtilityOfTravllingRide += alpha * (-config.scoring().getPerforming_utils_hr() + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling()); // Zeitverbrauch des Fahrers
-		//marginalUtilityOfTravllingRide += gamma * -config.scoring().getPerforming_utils_hr(); //we prefer not using this term
+		double marginalUtilityOfTravelingRide = config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling(); //marginal disutility of passenger
 
-		double tmp = (alpha + gamma) * -(config.scoring().getPerforming_utils_hr()) + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling() * (1.0 + alpha) ;
+		marginalUtilityOfTravelingRide += alpha * (-config.scoring().getPerforming_utils_hr() + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling()); // Zeitverbrauch des Fahrers
 
-		Assert.isTrue(tmp==marginalUtilityOfTravllingRide);
+		//marginalUtilityOfTravelingRide += gamma * -config.scoring().getPerforming_utils_hr(); //we prefer not using this term
+
+		double tmp = alpha * -(config.scoring().getPerforming_utils_hr()) + config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfTraveling() * (1.0 + alpha) ;
+		Assert.isTrue(tmp==marginalUtilityOfTravelingRide);
+		// I think that the two lines above were left behind after that refactoring to ensure that the new way to compute this results in the
+		// same result as the old way.  If this assessment is correct, then those two lines can be removed as soon as this has been run a
+		// couple of times.  Since I do not know if this is the case, I leave these two lines in place for the time being, but am adding this
+		// comment here.  kai, aug'24
 
 		double marginalUtilityOfDistanceRide = (alpha + 1.0) * config.scoring().getOrCreateModeParams(TransportMode.car).getMarginalUtilityOfDistance();
 		config.scoring().getOrCreateModeParams(TransportMode.ride).setMonetaryDistanceRate(monetaryDistanceRateRide);
 		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfDistance(marginalUtilityOfDistanceRide);
-		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfTraveling(marginalUtilityOfTravllingRide);
+		config.scoring().getOrCreateModeParams(TransportMode.ride).setMarginalUtilityOfTraveling(marginalUtilityOfTravelingRide);
 
 		prepareCommercialTrafficConfig(config);
 
