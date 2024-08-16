@@ -25,7 +25,6 @@ import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.locationtech.jts.util.Assert;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
@@ -38,9 +37,12 @@ import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
+import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
+import org.matsim.contrib.vsp.pt.fare.PtFareConfigGroup;
 import org.matsim.contrib.vsp.scenario.SnzActivities;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
@@ -62,14 +64,12 @@ import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
+import org.matsim.contrib.vsp.pt.fare.PtFareModule;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -272,6 +272,17 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		double alpha = 2.0;
 		RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), alpha);
 
+		PtFareConfigGroup ptFares = ConfigUtils.addOrGetModule(config, PtFareConfigGroup.class);
+		Collection<? extends ConfigGroup> distanceBasedPtFareParams = ptFares.getParameterSets(DistanceBasedPtFareParams.SET_NAME);
+		for (ConfigGroup distanceBasedPtFareParam : distanceBasedPtFareParams) {
+			if (distanceBasedPtFareParam instanceof DistanceBasedPtFareParams params) {
+				if (params.getTransactionPartner().equals("Deutschlandtarif")) {
+					params = DistanceBasedPtFareParams.GERMAN_WIDE_FARE;
+					params.setTransactionPartner("Deutschlandtarif");
+				}
+			}
+		}
+
 		prepareCommercialTrafficConfig(config);
 
 		return config;
@@ -323,6 +334,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				// for income dependent scoring --> this works with the bicycle contrib as we don´t use the scoring in the bicycle contrib
 				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
 
+				new PtFareModule();
 			}
 		});
 

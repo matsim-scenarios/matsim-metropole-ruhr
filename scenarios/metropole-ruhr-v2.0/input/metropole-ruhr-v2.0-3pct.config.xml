@@ -263,4 +263,32 @@
 			<param name="ptModes" value="pt" />
 		</parameterset>
 	</module>
+	<module name="ptFare" >
+		<!-- Enable the upper bound for daily PT fare to count for ticket subscription. Input value: true or false -->
+		<param name="applyUpperBound" value="true" />
+		<!-- When upper bound is applied, upperBound  = upperBoundFactor * max Fare of the day. This value is decided by the ratio between average daily cost of a ticket subscription and the single trip ticket of the same trip. Usually this value should be somewhere between 1.0 and 2.0 -->
+		<param name="upperBoundFactor" value="1.5" />
+		<parameterset type="ptFareCalculationFareZoneBased" >
+			<param name="fareZoneShp" value="./scenarios/metropole-ruhr-v2.0/input/pt-pricing/pt_preisstufen.shp" />
+			<param name="order" value="1" />
+			<param name="transactionPartner" value="VRR" />
+		</parameterset>
+		<parameterset type="ptFareCalculationDistanceBased" >
+			<param name="fareZoneShp" value="../../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/dvg2_EPSG25832_Shape/dvg2bld_nw.shp" />
+			<param name="minFare" value="1.5" />
+			<param name="order" value="2" />
+			<param name="transactionPartner" value="eezyVRR" />
+			<parameterset type="distanceClassLinearFareFunctionParams" >
+				<param name="fareIntercept" value="1.5" />
+				<param name="fareSlope" value="0.00025" />
+				<param name="maxDistance" value="Infinity" />
+			</parameterset>
+		</parameterset>
+		<parameterset type="ptFareCalculationDistanceBased" >
+			<param name="fareZoneShp" value="null" />
+			<param name="minFare" value="1.5" />
+			<param name="order" value="3" />
+			<param name="transactionPartner" value="Deutschlandtarif" />
+		</parameterset>
+	</module>
 </config>
