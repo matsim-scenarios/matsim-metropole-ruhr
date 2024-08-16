@@ -62,6 +62,9 @@ import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
+import playground.vsp.pt.fare.DistanceBasedPtFareParams;
+import playground.vsp.pt.fare.FareZoneBasedPtFareParams;
+import playground.vsp.pt.fare.PtFareConfigGroup;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
@@ -233,6 +236,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
+		// this has no effect as described here https://github.com/matsim-org/matsim-libs/issues/3403, but is stated in order to avoid warnings from the
+		// consistency checker
+		bikeConfigGroup.setMaxBicycleSpeedForRouting(5.0);
+
 		// this is needed for the parking cost money events
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
 		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName(RuhrUtils.ONE_HOUR_P_COST);
@@ -274,7 +281,46 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		prepareCommercialTrafficConfig(config);
 
+		preparePtFareConfig(config);
+
 		return config;
+	}
+
+	private static void preparePtFareConfig(Config config) {
+		PtFareConfigGroup ptFareConfigGroup = ConfigUtils.addOrGetModule(config, PtFareConfigGroup.class);
+
+		// inside of RVR use the RVR Tarif
+		FareZoneBasedPtFareParams rvr = new FareZoneBasedPtFareParams();
+		rvr.setTransactionPartner("RVR Tarif");
+		rvr.setDescription("RVR Tarif");
+		rvr.setFareZoneShp("./pt-pricing/pt_preisstufen.shp");
+		rvr.setOrder(1);
+
+		// outside of RVR use the eezyVRR Tarif 1,50 EUR + 0.25 * Luftlinien-km.
+		DistanceBasedPtFareParams eezy = new DistanceBasedPtFareParams();
+		eezy.setTransactionPartner("eezyVRR");
+		eezy.setDescription("eezyVRR");
+		eezy.setFareZoneShp("./nrwArea/dvg2bld.shp");
+		eezy.setNormalTripIntercept(1.5);
+		eezy.setNormalTripSlope(0.25);
+		//due to high threshold not used, but for security the same as normal
+		eezy.setLongDistanceTripIntercept(1.5);
+		eezy.setLongDistanceTripSlope(0.25);
+		eezy.setLongDistanceTripThreshold(1000000);
+		eezy.setOrder(2);
+
+		DistanceBasedPtFareParams germany = DistanceBasedPtFareParams.GERMAN_WIDE_FARE;
+		germany.setTransactionPartner("Deutschlandtarif");
+		germany.setDescription("Deutschlandtarif");
+		germany.setOrder(3);
+
+		ptFareConfigGroup.addParameterSet(rvr);
+		ptFareConfigGroup.addParameterSet(eezy);
+		ptFareConfigGroup.addParameterSet(germany);
+
+		//use upper bounds
+		ptFareConfigGroup.setApplyUpperBound(true);
+		ptFareConfigGroup.setUpperBoundFactor(1.5);
 	}
 
 	@Override
