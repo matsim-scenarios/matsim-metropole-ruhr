@@ -616,13 +616,13 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 	}
 
 	/**
-	 * TODO #?
-	 * @param fileName
-	 * @param mode
-	 * @param fromToTime_sec
+	 * Prints statistics (percentiles, mean, min, max, variance) of the VTTS values of a specific mode and time-frame.
+	 * May print NAN for all values if no values are found for the specified filters.
+	 * @param fileName Output-file path
+	 * @param mode Mode to search for
+	 * @param fromToTime_sec time-frame in seconds
 	 */
 	public void printVTTSstatistics(String fileName, String mode, Tuple<Double, Double> fromToTime_sec) {
-		//TODO Make this work, it always returns NaN
 
 		List<Double> vttsFiltered = new ArrayList<>();
 
@@ -719,83 +719,71 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 	 * @return
 	 */
 	public double getCarVTTS(Id<Person> id, double time) {
-		//TODO Refactor
-
-		if (this.personId2TripNr2DepartureTime.containsKey(id)) {
-
-			int tripNrOfGivenTime = Integer.MIN_VALUE;
-			double departureTime = Double.MAX_VALUE;
-			for (Integer tripNr : this.personId2TripNr2DepartureTime.get(id).keySet()) {
-				if (time >= this.personId2TripNr2DepartureTime.get(id).get(tripNr)) {
-					if (this.personId2TripNr2DepartureTime.get(id).get(tripNr) <= departureTime) {
-						departureTime = this.personId2TripNr2DepartureTime.get(id).get(tripNr);
-						tripNrOfGivenTime = tripNr;
-					}
-				}
-			}
-
-			if (tripNrOfGivenTime == Integer.MIN_VALUE) {
-
-				if (noTripNrWarning <= 3) {
-/*
-					log.warn("Could not identify the trip number of person " + id + " at time " + time + "."
-							+ " Trying to use the average car VTTS...");
-*/
-				}
-				if (noTripNrWarning == 3) {
-//					log.warn("Additional warnings of this type are suppressed.");
-				}
-				noTripNrWarning++;
-				return this.getAvgVTTSh(id, TransportMode.car);
-
-			} else {
-				if (this.personId2TripNr2VTTSh.containsKey(id)) {
-
-					if (this.personId2TripNr2Mode.get(id).get(tripNrOfGivenTime).equals(TransportMode.car)) {
-						// everything fine
-						double vtts = this.personId2TripNr2VTTSh.get(id).get(tripNrOfGivenTime);
-						return vtts;
-
-					} else {
-
-
-						if (noCarVTTSWarning <= 3) {
-/*
-							log.warn("In the previous iteration at the given time " + time + " the agent " + id + " was performing a trip with a different mode (" + this.personId2TripNr2Mode.get(id).get(tripNrOfGivenTime) + ")."
-									+ "Trying to use the average car VTTS.");
-*/
-							if (noCarVTTSWarning == 3) {
-//								log.warn("Additional warnings of this type are suppressed.");
-							}
-							noCarVTTSWarning++;
-						}
-						return this.getAvgVTTSh(id, TransportMode.car);
-					}
-
-				} else {
-					if (noTripVTTSWarning <= 3) {
-/*
-						log.warn("Could not find the VTTS of person " + id + " and trip number " + tripNrOfGivenTime + " (time: " + time + ")."
-								+ " Trying to use the average car VTTS...");
-*/
-					}
-					if (noTripVTTSWarning == 3) {
-//						log.warn("Additional warnings of this type are suppressed.");
-					}
-					noTripVTTSWarning++;
-					return this.getAvgVTTSh(id, TransportMode.car);
-				}
-			}
-
-		} else {
-
-			if (this.currentIteration == Integer.MIN_VALUE) {
+		if (!this.personId2TripNr2DepartureTime.containsKey(id)) {
+			if (this.currentIteration == Integer.MIN_VALUE) { // Shouldn't this be ==0 ? MIN_VALUE is negative (aleks)
 				// the initial iteration before handling any events
 				return this.defaultVTTS_moneyPerHour;
 			} else {
 				throw new RuntimeException("This is not the initial iteration and there is no information available from the previous iteration. Aborting...");
 			}
 		}
+
+		int tripNrOfGivenTime = Integer.MIN_VALUE;
+		double departureTime = Double.MAX_VALUE;
+		for (Integer tripNr : this.personId2TripNr2DepartureTime.get(id).keySet()) {
+			if (time >= this.personId2TripNr2DepartureTime.get(id).get(tripNr)) {
+				if (this.personId2TripNr2DepartureTime.get(id).get(tripNr) <= departureTime) {
+					departureTime = this.personId2TripNr2DepartureTime.get(id).get(tripNr);
+					tripNrOfGivenTime = tripNr;
+				}
+			}
+		}
+
+		if (tripNrOfGivenTime == Integer.MIN_VALUE) {
+			if (noTripNrWarning <= 3) {
+/*
+				log.warn("Could not identify the trip number of person " + id + " at time " + time + "."
+						+ " Trying to use the average car VTTS...");
+*/
+			}
+			if (noTripNrWarning == 3) {
+//					log.warn("Additional warnings of this type are suppressed.");
+			}
+			noTripNrWarning++;
+			return this.getAvgVTTSh(id, TransportMode.car);
+
+		}
+
+		if (!this.personId2TripNr2VTTSh.containsKey(id)) {
+			if (noTripVTTSWarning <= 3) {
+/*
+				log.warn("Could not find the VTTS of person " + id + " and trip number " + tripNrOfGivenTime + " (time: " + time + ")."
+						+ " Trying to use the average car VTTS...");
+*/
+			}
+			if (noTripVTTSWarning == 3) {
+//						log.warn("Additional warnings of this type are suppressed.");
+			}
+			noTripVTTSWarning++;
+			return this.getAvgVTTSh(id, TransportMode.car);
+		}
+
+		if (!this.personId2TripNr2Mode.get(id).get(tripNrOfGivenTime).equals(TransportMode.car)) {
+			if (noCarVTTSWarning <= 3) {
+/*
+				log.warn("In the previous iteration at the given time " + time + " the agent " + id + " was performing a trip with a different mode (" + this.personId2TripNr2Mode.get(id).get(tripNrOfGivenTime) + ")."
+						+ "Trying to use the average car VTTS.");
+*/
+				if (noCarVTTSWarning == 3) {
+//								log.warn("Additional warnings of this type are suppressed.");
+				}
+				noCarVTTSWarning++;
+			}
+			return this.getAvgVTTSh(id, TransportMode.car);
+		}
+
+		// everything fine
+		return this.personId2TripNr2VTTSh.get(id).get(tripNrOfGivenTime);
 	}
 
 	public Map<Id<Person>, Map<Integer, Double>> getPersonId2TripNr2VTTSh() {
