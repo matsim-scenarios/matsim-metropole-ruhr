@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.inject.Singleton;
 import org.apache.commons.math.stat.StatUtils;
 //import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
@@ -47,11 +48,16 @@ import org.matsim.api.core.v01.population.Activity;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.contrib.dvrp.vrpagent.VrpAgentLogic;
 import org.matsim.contrib.vsp.scenario.SnzActivities;
+import org.matsim.core.controler.AbstractModule;
+import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.events.AfterMobsimEvent;
 import org.matsim.core.events.handler.EventHandler;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.scoring.ScoringFunction;
 import org.matsim.core.scoring.functions.ScoringParameters;
+import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.core.utils.collections.Tuple;
+import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
 
 /**
@@ -74,8 +80,12 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 	private static int noTripVTTSWarning = 0; 		// TODO #!
 	private static int noTripNrWarning = 0; 		// TODO #!
 
+	private final Controler controler;
 	private final Scenario scenario;
 	private int currentIteration;
+
+	//personalUtilityOfMoney for every agent
+	private final Map<Id<Person>, Double> personId2utilityOfMoney = new HashMap<>();
 
 	//Persons, acts and modes that should not be considered for VTTS
 	private final Set<Id<Person>> personIdsToBeIgnored = new HashSet<>();
@@ -99,6 +109,8 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 
 	private final double defaultVTTS_moneyPerHour; // for the car mode! TODO #?
 
+	// ===== Setup-methods ===========================================================================================================================
+
 	/**
 	 * Returns an {@link EventHandler}-child for the VTTS-computation of a scenario for all agents.
 	 * After reading an EventFile the <i>print</i>-methods ({@link #printVTTS}, {@link #printCarVTTS},
@@ -115,6 +127,7 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 		this.modesToBeSkipped = helpLegModes;
 		this.stageActivitiesSubStrings = new String[]{stageActivitySubString};
 		this.scenario = scenario;
+		this.controler = new Controler(scenario);
 		this.currentIteration = Integer.MIN_VALUE;
 		this.defaultVTTS_moneyPerHour =
 				(this.scenario.getConfig().scoring().getPerforming_utils_hr()
@@ -138,11 +151,32 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 		this.modesToBeSkipped = helpLegModes;
 		this.stageActivitiesSubStrings = stageActivitiesSubStrings;
 		this.scenario = scenario;
+		this.controler = new Controler(scenario);
 		this.currentIteration = Integer.MIN_VALUE;
 		this.defaultVTTS_moneyPerHour =
 			(this.scenario.getConfig().scoring().getPerforming_utils_hr()
 				+ this.scenario.getConfig().scoring().getModes().get( TransportMode.car ).getMarginalUtilityOfTraveling() * (-1.0)
 			) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney();
+	}
+
+	/**
+	 * Once this method is called, the VTTS will compute the income-dependant marginal utility of money for every person,
+	 * instead of using the marginal utility from the config.
+	 */
+	public void applyIncomeDependantScoring(){
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+			}
+		});
+		controler.getInjector(); //Initializes Injector
+		for(Person p : scenario.getPopulation().getPersons().values()){
+			ScoringFunction scoring = controler.getScoringFunctionFactory().createNewScoringFunction(p);
+			assert scoring.getScore() == 0; //If this fails, you should check your config for changes in the scoring-module
+			scoring.addMoney(1.0);
+			personId2utilityOfMoney.putIfAbsent(p.getId(), scoring.getScore());
+		}
 	}
 
 	// ===== Parsing-methods =========================================================================================================================
@@ -369,7 +403,9 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 		double tripDelayDisutilityOneSec = (1.0 / 3600.) * marginalUtilityOfTraveling * (-1);
 
 		// Translate the disutility into monetary units.
-		double delayCostPerSec_usingActivityDelayOneSec = (activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney();
+		double delayCostPerSec_usingActivityDelayOneSec = (personId2utilityOfMoney.isEmpty()) ?
+			(activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney() :
+			(activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / personId2utilityOfMoney.get(personId);
 
 		// Store the VTTS for analysis purposes
 		if (this.personId2VTTSh.containsKey(personId)) {
@@ -447,7 +483,9 @@ public class VTTSHandler implements ActivityStartEventHandler, ActivityEndEventH
 		double tripDelayDisutilityOneSec = (1.0 / 3600.) * marginalUtilityOfTraveling * (-1);
 
 		// Translate the disutility into monetary units.
-		double delayCostPerSec_usingActivityDelayOneSec = (activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney();
+		double delayCostPerSec_usingActivityDelayOneSec = (personId2utilityOfMoney.isEmpty()) ?
+			(activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / this.scenario.getConfig().scoring().getMarginalUtilityOfMoney() :
+			(activityDelayDisutilityOneSec + tripDelayDisutilityOneSec) / personId2utilityOfMoney.get(personId);
 
 		// Store the VTTS for analysis purposes
 		if (this.personId2VTTSh.containsKey(personId)) {
