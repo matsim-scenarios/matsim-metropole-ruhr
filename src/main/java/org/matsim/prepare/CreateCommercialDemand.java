@@ -82,6 +82,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--jspritIterationsForSmallScaleCommercial", defaultValue = "10", description = "Number of iterations for jsprit for solving the small scale commercial traffic", required = true)
 	private int jspritIterationsForSmallScaleCommercial;
 
+	@CommandLine.Option(names = "--smallScaleCommercialTrafficType", description = "Select traffic type. Options: commercialPersonTraffic, goodsTraffic, completeSmallScaleCommercialTraffic (contains both types)", defaultValue = "completeSmallScaleCommercialTraffic")
+	private String smallScaleCommercialTrafficType;
+
 	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V2.csv")
 	private String freightRawData;
 
@@ -241,8 +244,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--sample", String.valueOf(sample),
 				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
 				"--creationOption", "createNewCarrierFile",
-				"--smallScaleCommercialTrafficType", "completeSmallScaleCommercialTraffic",
-//                    "--smallScaleCommercialTrafficType", "goodsTraffic",
+				"--smallScaleCommercialTrafficType", smallScaleCommercialTrafficType,
 				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
 				"--zoneShapeFileNameColumn", "schluessel",
 				"--shapeCRS", shapeCRS,
