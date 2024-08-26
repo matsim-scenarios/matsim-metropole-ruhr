@@ -104,6 +104,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 		return switch (vehicleTypeMode) {
 			case "truck8t" -> List.of("vehTyp3", "vehTyp4");
 			case "truck18t", "truck40t", "truck26t" -> List.of("vehTyp5");
+			case "car" -> List.of("vehTyp1", "vehTyp2");
 			default -> throw new IllegalArgumentException("The vehicle type mode is not supported: " + vehicleTypeMode);
 		};
 	}
@@ -121,6 +122,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 			case 150 -> 4; // parcel delivery
 			case 180 -> 1; // delivery of goods to companies
 			case 210 -> 4; // delivery to trading companies
+			case 72 -> 2; // delivery of petrol //TODO: check if this purpose is correct
 			default -> throw new IllegalStateException("Unexpected value for goodsType: " + goodsType);
 		};
 	}
