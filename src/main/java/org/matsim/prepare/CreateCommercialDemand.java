@@ -94,7 +94,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
 	private boolean alsoRunCompleteCommercialTraffic;
 
-	@CommandLine.Option(names = "--germanyFreightPlansFile", description = "Path to the Germany plans file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/german_freight.25pct.plans.xml.gz")
+	@CommandLine.Option(names = "--germanyFreightPlansFile", description = "Path to the Germany plans file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/german_freight.100pct.plans.xml.gz")
 	private Path germanyPlansFile;
 
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
@@ -198,7 +198,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					}
 				});
 			}
-			PopulationUtils.sampleDown(population, sample / 0.25);
+			PopulationUtils.sampleDown(population, sample);
 			PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
 		}
 		log.info("5rd step - create input data for small scale commercial traffic");
