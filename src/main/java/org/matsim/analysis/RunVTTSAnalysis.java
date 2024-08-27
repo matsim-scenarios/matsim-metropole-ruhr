@@ -102,15 +102,15 @@ public class RunVTTSAnalysis implements MATSimAppCommand {
 		manager.addHandler(handler);
 		EventsUtils.readEvents(manager, eventsPath);
 
-		handler.printVTTS(outPath + "VTTS");
-		handler.printCarVTTS(outPath + "carVTTS");
-		handler.printAvgVTTSperPerson(outPath + "avgVTTSperPerson");
+		handler.printVTTS(outPath + "VTTS.csv");
+		handler.printCarVTTS(outPath + "carVTTS.csv");
+		handler.printAvgVTTSperPerson(outPath + "avgVTTSperPerson.csv");
 		for(String mode : modes.split(";")){
-			handler.printVTTS(outPath + "VTTS_" + mode, mode);
+			handler.printVTTS(outPath + "VTTS_" + mode + ".csv", mode);
 		}
 		for(String stat : statistics.split(";")) {
 			handler.printVTTSstatistics(
-				outPath + "VTTSstatistics_" + stat.split(",")[0],
+				outPath + "VTTSstatistics_" + stat.split(",")[0] + ".csv",
 				stat.split(",")[0],
 				new Tuple<>(Double.parseDouble(stat.split(",")[1]), Double.parseDouble(stat.split(",")[2])));
 		}
