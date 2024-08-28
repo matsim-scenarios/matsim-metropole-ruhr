@@ -25,7 +25,6 @@ import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.locationtech.jts.util.Assert;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
@@ -38,6 +37,7 @@ import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
+import org.matsim.contrib.vsp.pt.fare.PtFareModule;
 import org.matsim.contrib.vsp.scenario.SnzActivities;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
@@ -62,9 +62,9 @@ import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
-import playground.vsp.pt.fare.DistanceBasedPtFareParams;
-import playground.vsp.pt.fare.FareZoneBasedPtFareParams;
-import playground.vsp.pt.fare.PtFareConfigGroup;
+import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
+import org.matsim.contrib.vsp.pt.fare.FareZoneBasedPtFareParams;
+import org.matsim.contrib.vsp.pt.fare.PtFareConfigGroup;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
@@ -291,25 +291,22 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		// inside of RVR use the RVR Tarif
 		FareZoneBasedPtFareParams rvr = new FareZoneBasedPtFareParams();
-		rvr.setTransactionPartner("RVR Tarif");
-		rvr.setDescription("RVR Tarif");
-		rvr.setFareZoneShp("./pt-pricing/pt_preisstufen.shp");
+		rvr.setTransactionPartner("VRR");
+		rvr.setDescription("VRR Tarifstufe A");
+		rvr.setFareZoneShp("./pt-pricing/pt_preisstufen_fare_all3.0.shp");
 		rvr.setOrder(1);
 
 		// outside of RVR use the eezyVRR Tarif 1,50 EUR + 0.25 * Luftlinien-km.
 		DistanceBasedPtFareParams eezy = new DistanceBasedPtFareParams();
 		eezy.setTransactionPartner("eezyVRR");
 		eezy.setDescription("eezyVRR");
-		eezy.setFareZoneShp("./nrwArea/dvg2bld.shp");
-		eezy.setNormalTripIntercept(1.5);
-		eezy.setNormalTripSlope(0.25);
-		//due to high threshold not used, but for security the same as normal
-		eezy.setLongDistanceTripIntercept(1.5);
-		eezy.setLongDistanceTripSlope(0.25);
-		eezy.setLongDistanceTripThreshold(1000000);
+		eezy.setFareZoneShp("./nrwArea/dvg2bld_nw.shp");
+		DistanceBasedPtFareParams.DistanceClassLinearFareFunctionParams eezyFareFunction = eezy.getOrCreateDistanceClassFareParams(Double.POSITIVE_INFINITY);
+		eezyFareFunction.setFareIntercept(1.5);
+		eezyFareFunction.setFareSlope(0.00025);
 		eezy.setOrder(2);
 
-		DistanceBasedPtFareParams germany = DistanceBasedPtFareParams.GERMAN_WIDE_FARE;
+		DistanceBasedPtFareParams germany = DistanceBasedPtFareParams.GERMAN_WIDE_FARE_2024;
 		germany.setTransactionPartner("Deutschlandtarif");
 		germany.setDescription("Deutschlandtarif");
 		germany.setOrder(3);
@@ -350,6 +347,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		// additional analysis output
 		//controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
+
+		controler.addOverridingModule(new PtFareModule());
 
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
