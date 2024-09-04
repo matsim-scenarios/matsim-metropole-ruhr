@@ -103,6 +103,7 @@ public class LTLFreightAgentGeneratorRuhr {
         AtomicInteger integratedToursForWasteCollections = new AtomicInteger();
         AtomicInteger integratedToursForParcelDelivery = new AtomicInteger();
 
+		Network network = scenario.getNetwork();
         // Sample tours of waste collections and parcel delivery to the scenario sample size.
         // Therefore, use an error to add a tour if the error is >1
         carriers.getCarriers().values().forEach(carrier -> {
@@ -157,7 +158,7 @@ public class LTLFreightAgentGeneratorRuhr {
                 String mode = scheduledTour.getVehicle().getType().getNetworkMode();
                 List<Tour.TourElement> carrierScheduledPlanElements = scheduledTour.getTour().getTourElements();
 
-                PopulationUtils.createAndAddActivityFromLinkId(plan, "start", scheduledTour.getTour().getStart().getLocation()).setEndTime(
+                PopulationUtils.createAndAddActivityFromCoord(plan, "start", network.getLinks().get(scheduledTour.getTour().getStart().getLocation()).getCoord()).setEndTime(
                         scheduledTour.getDeparture());
                 Id<Link> previousLocation = scheduledTour.getTour().getStart().getLocation();
                 Id<Link> lastLocationOfTour = scheduledTour.getTour().getEnd().getLocation();
@@ -172,7 +173,7 @@ public class LTLFreightAgentGeneratorRuhr {
                         if (lastActivity != null && lastActivity.getType().equals("pickup") && lastActivity.getLinkId().equals(linkID)) {
                             lastActivity.setMaximumDuration(lastActivity.getMaximumDuration().seconds() + pickup.getDuration());
                         } else {
-                            PopulationUtils.createAndAddActivityFromLinkId(plan, "pickup", linkID).setMaximumDuration(
+                            PopulationUtils.createAndAddActivityFromCoord(plan, "pickup", network.getLinks().get(linkID).getCoord()).setMaximumDuration(
                                     pickup.getDuration());
                             previousLocation = linkID;
                         }
@@ -185,7 +186,7 @@ public class LTLFreightAgentGeneratorRuhr {
                             lastActivity.setMaximumDuration(
                                     lastActivity.getMaximumDuration().seconds() + delivery.getDuration());
                         } else {
-                            PopulationUtils.createAndAddActivityFromLinkId(plan, "delivery", linkID).setMaximumDuration(
+                            PopulationUtils.createAndAddActivityFromCoord(plan, "delivery", network.getLinks().get(linkID).getCoord()).setMaximumDuration(
                                     delivery.getDuration());
                             previousLocation = linkID;
                         }
@@ -198,7 +199,7 @@ public class LTLFreightAgentGeneratorRuhr {
                         PopulationUtils.createAndAddLeg(plan, mode);
                     }
                 }
-                PopulationUtils.createAndAddActivityFromLinkId(plan, "end", lastLocationOfTour).setMaximumDuration(
+                PopulationUtils.createAndAddActivityFromCoord(plan, "end", network.getLinks().get(lastLocationOfTour).getCoord()).setMaximumDuration(
                         scheduledTour.getTour().getEnd().getDuration());
 
                 String key = carrier.getId().toString();
