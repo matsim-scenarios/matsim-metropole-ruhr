@@ -78,7 +78,7 @@ public class CreateSupply {
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
 	private static final Path shortTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-short-term-counts.csv");
-	private static final Path parkingShapeFile = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/Parkraum_20220902/Parkraum.shp");
+	private static final Path parkingShapeFile = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/original-data/20240905_Parkraum/20240905_Parkraum.shp");
 	// we use UTM-32 as coordinate system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
 	private static final Logger logger = LogManager.getLogger(CreateSupply.class);
