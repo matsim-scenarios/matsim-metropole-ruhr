@@ -1,13 +1,16 @@
 package org.matsim.dashboard;
 
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.application.prepare.network.CreateAvroNetwork;
 import org.matsim.core.config.Config;
 import org.matsim.simwrapper.Dashboard;
 import org.matsim.simwrapper.DashboardProvider;
 import org.matsim.simwrapper.SimWrapper;
+import org.matsim.simwrapper.dashboard.TrafficCountsDashboard;
 import org.matsim.simwrapper.dashboard.TripDashboard;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Provider for default dashboards in the scenario.
@@ -26,7 +29,11 @@ public class MetropoleRuhrDashboardProvider implements DashboardProvider {
 			CreateAvroNetwork.class, "--filter-properties", "allowed_speed,surface,type,bicycleInfrastructureSpeedFactor,bike,smoothness"
 		);
 
-		return List.of(trips);
+		TrafficCountsDashboard counts = new TrafficCountsDashboard()
+			.withModes(TransportMode.car, Set.of(TransportMode.car))
+			.withModes(TransportMode.truck, Set.of(TransportMode.truck, "freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+
+		return List.of(trips, counts);
 	}
 
 }
