@@ -141,8 +141,8 @@
 			<param name="performing" value="6.00"/>
 			<parameterset type="modeParams" >
 				<param name="mode" value="car" />
-				<!-- We use the same value as for Berlin. See: https://docs.google.com/spreadsheets/d/1HzWpmmws1dBJuo-1Z0TnJ6-w4vD7eXBTUUEu68Hl9Q4/edit#gid=550988004  -->
-				<param name="dailyMonetaryConstant" value="-5" />
+				<!-- We use -3 to fit the approximate value for Berlin -->
+				<param name="dailyMonetaryConstant" value="-3" />
 				<param name="constant" value="0.8379675427416293" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 				<param name="monetaryDistanceRate" value="-0.000149" />
