@@ -106,7 +106,7 @@ public class FTLFreightAgentGeneratorRuhr {
             }
             person.addPlan(plan);
             freightDemandDataRelation.getAttributes().getAsMap().forEach((k, v) -> person.getAttributes().putAttribute(k, v));
-            PopulationUtils.putSubpopulation(person, transportType + "_trips");
+            PopulationUtils.putSubpopulation(person, transportType + "_trip");
             Id<VehicleType> vehicleTypeId = Id.create(vehicleType, VehicleType.class);
             VehicleUtils.insertVehicleTypesIntoPersonAttributes(person, Map.of(FTL_mode, vehicleTypeId));
             freightAgents.add(person);
