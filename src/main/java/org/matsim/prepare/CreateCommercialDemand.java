@@ -102,6 +102,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
 	private Path networkForLongDistanceFreight;
 
+	@CommandLine.Option(names = "--cutFreightTransitAtBoundary", description = "Cut freight transit at boundary")
+	private boolean cutFreightTransitAtBoundary;
+
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
@@ -179,26 +182,34 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
 			log.warn("Long distance freight population already exists. Skipping generation.");
 		} else {
-			new ExtractRelevantFreightTrips().execute(
-				germanyPlansFile.toString(),
-				"--network", networkForLongDistanceFreight.toString(),
-				"--output", longDistanceFreightPopulationName,
-				"--shp", osmDataLocation.resolve("regions_25832.shp").toString(),
-				"--input-crs", shapeCRS,
-				"--target-crs", shapeCRS,
-				"--shp-crs", shapeCRS,
-				"--cut-on-boundary",
-				"--tripType", "TRANSIT"
-			);
+			List<String> argumentsForFreightTransitTraffic = new ArrayList<>();
+			argumentsForFreightTransitTraffic.add(germanyPlansFile.toString());
+			argumentsForFreightTransitTraffic.add("--network");
+			argumentsForFreightTransitTraffic.add(networkForLongDistanceFreight.toString());
+			argumentsForFreightTransitTraffic.add("--output");
+			argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
+			argumentsForFreightTransitTraffic.add("--shp");
+			argumentsForFreightTransitTraffic.add(osmDataLocation.resolve("regions_25832.shp").toString());
+			argumentsForFreightTransitTraffic.add("--input-crs");
+			argumentsForFreightTransitTraffic.add(shapeCRS);
+			argumentsForFreightTransitTraffic.add("--target-crs");
+			argumentsForFreightTransitTraffic.add(shapeCRS);
+			argumentsForFreightTransitTraffic.add("--shp-crs");
+			argumentsForFreightTransitTraffic.add(shapeCRS);
+			argumentsForFreightTransitTraffic.add("--tripType");
+			argumentsForFreightTransitTraffic.add("TRANSIT");
+			argumentsForFreightTransitTraffic.add("--LegMode");
+			argumentsForFreightTransitTraffic.add("truck40t");
+			if (cutFreightTransitAtBoundary) {
+				argumentsForFreightTransitTraffic.add("--cut-on-boundary");
+			}
+
+			new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
+
 			Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
 			log.info("Set mode to truck40t for long distance freight");
 			for (Person person : population.getPersons().values()) {
 				PopulationUtils.putSubpopulation(person, "longDistanceFreight");
-				person.getSelectedPlan().getPlanElements().forEach(planElement -> {
-					if (planElement instanceof Leg leg) {
-						leg.setMode("truck40t");
-					}
-				});
 			}
 			PopulationUtils.sampleDown(population, sample);
 			PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
