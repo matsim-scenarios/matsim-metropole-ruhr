@@ -113,7 +113,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 					goodsType, tripType);
 			}
 			tsvWriter.close();
-			log.info("Tsv file successfully written to " + freightTripTsvPath);
+			log.info("Tsv file successfully written to {}", freightTripTsvPath);
 		}
 		return 0;
 	}
@@ -147,9 +147,6 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 		Path carrierFile_noSolution;
 		Path carrierFile_withSolution;
-
-//		Path carrierFile_noSolution = outputFolderCarriers.resolve("output_LTLcarriersNoSolution.xml.gz");
-//		Path carrierFile_withSolution = outputFolderCarriers.resolve("output_LTLcarriersWithSolution.xml.gz");
 
 		for (CarrierType carrierType : CarrierType.values()) {
 			carrierFile_noSolution = switch (carrierType) {

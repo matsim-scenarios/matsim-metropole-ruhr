@@ -106,7 +106,7 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
                         goodsType, tripType);
             }
             tsvWriter.close();
-            log.info("Tsv file successfully written to " + freightTripTsvPath);
+			log.info("Tsv file successfully written to {}", freightTripTsvPath);
         }
         return 0;
     }
