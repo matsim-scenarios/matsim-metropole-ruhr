@@ -154,7 +154,7 @@ public class LTLFreightAgentGeneratorRuhr {
                     integratedToursForParcelDelivery.getAndIncrement();
                 }
                 Plan plan = PopulationUtils.createPlan();
-                String subpopulation = "LTL_trips";
+                String subpopulation = "LTL_trip";
                 String mode = scheduledTour.getVehicle().getType().getNetworkMode();
                 List<Tour.TourElement> carrierScheduledPlanElements = scheduledTour.getTour().getTourElements();
 
