@@ -70,7 +70,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--pathToInvestigationAreaData", description = "Path to the investigation area data", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/investigationAreaData.csv")
 	private String pathToInvestigationAreaData;
 
-	@CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "metropole-ruhr-v2.0_network.xml.gz")
+	@CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "metropole-ruhr-v2.0.network_noBike.xml.gz")
 	private String networkPath;
 
 	@CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file", required = true, defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.mode-vehicles.xml")
@@ -85,7 +85,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--smallScaleCommercialTrafficType", description = "Select traffic type. Options: commercialPersonTraffic, goodsTraffic, completeSmallScaleCommercialTraffic (contains both types)", defaultValue = "completeSmallScaleCommercialTraffic")
 	private String smallScaleCommercialTrafficType;
 
-	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V2.csv")
+	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
 	private String freightRawData;
 
 	@CommandLine.Option(names = "--freightRawDataKEP", description = "Path to the KEP data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/kep_aufkommen/aufkommen_kep.csv")
@@ -93,6 +93,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
 	private boolean alsoRunCompleteCommercialTraffic;
+
+	@CommandLine.Option(names = "--MATSimIterations", description = "Number of MATSim iterations for the complete commercial traffic", defaultValue = "0")
+	private int MATSimIterations;
 
 	@CommandLine.Option(names = "--germanyFreightPlansFile", description = "Path to the Germany plans file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/german_freight.100pct.plans.xml.gz")
 	private Path germanyPlansFile;
@@ -227,7 +230,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			);
 		}
 		log.info("6th step - create small scale commercial traffic");
-		String smallScaleCommercialPopulationName = "rvrCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
+		String smallScaleCommercialPopulationName = "ruhrSmallScaleCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
 		String outputPathSmallScaleCommercial = output.resolve("smallScaleCommercial").toString();
 		Path resolve = Path.of(outputPathSmallScaleCommercial).resolve(smallScaleCommercialPopulationName);
 		IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(
@@ -283,12 +286,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
 			config.network().setInputFile(networkPath);
 			config.controller().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
-			config.controller().setLastIteration(0);
+			config.controller().setLastIteration(MATSimIterations);
 			config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 			config.transit().setUseTransit(false);
 			config.transit().setTransitScheduleFile(null);
 			config.transit().setVehiclesFile(null);
 			config.global().setCoordinateSystem("EPSG:25832");
+			config.counts().setInputFile(null);
 			config.vspExperimental().setVspDefaultsCheckingLevel(VspExperimentalConfigGroup.VspDefaultsCheckingLevel.warn);
 			config.qsim().setLinkDynamics(QSimConfigGroup.LinkDynamics.PassingQ);
 			config.qsim().setTrafficDynamics(QSimConfigGroup.TrafficDynamics.kinematicWaves);
@@ -303,20 +307,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("ptExtensions");
 			config.getModules().remove("ptIntermodalRoutingModes");
 			config.getModules().remove("swissRailRaptor");
-
-			//prepare the different modes
-			ArrayList<String> newModes = new ArrayList<>(List.of("truck8t", "truck18t", "truck26t", "truck40t"));
-			Collection<String> allModes = config.qsim().getMainModes();
-			allModes.addAll(newModes);
-			config.qsim().setMainModes(allModes);
-			Set<String> allNetworkModes = new HashSet<>(config.routing().getNetworkModes());
-			allNetworkModes.addAll(newModes);
-			config.routing().setNetworkModes(allNetworkModes);
-			//TODO add replanning strategy for small scale commercial traffic
-			newModes.forEach(mode -> {
-				ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
-				config.scoring().addModeParams(thisModeParams);
-			});
+			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
+			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
@@ -324,17 +316,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 			controller.addOverridingModule(new SimWrapperModule());
 
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_start").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_end").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("service").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("pickup").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("delivery").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_return").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("start").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("end").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_start").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
-			config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
 
 			controller.run();
 		}
