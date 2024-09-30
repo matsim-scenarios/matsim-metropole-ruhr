@@ -160,46 +160,47 @@ public class LTLFreightAgentGeneratorRuhr {
 
                 PopulationUtils.createAndAddActivityFromCoord(plan, "start", network.getLinks().get(scheduledTour.getTour().getStart().getLocation()).getCoord()).setEndTime(
                         scheduledTour.getDeparture());
-                Id<Link> previousLocation = scheduledTour.getTour().getStart().getLocation();
-                Id<Link> lastLocationOfTour = scheduledTour.getTour().getEnd().getLocation();
+                Coord previousLocation = network.getLinks().get(scheduledTour.getTour().getStart().getLocation()).getCoord();
+				Coord lastLocationOfTour = network.getLinks().get(scheduledTour.getTour().getEnd().getLocation()).getCoord();
 
                 for (int i = 0; i < carrierScheduledPlanElements.size(); i++) {
 
                     Tour.TourElement tourElement = carrierScheduledPlanElements.get(i);
                     if (tourElement instanceof Tour.Pickup pickup) {
-                        Id<Link> linkID = pickup.getLocation();
-                        Activity lastActivity = plan.getPlanElements().getLast(
-						) instanceof Activity activity ? activity : null;
-                        if (lastActivity != null && lastActivity.getType().equals("pickup") && lastActivity.getLinkId().equals(linkID)) {
+                        Coord coord = network.getLinks().get(pickup.getLocation()).getCoord();
+						// if the last activity being added to the plan is a pickup at the same location, we merge the activities
+                        Activity lastActivity = plan.getPlanElements().getLast() instanceof Activity activity ? activity : null;
+                        if (lastActivity != null && lastActivity.getType().equals("pickup") && lastActivity.getCoord().equals(coord)) {
                             lastActivity.setMaximumDuration(lastActivity.getMaximumDuration().seconds() + pickup.getDuration());
                         } else {
-                            PopulationUtils.createAndAddActivityFromCoord(plan, "pickup", network.getLinks().get(linkID).getCoord()).setMaximumDuration(
+                            PopulationUtils.createAndAddActivityFromCoord(plan, "pickup", coord).setMaximumDuration(
                                     pickup.getDuration());
-                            previousLocation = linkID;
+                            previousLocation = coord;
                         }
                     }
                     if (tourElement instanceof Tour.Delivery delivery) {
-                        Id<Link> linkID = delivery.getLocation();
-                        Activity lastActivity = plan.getPlanElements().getLast(
+						Coord coord = network.getLinks().get(delivery.getLocation()).getCoord();
+						// if the last activity being added to the plan is a delivery at the same location, we merge the activities
+						Activity lastActivity = plan.getPlanElements().getLast(
 						) instanceof Activity activity ? activity : null;
-                        if (lastActivity != null && lastActivity.getType().equals("delivery") && lastActivity.getLinkId().equals(linkID)) {
+                        if (lastActivity != null && lastActivity.getType().equals("delivery") && lastActivity.getCoord().equals(coord)) {
                             lastActivity.setMaximumDuration(
                                     lastActivity.getMaximumDuration().seconds() + delivery.getDuration());
                         } else {
-                            PopulationUtils.createAndAddActivityFromCoord(plan, "delivery", network.getLinks().get(linkID).getCoord()).setMaximumDuration(
+                            PopulationUtils.createAndAddActivityFromCoord(plan, "delivery", coord).setMaximumDuration(
                                     delivery.getDuration());
-                            previousLocation = linkID;
+                            previousLocation = coord;
                         }
                     }
                     if (tourElement instanceof Tour.Leg) {
                         Id<Link> nextlinkID = carrierScheduledPlanElements.size() == i + 1 ? null : carrierScheduledPlanElements.get(
                                 i + 1) instanceof Tour.TourActivity activity ? activity.getLocation() : null;
-                        if (nextlinkID != null && nextlinkID.equals(previousLocation))
+                        if (nextlinkID != null && network.getLinks().get(nextlinkID).getCoord().equals(previousLocation))
                             continue;
                         PopulationUtils.createAndAddLeg(plan, mode);
                     }
                 }
-                PopulationUtils.createAndAddActivityFromCoord(plan, "end", network.getLinks().get(lastLocationOfTour).getCoord()).setMaximumDuration(
+                PopulationUtils.createAndAddActivityFromCoord(plan, "end", lastLocationOfTour).setMaximumDuration(
                         scheduledTour.getTour().getEnd().getDuration());
 
                 String key = carrier.getId().toString();
