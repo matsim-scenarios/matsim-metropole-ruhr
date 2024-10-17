@@ -123,7 +123,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	 */
 	public static void prepareCommercialTrafficConfig(Config config) {
 
-		Set<String> modes = Set.of("freight", "truck8t", "truck18t", "truck26t", "truck40t");
+		Set<String> modes = Set.of("truck8t", "truck18t", "truck26t", "truck40t");
 
 		modes.forEach(mode -> {
 			ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
@@ -148,7 +148,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
 
-		for (String subpopulation : List.of("LTL_trips", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
+		for (String subpopulation : List.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
 			"FTL_trip", "FTL_kv_trip", "goodsTraffic")) {
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings()
