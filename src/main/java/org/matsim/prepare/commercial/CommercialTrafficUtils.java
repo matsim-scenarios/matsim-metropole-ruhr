@@ -52,7 +52,7 @@ public class CommercialTrafficUtils {
         person.getAttributes().putAttribute("destination_locationId", rvrTripRelation.getDestinationLocationId());
     }
     private static void setGoodsType(Person person, RvrTripRelation rvrTripRelation) {
-        person.getAttributes().putAttribute("goods_type", rvrTripRelation.getGoodsType());
+        person.getAttributes().putAttribute("goodsType", rvrTripRelation.getGoodsType());
     }
     private static void setTransportType(Person person, RvrTripRelation rvrTripRelation) {
         person.getAttributes().putAttribute("transportType", rvrTripRelation.getTransportType());
@@ -107,7 +107,7 @@ public class CommercialTrafficUtils {
         return Double.parseDouble(person.getAttributes().getAttribute("destination_y").toString());
     }
     public static int getGoodsType(Person person) {
-        return Integer.parseInt(person.getAttributes().getAttribute("goods_type").toString());
+        return Integer.parseInt(person.getAttributes().getAttribute("goodsType").toString());
     }
     public static double getTonsPerYear(Person person) {
         return Double.parseDouble(person.getAttributes().getAttribute("tons_per_year").toString());
