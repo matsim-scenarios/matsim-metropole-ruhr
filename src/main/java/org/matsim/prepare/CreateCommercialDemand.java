@@ -250,7 +250,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			log.warn("Small-scale Commercial demand already exists. Skipping generation.");
 		} else {
 			//TODO check: Wo wird das Volumen der existierenden Modelle von den erzeugten Potentialen abgezogen?
-			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null).execute(
+			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
 				configPath.toString(),
 				"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
 				"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
