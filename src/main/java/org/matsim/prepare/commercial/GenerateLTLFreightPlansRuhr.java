@@ -18,6 +18,7 @@ import org.matsim.freight.carriers.CarrierVehicleTypeReader;
 import org.matsim.freight.carriers.CarrierVehicleTypes;
 import org.matsim.freight.carriers.CarriersUtils;
 import org.matsim.freight.carriers.FreightCarriersConfigGroup;
+import org.matsim.freight.carriers.analysis.RunFreightAnalysisEventBased;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
@@ -197,7 +198,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 				CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_withSolution.toString());
 			}
-
+			RunFreightAnalysisEventBased freightAnalysis = new RunFreightAnalysisEventBased(CarriersUtils.addOrGetCarriers(scenario), outputFolderCarriers.resolve("Carrier_Analysis_" + carrierType).toString());
+			freightAnalysis.runCarriersAnalysis();
 			LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
 		}
 	}
