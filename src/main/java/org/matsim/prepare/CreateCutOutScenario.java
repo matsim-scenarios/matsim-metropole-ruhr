@@ -8,7 +8,7 @@ import org.matsim.application.prepare.population.DownSamplePopulation;
 import org.matsim.application.prepare.population.ExtractHomeCoordinates;
 import org.matsim.application.prepare.population.FixSubtourModes;
 import org.matsim.application.prepare.population.XYToLinks;
-import org.matsim.run.RunMetropoleRuhrScenario;
+import org.matsim.run.MetropoleRuhrScenario;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
@@ -46,8 +46,8 @@ public class CreateCutOutScenario implements MATSimAppCommand {
 			return 2;
 		}
 
-		String networkPath = String.format("scenarios/input/%s-%s.network.xml.gz", name, RunMetropoleRuhrScenario.VERSION);
-		String populationPath = String.format("scenarios/input/%s-%s-25pct.plans.xml.gz", name, RunMetropoleRuhrScenario.VERSION);
+		String networkPath = String.format("scenarios/input/%s-%s.network.xml.gz", name, MetropoleRuhrScenario.VERSION);
+		String populationPath = String.format("scenarios/input/%s-%s-25pct.plans.xml.gz", name, MetropoleRuhrScenario.VERSION);
 
 		new ScenarioCutOut().execute(
 				"--input", population.toString(),
@@ -77,7 +77,7 @@ public class CreateCutOutScenario implements MATSimAppCommand {
 
 		new ExtractHomeCoordinates().execute(
 				populationPath,
-				"--csv", String.format("scenarios/input/%s-%s-homes.csv", name, RunMetropoleRuhrScenario.VERSION)
+				"--csv", String.format("scenarios/input/%s-%s-homes.csv", name, MetropoleRuhrScenario.VERSION)
 		);
 
 		return 0;

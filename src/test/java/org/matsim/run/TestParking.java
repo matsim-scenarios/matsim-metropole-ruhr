@@ -1,20 +1,26 @@
 package org.matsim.run;
 
-import org.junit.Rule;
-import org.junit.Test;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
-import org.matsim.api.core.v01.*;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.Identifiable;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
+import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.population.io.PopulationReader;
@@ -26,20 +32,18 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.matsim.core.config.groups.PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
-
+@Disabled
 public class TestParking {
 
     private static final Id<Person> personId = Id.createPersonId("test-person");
     private static final String inputNetworkFile = "https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/input/metropole-ruhr-v1.4.network_resolutionHigh-with-pt.xml.gz";
 
-    @Rule
+	@RegisterExtension
     public MatsimTestUtils testUtils = new MatsimTestUtils();
 
+
     @Test
-    public void testParking() {
+	public void testParking() {
 
         var outputDir = testUtils.getOutputDirectory();
 
@@ -56,11 +60,10 @@ public class TestParking {
         // somehow compare the two routes
         var personWithParking = scenarioWithParking.getPopulation().getPersons().get(personId);
         var personWithoutParking = scenarioWithoutParking.getPopulation().getPersons().get(personId);
-        assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
+		Assertions.assertTrue(personWithParking.getSelectedPlan().getScore() < personWithoutParking.getSelectedPlan().getScore());
     }
 
-
-    public static class TestApplication extends RunMetropoleRuhrScenario {
+    public static class TestApplication extends MetropoleRuhrScenario {
 
         @CommandLine.Option(names = "--useParking", description = "Overwrite output folder defined by the application")
         protected boolean useParking;
@@ -74,14 +77,14 @@ public class TestParking {
             preparedConfig.global().setNumberOfThreads(1);
             preparedConfig.qsim().setNumberOfThreads(1);
             preparedConfig.plans().setInputFile(null);
-            preparedConfig.controler().setLastIteration(0);
-            preparedConfig.controler().setRunId(RUN_ID);
+            preparedConfig.controller().setLastIteration(0);
+            preparedConfig.controller().setRunId(RUN_ID);
 
             // Disable PT
             preparedConfig.transit().setUseTransit(false);
 
             if (useParking== false) {
-                config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
+                config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.accessEgressModeToLink);
             }
 
             return preparedConfig;

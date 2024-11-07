@@ -1,33 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import os
-
-import pandas as pd
+import sys
 import geopandas as gpd
-import numpy as np
 
-try:
-    # Use the matsim package if available
-    from matsim import calibration
-except:
-    # Alternatively, import calibration.py from same directory
-    import calibration
-
-# %%
-
-if os.path.exists("mid.csv"):
-    srv = pd.read_csv("mid.csv")
-    sim = pd.read_csv("sim.csv")
-
-    _, adj = calibration.calc_adjusted_mode_share(sim, srv)
-
-    print(srv.groupby("mode").sum())
-
-    print("Adjusted")
-    print(adj.groupby("mode").sum())
-
-    adj.to_csv("mid_adj.csv", index=False)
+from matsim.calibration import create_calibration, ASCCalibrator, utils
 
 # %%
 
@@ -36,26 +12,30 @@ fixed_mode = "walk"
 
 # Initial ASCs
 initial = {
-    "bike": -2.3,
-    "pt": 0,
-    "car": 0,
-    "ride": -4.12
+    "bike": 0.33,
+    "pt": -0.38,
+    "car": 0.56,
+    "ride": 0.27
 }
 
 # Modal split target
 target = {
-    "walk": 0.205397,
-    "bike": 0.097191,
-    "pt":  0.120314,
-    "car": 0.456896,
-    "ride": 0.120203
+    "walk": 0.232118,
+    "bike": 0.098503,
+    "pt": 0.116146,
+    "car": 0.424297,
+    "ride": 0.128936
 }
 
-region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp").set_crs("EPSG:25832")
+input_path = "../../scenarios/metropole-ruhr-v2.0/input"
+
+region = gpd.read_file(input_path + "/pt-pricing/pt_preisstufen_fare_all3.0.shp").set_crs("EPSG:25832")
 
 
 def f(persons):
-    df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", op="intersects")
+    persons = gpd.GeoDataFrame(persons, geometry=gpd.points_from_xy(persons.home_x, persons.home_y))
+
+    df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", predicate="intersects")
     return df
 
 
@@ -67,15 +47,20 @@ def adjust_trips(df):
 
     return df
 
+# Use addtional arguments to pass to matsim
+addtional_arguments = sys.argv[1] if len(sys.argv) > 1 else ""
 
-study, obj = calibration.create_mode_share_study("calib", "matsim-metropole-ruhr-1.0-SNAPSHOT.jar",
-                                                 "../scenarios/metropole-ruhr-v1.0/input/metropole-ruhr-v1.0-10pct.config.xml",
-                                                 modes, target,
-                                                 initial_asc=initial,
-                                                 args="--10pct",
-                                                 jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
-                                                 person_filter=f, map_trips=adjust_trips, chain_runs=True)
+study, obj = create_calibration(
+    "calib",
+    ASCCalibrator(modes, initial, target, lr=utils.linear_scheduler(start=0.3, interval=8)),
+    "matsim-metropole-ruhr-2.0-2e225bc.jar",
+    input_path + "/metropole-ruhr-v2.0-3pct.config.xml",
+    args="--10pct --no-intermodal " + addtional_arguments,
+    jvm_args="-Xmx80G -Xms80G -XX:+AlwaysPreTouch -XX:+UseParallelGC",
+    transform_persons=f, transform_trips=adjust_trips,
+    chain_runs=utils.default_chain_scheduler, debug=False
+)
 
 # %%
 
-study.optimize(obj, 10)
+study.optimize(obj, 1)

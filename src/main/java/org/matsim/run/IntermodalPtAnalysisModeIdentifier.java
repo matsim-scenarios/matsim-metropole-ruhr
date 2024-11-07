@@ -32,10 +32,11 @@ import org.matsim.core.router.AnalysisMainModeIdentifier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Based on {@link TransportPlanningMainModeIdentifier}
- * 
+ *
  * @author nagel / gleich
  *
  */
@@ -53,8 +54,8 @@ public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainMod
 		modeHierarchy.add( TransportMode.ride ) ;
 		modeHierarchy.add( TransportMode.car ) ;
 		modeHierarchy.add( TransportMode.pt ) ;
-		modeHierarchy.add( "freight" );
-		
+		modeHierarchy.addAll( Set.of("freight", "truck8t", "truck18t", "truck26t", "truck40t"));
+
 		// NOTE: This hierarchical stuff is not so great: is park-n-ride a car trip or a pt trip?  Could weigh it by distance, or by time spent
 		// in respective mode.  Or have combined modes as separate modes.  In any case, can't do it at the leg level, since it does not
 		// make sense to have the system calibrate towards something where we have counted the car and the pt part of a multimodal
@@ -89,7 +90,7 @@ public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainMod
 		if (mainModeIndex == -1) {
 			throw new RuntimeException("no main mode found for trip " + planElements.toString() ) ;
 		}
-		
+
 		String mainMode = modeHierarchy.get( mainModeIndex ) ;
 		// differentiate pt monomodal/intermodal
 		if (mainMode.equals(TransportMode.pt)) {
@@ -109,7 +110,7 @@ public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainMod
 					throw new RuntimeException("unknown intermodal pt trip");
 				}
 			}
-			
+
 			if (bikeUsed) {
 				if (carUsed) {
 					return this.ANALYSIS_MAIN_MODE_PT_WITH_BIKE_AND_CAR_USED_FOR_ACCESS_OR_EGRESS;
@@ -123,7 +124,7 @@ public final class IntermodalPtAnalysisModeIdentifier implements AnalysisMainMod
 					return TransportMode.pt;
 				}
 			}
-			
+
 		} else {
 			return mainMode;
 		}
