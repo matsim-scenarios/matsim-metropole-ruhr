@@ -54,9 +54,9 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
         config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
         config.network().setInputFile(configPath.getParent().relativize(networkPath).toString());
         config.vehicles().setVehiclesFile(configPath.getParent().relativize(pathVehicleTypes).toString());
-        config.controler().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
-        config.controler().setLastIteration(0);
-        config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
+        config.controller().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
+        config.controller().setLastIteration(0);
+        config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
         config.transit().setUseTransit(false);
         config.transit().setTransitScheduleFile(null);
         config.transit().setVehiclesFile(null);
@@ -67,13 +67,13 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
         config.qsim().setUsingTravelTimeCheckInTeleportation(true);
         config.qsim().setUsePersonIdForMissingVehicleId(false);
         //to get no traffic jam for the iteration 0
-        if (config.controler().getLastIteration() == 0){
+        if (config.controller().getLastIteration() == 0){
             config.qsim().setFlowCapFactor(1.0);
             config.qsim().setStorageCapFactor(1.0);
             log.warn("Setting flowCapFactor and storageCapFactor to 1.0 because we have only the iteration 0 and we dont want to have traffic jams.");
         }
-        config.strategy().setFractionOfIterationsToDisableInnovation(0.8);
-        config.planCalcScore().setFractionOfIterationsToStartScoreMSA(0.8);
+        config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
+        config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
         config.getModules().remove("intermodalTripFareCompensators");
         config.getModules().remove("ptExtensions");
         config.getModules().remove("ptIntermodalRoutingModes");
@@ -83,38 +83,38 @@ public class RunMetropoleRuhrScenarioCommercial implements MATSimAppCommand {
         Set<String> modes = Set.of("truck8t", "truck18t", "truck26t", "truck40t");
 
         modes.forEach(mode -> {
-            PlanCalcScoreConfigGroup.ModeParams thisModeParams = new PlanCalcScoreConfigGroup.ModeParams(mode);
-            config.planCalcScore().addModeParams(thisModeParams);
+            ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
+            config.scoring().addModeParams(thisModeParams);
         });
         Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
         config.qsim().setMainModes(Sets.union(qsimModes, modes));
 
-        Set<String> networkModes = new HashSet<>(config.plansCalcRoute().getNetworkModes());
-        config.plansCalcRoute().setNetworkModes(Sets.union(networkModes, modes));
+        Set<String> networkModes = new HashSet<>(config.routing().getNetworkModes());
+        config.routing().setNetworkModes(Sets.union(networkModes, modes));
 
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("commercial_start").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("commercial_end").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("service").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("pickup").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("delivery").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("commercial_return").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("start").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("end").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("freight_start").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
-        config.planCalcScore().addActivityParams(new PlanCalcScoreConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_start").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_end").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("service").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("pickup").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("delivery").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_return").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("start").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("end").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_start").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
+        config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
 
         for (String subpopulation : List.of("LTL_trips", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
                 "FTL_trip", "FTL_kv_trip", "goodsTraffic")) {
-            config.strategy().addStrategySettings(
-                    new StrategyConfigGroup.StrategySettings()
+            config.replanning().addStrategySettings(
+                    new ReplanningConfigGroup.StrategySettings()
                             .setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
                             .setWeight(0.85)
                             .setSubpopulation(subpopulation)
             );
 
-            config.strategy().addStrategySettings(
-                    new StrategyConfigGroup.StrategySettings()
+            config.replanning().addStrategySettings(
+                    new ReplanningConfigGroup.StrategySettings()
                             .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute)
                             .setWeight(0.1)
                             .setSubpopulation(subpopulation)
