@@ -143,13 +143,13 @@
 				<param name="mode" value="car" />
 				<!-- We use -3 to fit the approximate value for Berlin -->
 				<param name="dailyMonetaryConstant" value="-3" />
-				<param name="constant" value="0.8379675427416293" />
+				<param name="constant" value="0.56" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 				<param name="monetaryDistanceRate" value="-0.000149" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
-				<param name="constant" value="-2.2644332732845336" />
+				<param name="constant" value="0.27" />
 				<!-- alpha=2, gamma=0.0 -->
 				<!-- adapted in code -->
 				<param name="marginalUtilityOfTraveling_util_hr" value="0" />
@@ -160,13 +160,13 @@
 				<param name="mode" value="pt" />
 				<!-- 49 EUR Ticket  -->
 				<param name="dailyMonetaryConstant" value="-2.35" />
-				<param name="constant" value="0.07469218978843763" />
+				<param name="constant" value="-0.38" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
-				<param name="constant" value="-0.1502904438227941" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
+				<param name="constant" value="0.33" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-5.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="walk" />
