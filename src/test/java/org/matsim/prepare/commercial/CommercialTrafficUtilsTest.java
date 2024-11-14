@@ -76,7 +76,7 @@ class CommercialTrafficUtilsTest {
 		person.getAttributes().putAttribute("origin_y", 2.0);
 		person.getAttributes().putAttribute("destination_x", 3.0);
 		person.getAttributes().putAttribute("destination_y", 4.0);
-		person.getAttributes().putAttribute("goods_type", "100");
+		person.getAttributes().putAttribute("goodsType", "100");
 		person.getAttributes().putAttribute("tons_per_year", 500.0);
 		person.getAttributes().putAttribute("origin_locationId", "originLocationId");
 		person.getAttributes().putAttribute("destination_locationId", "destinationLocationId");

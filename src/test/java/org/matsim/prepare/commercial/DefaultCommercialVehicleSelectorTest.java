@@ -34,7 +34,7 @@ class DefaultCommercialVehicleSelectorTest {
 	private Person createFreightDemandDataRelation(String transportType, int goodsType) {
 
 		Person freightDemandDataRelation = PopulationUtils.getFactory().createPerson(Id.createPersonId("exampleFreightDemandDataRelation"));
-		freightDemandDataRelation.getAttributes().putAttribute("goods_type", goodsType);
+		freightDemandDataRelation.getAttributes().putAttribute("goodsType", goodsType);
 		freightDemandDataRelation.getAttributes().putAttribute("transportType", transportType);
 		return freightDemandDataRelation;
 	}

@@ -23,7 +23,7 @@ class DefaultCommercialServiceTimeCalculatorTest {
 
 	private Person createFreightDemandDataRelation(int goodsType) {
 		Person freightDemandDataRelation = PopulationUtils.getFactory().createPerson(Id.createPersonId("exampleFreightDemandDataRelation"));
-		freightDemandDataRelation.getAttributes().putAttribute("goods_type", goodsType);
+		freightDemandDataRelation.getAttributes().putAttribute("goodsType", goodsType);
 		return freightDemandDataRelation;
 	}
 
