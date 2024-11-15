@@ -30,7 +30,7 @@
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="./metropole-ruhr-v2.0.mode-vehicles.xml"/>
+			   value="./metropole-ruhr-v2024.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
