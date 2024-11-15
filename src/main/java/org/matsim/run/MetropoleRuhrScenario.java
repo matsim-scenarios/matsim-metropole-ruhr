@@ -27,6 +27,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
+import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
@@ -58,6 +59,8 @@ import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesC
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
+import org.matsim.run.scoring.AdvancedScoringConfigGroup;
+import org.matsim.run.scoring.AdvancedScoringModule;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.VehicleType;
@@ -345,10 +348,26 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
 		// additional analysis output
-		//controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 		controler.addOverridingModule(new PtStop2StopAnalysisModule());
 
 		controler.addOverridingModule(new PtFareModule());
+
+		// AdvancedScoring as for matsim-berlin!
+		if (ConfigUtils.hasModule(controler.getConfig(), AdvancedScoringConfigGroup.class)) {
+			controler.addOverridingModule(new AdvancedScoringModule());
+		} else {
+			// if the above config group is not present we still need income dependent scoring
+			// this implementation also allows for person specific asc
+
+			// for income dependent scoring --> this works with the bicycle contrib as we don´t use the scoring in the bicycle contrib
+			controler.addOverridingModule(new AbstractModule() {
+				@Override
+				public void install() {
+					bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+				}
+			});
+		}
 
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
@@ -364,10 +383,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
 				// separate pure walk+pt from intermodal pt in mode stats etc.
 				bind(AnalysisMainModeIdentifier.class).to(IntermodalPtAnalysisModeIdentifier.class);
-
-				// for income dependent scoring --> this works with the bicycle contrib as we don´t use the scoring in the bicycle contrib
-				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
-
 			}
 		});
 

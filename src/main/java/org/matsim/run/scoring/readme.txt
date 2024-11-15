@@ -1,0 +1,1 @@
+This package is copied from berlin scenario because the code is not yet in the matsim libs. However, if you want to touch the code, please do it in the berlin repository.
