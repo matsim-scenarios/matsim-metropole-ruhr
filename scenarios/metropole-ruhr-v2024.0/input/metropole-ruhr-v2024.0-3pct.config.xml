@@ -8,8 +8,8 @@
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v2.0-3pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2.0-3pct/"/>
+		<param name="runId" value="metropole-ruhr-v2024.0-3pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.0-3pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
