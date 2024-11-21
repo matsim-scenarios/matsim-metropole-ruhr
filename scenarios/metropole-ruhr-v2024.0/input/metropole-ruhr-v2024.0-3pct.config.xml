@@ -8,8 +8,8 @@
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v2.0-3pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2.0-3pct/"/>
+		<param name="runId" value="metropole-ruhr-v2024.0-3pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.0-3pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -21,26 +21,26 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2024.0.network_resolutionHigh-with-pt.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.network_resolutionHigh-with-pt.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2024.0-3pct.plans.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-3pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="true"/>
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="./metropole-ruhr-v2.0.mode-vehicles.xml"/>
+			   value="./metropole-ruhr-v2024.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
-			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2024.0-transitSchedule.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-transitSchedule.xml.gz"/>
 		<param name="useTransit" value="true"/>
 		<param name="vehiclesFile"
-			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2024.0-transitVehicles.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-transitVehicles.xml.gz"/>
 	</module>
 	<module name="counts">
-		<param name="inputCountsFile" value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2024.0.counts.xml.gz"/>
+		<param name="inputCountsFile" value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.counts.xml.gz"/>
 		<param name="countsScaleFactor" value="0.03"/>
 	</module>
 	<module name="routing">
