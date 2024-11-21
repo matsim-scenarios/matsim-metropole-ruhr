@@ -15,21 +15,25 @@
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
+		<networkMode networkMode="car"/>
 	</vehicleType>
 	<vehicleType id="truck18t">
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
+		<networkMode networkMode="car"/>
 	</vehicleType>
 	<vehicleType id="truck40t">
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
+		<networkMode networkMode="car"/>
 	</vehicleType>
 	<vehicleType id="truck26t">
 		<length meter="7.5"/>
 		<width meter="1.0"/>
 		<passengerCarEquivalents pce="3.5"/>
+		<networkMode networkMode="car"/>
 	</vehicleType>
 	<vehicleType id="ride">
 		<attributes>
@@ -48,6 +52,7 @@
 		<maximumVelocity meterPerSecond="6.82"/> from MiD average bike speed in berlin * 2, so on most links they go 12km/h and on bike highways close to 24km/h -->
 		<maximumVelocity meterPerSecond="5"/> <!-- based on the rvr -->
 		<passengerCarEquivalents pce="0.1"/>
+		<networkMode networkMode="bike"/>
 	</vehicleType>
 
 		<!-- Specific types for commercial traffic -->

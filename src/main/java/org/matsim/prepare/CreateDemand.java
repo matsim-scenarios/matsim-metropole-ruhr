@@ -23,7 +23,7 @@ public class CreateDemand {
 	private static final Path rootFolder = Paths.get("../../shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0");
 	private static final Path heightData = rootFolder.resolve("./original-data/2021-05-29_RVR_Grid_10m.tif");
 
-	private static final Path outputFolder = Paths.get("../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input");
+	private static final Path outputFolder = Paths.get("../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input");
 
 	public static void main(String[] args) {
 
@@ -90,7 +90,7 @@ public class CreateDemand {
 		new XYToLinks().execute(
 			"--input=" + tmp,
 			"--output=" + tmp,
-			"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.network_resolutionHigh.xml.gz",
+			"--network=../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.network_resolutionHigh.xml.gz",
 			"--car-only"
 		);
 
@@ -143,7 +143,7 @@ public class CreateDemand {
 			String sampledPlans = outputPlans.replace("25pct", (s.equals("0.1") ? "0" : s) + "pct");
 			new MergePopulations().execute(
 				sampledPlans,
-				outputFolder.resolve(String.format("metropole-ruhr-v2.0-%spct.plans-commercial.xml.gz", s)).toString(),
+				outputFolder.resolve(String.format("metropole-ruhr-v2024.1-%spct.plans-commercial.xml.gz", s)).toString(),
 				"--output", sampledPlans
 			);
 		}

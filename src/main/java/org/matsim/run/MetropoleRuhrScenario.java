@@ -87,7 +87,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2.0";
+	public static final String VERSION = "v2024.1";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
