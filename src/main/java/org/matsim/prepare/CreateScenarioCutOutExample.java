@@ -1,6 +1,7 @@
 package org.matsim.prepare;
 
 
+import org.matsim.application.prepare.scenario.CreateScenarioCutOut;
 
 public class CreateScenarioCutOutExample {
 
@@ -30,6 +31,11 @@ public class CreateScenarioCutOutExample {
 			"EPSG:25832"
 		};
 
-		new org.matsim.application.prepare.scenario.CreateScenarioCutOut().execute(inputScenario);
+		if (args.length == 0) {
+			args = inputScenario;
+		}
+
+
+		new CreateScenarioCutOut().execute(args);
 	}
 }
