@@ -139,17 +139,6 @@
 			<artifactId>vsp</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
-		<dependency>
-            <groupId>com.github.matsim-org</groupId>
-            <artifactId>gtfs2matsim</artifactId>
-			<version>fc8b13954d</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.matsim</groupId>
-					<artifactId>matsim</artifactId>
-				</exclusion>
-			</exclusions>
-        </dependency>
 
 		<dependency>
             <groupId>org.apache.poi</groupId>
