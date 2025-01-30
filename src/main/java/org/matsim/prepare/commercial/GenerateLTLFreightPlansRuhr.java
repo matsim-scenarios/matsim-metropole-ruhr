@@ -135,7 +135,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		config.global().setCoordinateSystem("EPSG:25832");
 		FreightCarriersConfigGroup freightCarriersConfigGroup = ConfigUtils.addOrGetModule(config, FreightCarriersConfigGroup.class);
 		freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
-		Path outputFolderCarriers = output.resolve("carriersLTL");
+		Path outputFolderCarriers = Path.of(dataPath).getParent().resolve("carriersLTL");
 		if (!Files.exists(outputFolderCarriers)) {
 			Files.createDirectory(outputFolderCarriers);
 		}

@@ -51,6 +51,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.01")
 	private double sample;
 
+	@CommandLine.Option(names = "--generatedInputDataPath", description = "Path to the generated input data", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/output/rvr/generatedInputData")
+	private Path generatedInputDataPath;
+
 	@CommandLine.Option(names = "--pathOutputFolder", description = "Path for the output folder", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/output/rvr/testing/commercial_0.1pct")
 	private Path output;
 
@@ -125,6 +128,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				return 1;
 			}
 		}
+		if (!Files.exists(generatedInputDataPath)) {
+			try {
+				Files.createDirectories(generatedInputDataPath);
+			} catch (Exception e) {
+				log.error("Could not create output directory", e);
+				return 1;
+			}
+		}
 
 		String shapeCRS = "EPSG:25832";
 		log.info("1st step - create freight data from BUW data");
@@ -134,13 +145,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 		String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
-		if (Files.exists(output.resolve(freightDataName)) || Files.exists(freightData)) {
+		if (Files.exists(generatedInputDataPath.resolve(freightDataName)) || Files.exists(freightData)) {
 			log.warn("Freight data already exists. Skipping generation.");
 		} else {
 			new GenerateFreightDataRuhr().execute(
 				"--data", freightRawData,
 				"--KEPdata", freightRawDataKEP,
-				"--pathOutput", output.toString(),
+				"--pathOutput", generatedInputDataPath.toString(),
 				"--nameOutputDataFile", freightDataName,
 				"--shpCells", vpCellsLocation.toString()
 			);
@@ -151,7 +162,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			log.warn("Freight population already exists. Skipping generation.");
 		} else {
 			new GenerateFTLFreightPlansRuhr().execute(
-				"--data", output.resolve(freightDataName).toString(),
+				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
 				"--output", output.toString(),
 				"--nameOutputPopulation", FTLFreightPopulationName,
 				"--truck-load", "13.0",
@@ -166,7 +177,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			log.warn("Freight population already exists. Skipping generation.");
 		} else {
 			new GenerateLTLFreightPlansRuhr().execute(
-				"--data", output.resolve(freightDataName).toString(),
+				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
 				"--network", configPath.getParent().resolve(networkPath).toString(),
 				"--output", output.toString(),
 				"--nameOutputPopulation", LTLFreightPopulationName,
@@ -216,10 +227,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 		log.info("5rd step - create input data for small scale commercial traffic");
 
-		Path pathCommercialFacilities = output.resolve("commercialFacilities.xml.gz");
+		Path pathCommercialFacilities = generatedInputDataPath.resolve("commercialFacilities.xml.gz");
 		//here possible to create an implementation for ruhrAGIS data
 		LanduseDataConnectionCreator landuseDataConnectionCreator = new LanduseDataConnectionCreatorForOSM_Data();
-		Path pathDataDistributionFile = output.resolve("dataDistributionPerZone.csv");
+		Path pathDataDistributionFile = generatedInputDataPath.resolve("dataDistributionPerZone.csv");
 		if (Files.exists(pathCommercialFacilities)) {
 			log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
 		} else {
