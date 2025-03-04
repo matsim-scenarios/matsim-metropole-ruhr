@@ -12,13 +12,13 @@ public class CreateScenarioCutOutExample {
 			"--shp",
 			"/Users/gregorr/Documents/work/respos/shared-svn/projects/GlaMoBi/data/shp-files/Gladbeck.shp",
 			"--population",
-			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/intermodalTestRuns/output/rvr_base2024.0/rvr_base2024.0.output_plans.xml.gz",
+			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_plans.xml.gz",
 			"--network",
-			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/intermodalTestRuns/output/rvr_base2024.0/rvr_base2024.0.output_network.xml.gz",
+			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_network.xml.gz",
 			"--facilities",
-			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/intermodalTestRuns/output/rvr_base2024.0/rvr_base2024.0.output_facilities.xml.gz",
+			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_facilities.xml.gz",
 			"--events",
-			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/intermodalTestRuns/output/rvr_base2024.0/rvr_base2024.0.output_events.xml.gz",
+			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_events.xml.gz",
 			"--output-network",
 			"/Users/gregorr/Documents/work/stuff/testCutOut/networkGladbeck.xml.gz",
 			"--output-network-change-events",
@@ -28,14 +28,16 @@ public class CreateScenarioCutOutExample {
 			"--output-facilities",
 			"/Users/gregorr/Documents/work/stuff/testCutOut/facilitiesGladbeck.xml.gz",
 			"--input-crs",
-			"EPSG:25832"
+			"EPSG:25832",
+			"--network-modes",
+			"bike,car,freight,truck8t,truck18t,truck26t,truck40t,ride"
+
 		};
 
 		if (args.length == 0) {
 			args = inputScenario;
 		}
-
-
+	
 		new CreateScenarioCutOut().execute(args);
 	}
 }
