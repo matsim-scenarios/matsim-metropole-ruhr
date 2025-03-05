@@ -1,6 +1,7 @@
 package org.matsim.prepare;
 
 
+import org.matsim.application.prepare.population.CleanPopulation;
 import org.matsim.application.prepare.scenario.CreateScenarioCutOut;
 
 public class CreateScenarioCutOutExample {
@@ -12,13 +13,13 @@ public class CreateScenarioCutOutExample {
 			"--shp",
 			"/Users/gregorr/Documents/work/respos/shared-svn/projects/GlaMoBi/data/shp-files/Gladbeck.shp",
 			"--population",
-			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_plans.xml.gz",
+			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/calibration-2.0/calibration-2.0-3pct-new/runs/007/007.output_plans.xml.gz",
 			"--network",
-			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_network.xml.gz",
+			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/calibration-2.0/calibration-2.0-3pct-new/runs/007/007.output_network.xml.gz",
 			"--facilities",
-			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_facilities.xml.gz",
+			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/calibration-2.0/calibration-2.0-3pct-new/runs/007/007.output_facilities.xml.gz",
 			"--events",
-			"/Users/gregorr/Documents/work/stuff/testCutOut/007.output_events.xml.gz",
+			"/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/calibration-2.0/calibration-2.0-3pct-new/runs/007/007.output_events.xml.gz",
 			"--output-network",
 			"/Users/gregorr/Documents/work/stuff/testCutOut/networkGladbeck.xml.gz",
 			"--output-network-change-events",
@@ -30,14 +31,17 @@ public class CreateScenarioCutOutExample {
 			"--input-crs",
 			"EPSG:25832",
 			"--network-modes",
-			"bike,car,freight,truck8t,truck18t,truck26t,truck40t,ride"
-
+			"bike,car",
+			"--clean-modes",
+			"freight,truck8t,truck18t,truck26t,truck40t,ride"
 		};
 
 		if (args.length == 0) {
 			args = inputScenario;
 		}
-	
+
 		new CreateScenarioCutOut().execute(args);
+		new CleanPopulation().execute("--plans", "/Users/gregorr/Documents/work/stuff/testCutOut/populationGladbeck.xml.gz",
+			"--remove-activity-location", "--output", "/Users/gregorr/Documents/work/stuff/testCutOut/populationGladbeck.xml.gz");
 	}
 }
