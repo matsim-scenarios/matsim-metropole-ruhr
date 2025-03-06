@@ -79,13 +79,13 @@ public class CreateSupply_without_lines_mobimp {
 	private static final Path outputDirPublic = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/output_CreateSupply_GL/");
 	// for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
 	// private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
-/*	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/input/");
+	private static final Path outputDirCounts = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/input/");
 	private static final Path bastCountsRoot = Paths.get("shared-svn/projects/rvr-metropole-ruhr/data/BASt");
 	private static final Path longTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/long_term_counts");
 	private static final Path longTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-long-term-counts.csv");
 	private static final Path shortTermCountsRoot = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/short_term_counts");
 	private static final Path shortTermCountsIdMapping = Paths.get("shared-svn/projects/matsim-ruhrgebiet/original_data/counts/mapmatching/countId-to-nodeId-short-term-counts.csv");
-*/	private static final Path parkingShapeFile = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/Parkraum.shp");
+	private static final Path parkingShapeFile = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v2.0/original-data/20240905_Parkraum/20240905_Parkraum.shp");
 	// we use UTM-32 as coordinate system
 	private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, "EPSG:25832");
 	private static final Logger logger = LogManager.getLogger(CreateSupply_without_lines_mobimp.class);
@@ -108,7 +108,7 @@ public class CreateSupply_without_lines_mobimp {
 		// ----------------------------------------- Preparation ---------------------------------------
 
 		var outputDir = rootDirectory.resolve(outputDirPublic);
-//		var outputDirForCounts = rootDirectory.resolve(outputDirCounts);
+		var outputDirForCounts = rootDirectory.resolve(outputDirCounts);
 
 		OutputDirectoryLogging.catchLogEntries();
 		try {
@@ -125,10 +125,10 @@ public class CreateSupply_without_lines_mobimp {
 			.map(feature -> (Geometry) feature.getDefaultGeometry())
 			.collect(Collectors.toList());
 
-/*		var nodeIdsToKeep = List.of(parseNodeIdsToKeep(rootDirectory.resolve(longTermCountsIdMapping)), parseNodeIdsToKeep(rootDirectory.resolve(shortTermCountsIdMapping))).stream()
+		var nodeIdsToKeep = List.of(parseNodeIdsToKeep(rootDirectory.resolve(longTermCountsIdMapping)), parseNodeIdsToKeep(rootDirectory.resolve(shortTermCountsIdMapping))).stream()
 			.flatMap(Collection::stream)
 			.collect(Collectors.toSet());
-*/
+
 		// ----------------------------------------- Create Network ----------------------------------------------------
 
 		// ruhr area is rather large, with a mixture of urban and more rural areas
@@ -138,7 +138,7 @@ public class CreateSupply_without_lines_mobimp {
 			.setFreeSpeedFactor(0.75)
 			.setCoordinateTransformation(transformation)
 			.setIncludeLinkAtCoordWithHierarchy((coord, level) -> isIncludeLink(coord, level, ruhrGeometries, nrwGeometries))
-	//		.setPreserveNodeWithId(nodeIdsToKeep::contains)
+			.setPreserveNodeWithId(nodeIdsToKeep::contains)
 			.setAfterLinkCreated((link, tags, direction) -> onLinkCreated(link))
 			.addOverridingLinkProperties(OsmTags.SERVICE, new LinkProperties(10, 1, 10 / 3.6, 100 * 0.25, false)); // set hierarchy level for service roads to 10 to exclude them
 
