@@ -43,10 +43,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
@@ -58,24 +55,24 @@ import static org.matsim.prepare.RuhrUtils.*;
 public class CreateSupply_without_lines_mobimp {
 
 	private static final NetworkResolution networkResolution = NetworkResolution.High;
-	private static final Path osmData = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/germany-coarse_nordrhein-westfalen-2021-07-09_merged.osm.pbf");
-	private static final Path ruhrShape = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/ruhrgebiet_boundary.shp");
-	private static final Path heightData = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/2021-05-29_RVR_Grid_10m.tif");
-	private static final Path nrwShape = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/dvg2bld_nw.shp");
+	private static final Path osmData = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/osm/germany-coarse_nordrhein-westfalen-2021-07-09_merged.osm.pbf");
+	private static final Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
+	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
+	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
 	//new gtfs file provided by the rvr
 	private static final Path gtfsData1 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/20230106_gtfs_nrw_neue_servicce_ids_gefiltert_okt2023.zip");
 	//private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
 	//private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
-	private static final Path gtfsData2 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/gtfs-schienenfernverkehr-de_2021-08-19.zip");
+	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
 	private static final String gtfsDataDate1 = "2023-01-17";
 	//private static final String gtfsDataDate2 = "2021-02-04";
 	private static final String gtfsDataDate2 = "2021-08-19";
 	private static final String gtfsData1Prefix = "nrw";
 	//private static final String gtfsData2Prefix = "nwl";
 	private static final String gtfsData2Prefix = "fern";
-	private static final Path inputShapeNetwork1 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
-	private static final Path inputShapeNetwork2 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
-	private static final Path inputShapeNetwork3 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/2021-08-19_RRWN_Bestandsnetz.shp");
+	private static final Path inputShapeNetwork1 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Freizeitnetz/2021-03-05_radwegeverbindungen_VM_Freizeitnetz.shp");
+	private static final Path inputShapeNetwork2 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz/2021-03-05_radwegeverbindungen_VM_Knotenpunktnetz.shp");
+	private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz/2021-08-19_RRWN_Bestandsnetz.shp");
 	private static final Path outputDirPublic = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/output_CreateSupply_GL/");
 	// for now, we will focus on the 'Bestandsnetz'. Once, we are done with calibration, we will also generate the network for the 'Zielnetz' by replacing the previous line with the following.
 	// private static final Path inputShapeNetwork3 = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-08-19_radwegeverbindungen_RRWN_Bestandsnetz_Zielnetz/2021-08-19_RRWN_Bestandsnetz_Zielnetz.shp");
