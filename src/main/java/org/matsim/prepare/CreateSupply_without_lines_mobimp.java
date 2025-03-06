@@ -30,10 +30,6 @@ import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.core.utils.gis.ShapeFileReader;
-import org.matsim.prepare.BikeNetworkMerger;
-import org.matsim.prepare.ElevationReader;
-import org.matsim.prepare.ShpToNetwork;
-import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.prepare.counts.CombinedCountsWriter;
 import org.matsim.prepare.counts.LongTermCountsCreator;
 import org.matsim.prepare.counts.RawDataVehicleTypes;
@@ -60,7 +56,7 @@ public class CreateSupply_without_lines_mobimp {
 	private static final Path heightData = Paths.get("shared-svn/projects/matsim-metropole-ruhr/metropole-ruhr-v1.0/original-data/2021-05-29_RVR_Grid_10m.tif");
 	private static final Path nrwShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/nrw/dvg2bld_nw.shp");
 	//new gtfs file provided by the rvr
-	private static final Path gtfsData1 = Paths.get("/Users/gleich/Projekte/RVR/RVR_Run_2025-02-14/Input_CreateSupply/20230106_gtfs_nrw_neue_servicce_ids_gefiltert_okt2023.zip");
+	private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids_korrektur1.zip");
 	//private static final Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/vrr_20211118_gtfs_vrr_shapes.zip");
 	//private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-nwl-20210215.zip");
 	private static final Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
