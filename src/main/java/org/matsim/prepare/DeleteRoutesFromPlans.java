@@ -3,7 +3,6 @@ import org.matsim.application.MATSimApplication;
 import org.matsim.application.prepare.population.CleanPopulation;
 
 @MATSimApplication.Prepare({CleanPopulation.class})
-
 public class DeleteRoutesFromPlans {
 
     public static void main(String[] args) throws Exception {
