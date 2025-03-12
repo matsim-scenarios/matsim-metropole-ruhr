@@ -7,6 +7,7 @@ import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.prepare.population.PersonNetworkLinkCheck;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.FacilitiesConfigGroup;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
@@ -68,7 +69,11 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 		ParallelPersonAlgorithmUtils.run(population, Runtime.getRuntime().availableProcessors(), new Cleaner(scenario.getActivityFacilities(), scenario.getTransitSchedule()));
 
 		// Create the missing facilities once like in PrepareSim
-		new FacilitiesFromPopulation(scenario.getActivityFacilities()).run(population);
+		scenario.getConfig().facilities().setFacilitiesSource(FacilitiesConfigGroup.FacilitiesSource.onePerActivityLinkInPlansFile);
+
+		FacilitiesFromPopulation f = new FacilitiesFromPopulation(scenario);
+		f.setAssignLinksToFacilitiesIfMissing(network);
+		f.run(population);
 
 		// Write the resulting population and generated facility file
 		PopulationUtils.writePopulation(population, outputPopulationPath.toString());
