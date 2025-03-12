@@ -86,6 +86,8 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 
 			for (Plan plan : person.getPlans()) {
 
+				final List<PlanElement> planElements = plan.getPlanElements();
+
 				// Remove all pt trips
 				for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(plan)) {
 
@@ -93,8 +95,6 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 
 					if (!hasPT)
 						continue;
-
-					List<PlanElement> planElements = trip.getTripElements();
 
 					// Replaces all trip elements and inserts single leg
 					final List<PlanElement> fullTrip =
