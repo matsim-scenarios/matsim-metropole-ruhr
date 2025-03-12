@@ -51,6 +51,10 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 	@CommandLine.Option(names = "--output-facilities", description = "Path to output facilities", required = true)
 	private Path outputFacilitiesPath;
 
+	public static void main(String[] args) throws Exception {
+		new PreparePopulationForPolicy().execute(args);
+	}
+
 	@Override
 	public Integer call() throws Exception {
 
