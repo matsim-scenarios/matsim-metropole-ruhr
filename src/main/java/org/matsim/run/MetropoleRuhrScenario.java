@@ -84,7 +84,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2.0";
+	public static final String VERSION = "v2024.0";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
@@ -102,7 +102,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
+		super("./scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
 	}
 
 	/**
