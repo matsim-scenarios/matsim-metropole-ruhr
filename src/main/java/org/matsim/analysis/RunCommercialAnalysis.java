@@ -214,6 +214,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		File filePerType = new File(travelDistancesPerModeOutputFile.replace(".csv", "_perType.csv"));
 		Object2DoubleOpenHashMap<String> travelDistancesPerType = linkDemandEventHandler.getTravelDistancesPerType();
 		writeDistanceFiles(travelDistancesPerType, filePerType);
+		File filePerSubpopulation = new File(travelDistancesPerModeOutputFile.replace(".csv", "_perSubpopulation.csv"));
+		Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = linkDemandEventHandler.getTravelDistancesPerSubpopulation();
+		writeDistanceFiles(travelDistancesPerSubpopulation, filePerSubpopulation);
 	}
 
 	private static void writeDistanceFiles(Object2DoubleOpenHashMap<String> travelDistancesPerMode, File file) {

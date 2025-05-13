@@ -11,16 +11,20 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.vehicles.Vehicle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.*;
 
-public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler {
+public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler {
 
 	private final Map<Id<Link>, Object2DoubleOpenHashMap<String>> linkVolumesPerMode = new HashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerMode = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerType = new Object2DoubleOpenHashMap<>();
+	private final Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = new Object2DoubleOpenHashMap<>();
+	private final HashMap<Id<Vehicle>, String> vehicleSubpopulation = new HashMap<>();
+
 	private final Map<Integer, Object2DoubleMap<String>> relations = new HashMap<>();
 	private final Scenario scenario;
 	private final ShpOptions.Index indexZones;
@@ -68,6 +72,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		this.linkVolumesPerMode.clear();
 		this.travelDistancesPerMode.clear();
 		this.travelDistancesPerType.clear();
+		this.travelDistancesPerSubpopulation.clear();
 	}
 
 	@Override
@@ -127,6 +132,8 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 
 	@Override
 	public void handleEvent(LinkLeaveEvent event) {
+		if (event.getLinkId().toString().contains("pt_") || !vehicleSubpopulation.containsKey(event.getVehicleId()))
+			return;
 		String mode = scenario.getVehicles().getVehicles().get(event.getVehicleId()).getType().getNetworkMode();
 		Link link = scenario.getNetwork().getLinks().get(event.getLinkId());
 
@@ -134,6 +141,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		int factorForSampleOfInput = (int) (1/sampleSize);
 
 		boolean inRuhrArea = geometryRuhrArea.contains(MGC.coord2Point(link.getCoord()));
+		String modelType = null;
 		if (event.getVehicleId().toString().contains("goodsTraffic_") || event.getVehicleId().toString().contains("commercialPersonTraffic")) {
 			String modelType = "Small-Scale-Commercial-Traffic";
 			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
@@ -195,6 +203,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(mode, factorForSampleOfInput, Double::sum);
 		if (inRuhrArea) {
+			travelDistancesPerSubpopulation.mergeDouble(vehicleSubpopulation.get(event.getVehicleId()), link.getLength(), Double::sum);
 			travelDistancesPerMode.mergeDouble(mode, link.getLength(), Double::sum);
 //			travelDistancesPerMode.mergeDouble("allModes", link.getLength(), Double::sum);
 //			travelDistancesPerType.mergeDouble("allCommercialVehicles", link.getLength(), Double::sum);
@@ -209,12 +218,25 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		return travelDistancesPerMode;
 	}
 
+	public Object2DoubleOpenHashMap<String> getTravelDistancesPerSubpopulation () {
+		return travelDistancesPerSubpopulation;
+	}
 	public Object2DoubleOpenHashMap<String> getTravelDistancesPerType() {
 		return travelDistancesPerType;
 	}
 
 	public Map<Integer, Object2DoubleMap<String>> getRelations() {
 		return relations;
+	}
+
+	@Override
+	public void handleEvent(VehicleEntersTrafficEvent vehicleEntersTrafficEvent) {
+		if (vehicleEntersTrafficEvent.getLinkId().toString().contains("pt_"))
+			return;
+		String subpopulation = personMap.get(vehicleEntersTrafficEvent.getPersonId().toString()).get("subpopulation");
+		if (subpopulation.equals("person"))
+			return;
+		vehicleSubpopulation.computeIfAbsent(vehicleEntersTrafficEvent.getVehicleId(), (k) -> subpopulation);
 	}
 }
 
