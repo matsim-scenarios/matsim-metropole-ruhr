@@ -140,63 +140,38 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		boolean inRuhrArea = geometryRuhrArea.contains(MGC.coord2Point(link.getCoord()));
 		String modelType = null;
 		if (event.getVehicleId().toString().contains("goodsTraffic_") || event.getVehicleId().toString().contains("commercialPersonTraffic")) {
-			String modelType = "Small-Scale-Commercial-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Small-Scale-Commercial-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("longDistanceFreight")) {
-			String modelType = "Long-Distance-Freight-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Long-Distance-Freight-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("FTL_kv")) {
-			String modelType = "FTL_kv-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "FTL_kv-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("FTL")) {
-			String modelType = "FTL-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "FTL-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("ParcelDelivery_")) {
-			String modelType = "KEP";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "KEP";
+
 		}
 		else if (event.getVehicleId().toString().contains("WasteCollection_")) {
-			String modelType = "WasteCollection";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "WasteCollection";
 		}
 		else if (event.getVehicleId().toString().contains("GoodsType_")) {
-			String modelType = "LTL-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "LTL-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("freight_") && !event.getVehicleId().toString().contains("FTL")) {
-			String modelType = "Transit-Freight-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Transit-Freight-Traffic";
 		}
+		else if (vehicleSubpopulation.get(event.getVehicleId()).equals("person"))
+			modelType = "Person";
 
+		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble("allCommercialVehicles", factorForSampleOfInput, Double::sum);
+		if (inRuhrArea) {
+			travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
+		}
 
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(mode, factorForSampleOfInput, Double::sum);
 		if (inRuhrArea) {
