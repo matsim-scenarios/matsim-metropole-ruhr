@@ -266,7 +266,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			for (Id<Link> linkId : linkVolumesPerMode.keySet()) {
 				bw.write(linkId.toString());
 				for (String mode : headerWithModes) {
-					bw.write(";" + (int) (linkVolumesPerMode.get(linkId).getDouble(mode) / sampleSize));
+					bw.write(";" + (int) (linkVolumesPerMode.get(linkId).getDouble(mode)));
 				}
 				bw.newLine();
 			}
