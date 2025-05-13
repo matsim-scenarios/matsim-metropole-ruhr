@@ -32,7 +32,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	private final double sampleSize;
 	Map<String, Map<String, String>> personMap = new HashMap<>();
 
-	public LinkVolumeCommercialEventHandler(Scenario scenario, String personFile, double sampleSize, ShpOptions shpZones, ShpOptions shpRuhrArea) throws IOException {
+	public LinkVolumeCommercialEventHandler(Scenario scenario, String personFile, double sampleSize, ShpOptions shpZones, ShpOptions shpRuhrArea) {
 		this.indexZones = shpZones.createIndex(shpZones.getShapeCrs(), "name");
 		this.geometryRuhrArea = shpRuhrArea.getGeometry();
 		this.scenario = scenario;
@@ -92,8 +92,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 				relations.get(relations.size() - 1).put(subpopulation + "_service_Y", event.getCoord().getY());
 				relations.get(relations.size() - 1).put(subpopulation + "_start_X", Double.parseDouble(personAttributes.get("first_act_x")));
 				relations.get(relations.size() - 1).put(subpopulation + "_start_Y", Double.parseDouble(personAttributes.get("first_act_y")));
-			} else
-				throw new IllegalArgumentException("Activity type is not service");
+			}
 		}
 		else if (subpopulation.equals("longDistanceFreight") || subpopulation.equals("FTL_kv") || subpopulation.equals("FTL")) {
 			if (event.getActType().equals("freight_end")) {
@@ -126,8 +125,6 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 				relations.get(relations.size() - 1).put(subpopulation + "_pickup_Y", Double.parseDouble(personAttributes.get("first_act_y")));
 			}
 		}
-		else
-			throw new IllegalArgumentException("Subpopulation is not recognized");
 	}
 
 	@Override

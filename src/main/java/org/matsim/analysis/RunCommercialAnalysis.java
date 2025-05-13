@@ -233,7 +233,6 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			// Write the data row
 			for (int i = 0; i < headerWithModes.size(); i++) {
 				String mode = headerWithModes.get(i);
-				double test = travelDistancesPerMode.getDouble(mode) / sumOfAllDistances;
 				bw.write(String.valueOf(travelDistancesPerMode.getDouble(mode) / sumOfAllDistances));
 
 				// Add delimiter if it's not the last element
