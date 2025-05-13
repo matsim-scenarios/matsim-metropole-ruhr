@@ -11,16 +11,20 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.vehicles.Vehicle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.*;
 
-public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler {
+public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler {
 
 	private final Map<Id<Link>, Object2DoubleOpenHashMap<String>> linkVolumesPerMode = new HashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerMode = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerType = new Object2DoubleOpenHashMap<>();
+	private final Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = new Object2DoubleOpenHashMap<>();
+	private final HashMap<Id<Vehicle>, String> vehicleSubpopulation = new HashMap<>();
+
 	private final Map<Integer, Object2DoubleMap<String>> relations = new HashMap<>();
 	private final Scenario scenario;
 	private final ShpOptions.Index indexZones;
@@ -28,7 +32,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	private final double sampleSize;
 	Map<String, Map<String, String>> personMap = new HashMap<>();
 
-	public LinkVolumeCommercialEventHandler(Scenario scenario, String personFile, double sampleSize, ShpOptions shpZones, ShpOptions shpRuhrArea) throws IOException {
+	public LinkVolumeCommercialEventHandler(Scenario scenario, String personFile, double sampleSize, ShpOptions shpZones, ShpOptions shpRuhrArea) {
 		this.indexZones = shpZones.createIndex(shpZones.getShapeCrs(), "name");
 		this.geometryRuhrArea = shpRuhrArea.getGeometry();
 		this.scenario = scenario;
@@ -68,6 +72,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		this.linkVolumesPerMode.clear();
 		this.travelDistancesPerMode.clear();
 		this.travelDistancesPerType.clear();
+		this.travelDistancesPerSubpopulation.clear();
 	}
 
 	@Override
@@ -87,8 +92,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 				relations.get(relations.size() - 1).put(subpopulation + "_service_Y", event.getCoord().getY());
 				relations.get(relations.size() - 1).put(subpopulation + "_start_X", Double.parseDouble(personAttributes.get("first_act_x")));
 				relations.get(relations.size() - 1).put(subpopulation + "_start_Y", Double.parseDouble(personAttributes.get("first_act_y")));
-			} else
-				throw new IllegalArgumentException("Activity type is not service");
+			}
 		}
 		else if (subpopulation.equals("longDistanceFreight") || subpopulation.equals("FTL_kv") || subpopulation.equals("FTL")) {
 			if (event.getActType().equals("freight_end")) {
@@ -121,12 +125,12 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 				relations.get(relations.size() - 1).put(subpopulation + "_pickup_Y", Double.parseDouble(personAttributes.get("first_act_y")));
 			}
 		}
-		else
-			throw new IllegalArgumentException("Subpopulation is not recognized");
 	}
 
 	@Override
 	public void handleEvent(LinkLeaveEvent event) {
+		if (event.getLinkId().toString().contains("pt_") || !vehicleSubpopulation.containsKey(event.getVehicleId()))
+			return;
 		String mode = scenario.getVehicles().getVehicles().get(event.getVehicleId()).getType().getNetworkMode();
 		Link link = scenario.getNetwork().getLinks().get(event.getLinkId());
 
@@ -134,67 +138,44 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		int factorForSampleOfInput = (int) (1/sampleSize);
 
 		boolean inRuhrArea = geometryRuhrArea.contains(MGC.coord2Point(link.getCoord()));
+		String modelType = null;
 		if (event.getVehicleId().toString().contains("goodsTraffic_") || event.getVehicleId().toString().contains("commercialPersonTraffic")) {
-			String modelType = "Small-Scale-Commercial-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Small-Scale-Commercial-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("longDistanceFreight")) {
-			String modelType = "Long-Distance-Freight-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Long-Distance-Freight-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("FTL_kv")) {
-			String modelType = "FTL_kv-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "FTL_kv-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("FTL")) {
-			String modelType = "FTL-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "FTL-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("ParcelDelivery_")) {
-			String modelType = "KEP";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "KEP";
+
 		}
 		else if (event.getVehicleId().toString().contains("WasteCollection_")) {
-			String modelType = "WasteCollection";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "WasteCollection";
 		}
 		else if (event.getVehicleId().toString().contains("GoodsType_")) {
-			String modelType = "LTL-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "LTL-Traffic";
 		}
 		else if (event.getVehicleId().toString().contains("freight_") && !event.getVehicleId().toString().contains("FTL")) {
-			String modelType = "Transit-Freight-Traffic";
-			linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
-			if (inRuhrArea) {
-				travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-			}
+			modelType = "Transit-Freight-Traffic";
 		}
+		else if (vehicleSubpopulation.get(event.getVehicleId()).equals("person"))
+			modelType = "Person";
 
+		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble("allCommercialVehicles", factorForSampleOfInput, Double::sum);
+		if (inRuhrArea) {
+			travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
+		}
 
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(mode, factorForSampleOfInput, Double::sum);
 		if (inRuhrArea) {
+			travelDistancesPerSubpopulation.mergeDouble(vehicleSubpopulation.get(event.getVehicleId()), link.getLength(), Double::sum);
 			travelDistancesPerMode.mergeDouble(mode, link.getLength(), Double::sum);
 //			travelDistancesPerMode.mergeDouble("allModes", link.getLength(), Double::sum);
 //			travelDistancesPerType.mergeDouble("allCommercialVehicles", link.getLength(), Double::sum);
@@ -209,12 +190,25 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		return travelDistancesPerMode;
 	}
 
+	public Object2DoubleOpenHashMap<String> getTravelDistancesPerSubpopulation () {
+		return travelDistancesPerSubpopulation;
+	}
 	public Object2DoubleOpenHashMap<String> getTravelDistancesPerType() {
 		return travelDistancesPerType;
 	}
 
 	public Map<Integer, Object2DoubleMap<String>> getRelations() {
 		return relations;
+	}
+
+	@Override
+	public void handleEvent(VehicleEntersTrafficEvent vehicleEntersTrafficEvent) {
+		if (vehicleEntersTrafficEvent.getLinkId().toString().contains("pt_"))
+			return;
+		String subpopulation = personMap.get(vehicleEntersTrafficEvent.getPersonId().toString()).get("subpopulation");
+		if (subpopulation.equals("person"))
+			return;
+		vehicleSubpopulation.computeIfAbsent(vehicleEntersTrafficEvent.getVehicleId(), (k) -> subpopulation);
 	}
 }
 

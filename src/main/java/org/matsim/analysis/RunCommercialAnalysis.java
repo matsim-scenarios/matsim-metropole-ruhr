@@ -214,6 +214,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		File filePerType = new File(travelDistancesPerModeOutputFile.replace(".csv", "_perType.csv"));
 		Object2DoubleOpenHashMap<String> travelDistancesPerType = linkDemandEventHandler.getTravelDistancesPerType();
 		writeDistanceFiles(travelDistancesPerType, filePerType);
+		File filePerSubpopulation = new File(travelDistancesPerModeOutputFile.replace(".csv", "_perSubpopulation.csv"));
+		Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = linkDemandEventHandler.getTravelDistancesPerSubpopulation();
+		writeDistanceFiles(travelDistancesPerSubpopulation, filePerSubpopulation);
 	}
 
 	private static void writeDistanceFiles(Object2DoubleOpenHashMap<String> travelDistancesPerMode, File file) {
@@ -230,7 +233,6 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			// Write the data row
 			for (int i = 0; i < headerWithModes.size(); i++) {
 				String mode = headerWithModes.get(i);
-				double test = travelDistancesPerMode.getDouble(mode) / sumOfAllDistances;
 				bw.write(String.valueOf(travelDistancesPerMode.getDouble(mode) / sumOfAllDistances));
 
 				// Add delimiter if it's not the last element
@@ -264,7 +266,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			for (Id<Link> linkId : linkVolumesPerMode.keySet()) {
 				bw.write(linkId.toString());
 				for (String mode : headerWithModes) {
-					bw.write(";" + (int) (linkVolumesPerMode.get(linkId).getDouble(mode) / sampleSize));
+					bw.write(";" + (int) (linkVolumesPerMode.get(linkId).getDouble(mode)));
 				}
 				bw.newLine();
 			}
