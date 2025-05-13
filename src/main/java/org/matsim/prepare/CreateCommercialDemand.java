@@ -87,6 +87,15 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--smallScaleCommercialTrafficType", description = "Select traffic type. Options: commercialPersonTraffic, goodsTraffic, completeSmallScaleCommercialTraffic (contains both types)", defaultValue = "completeSmallScaleCommercialTraffic")
 	private String smallScaleCommercialTrafficType;
 
+	@CommandLine.Option(names = "--smallScaleCommercialGenerationOption", description = "Select generation option. Options: useExistingCarrierFileWithSolution, createNewCarrierFile, useExistingCarrierFileWithoutSolution", defaultValue = "createNewCarrierFile")
+	private String smallScaleCommercialGenerationOption;
+
+	@CommandLine.Option(names = "--nameOfExistingCarriersSmallScaleCommercial", description = "Path to the existing carriers file")
+	private String nameOfExistingCarriersSmallScaleCommercial;
+
+	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "30")
+	private int additionalTravelBufferPerIterationInMinutes;
+
 	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
 	private String freightRawData;
 
@@ -260,13 +269,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		if (Files.exists(resolve)) {
 			log.warn("Small-scale Commercial demand already exists. Skipping generation.");
 		} else {
-			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
-				configPath.toString(),
+			String[] args = {configPath.toString(),
 				"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
 				"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
 				"--sample", String.valueOf(sample),
 				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
-				"--creationOption", "createNewCarrierFile",
+				"--creationOption", smallScaleCommercialGenerationOption,
 				"--smallScaleCommercialTrafficType", smallScaleCommercialTrafficType,
 				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
 				"--zoneShapeFileNameColumn", "schluessel",
@@ -275,7 +283,19 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--network", networkPath,
 				"--nameOutputPopulation", smallScaleCommercialPopulationName,
 				"--numberOfPlanVariantsPerAgent", "5",
-				"--includeExistingModels");
+				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes)};
+			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
+				args = Arrays.copyOf(args, args.length + 2);
+				args[args.length - 2] = "--carrierFilePath";
+				args[args.length - 1] = configPath.getParent().relativize(
+					Path.of(outputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
+			}
+			else {
+				args = Arrays.copyOf(args, args.length + 1);
+				args[args.length - 1] = "--includeExistingModels";
+			}
+			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
+				args);
 
 			// TODO filter relevant agents for the small scale commercial traffic
 		}
