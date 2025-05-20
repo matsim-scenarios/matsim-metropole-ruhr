@@ -26,6 +26,7 @@ import org.matsim.facilities.ActivityFacilities;
 import org.matsim.facilities.ActivityFacility;
 import org.matsim.facilities.ActivityFacilityImpl;
 import org.matsim.facilities.OpeningTime;
+import org.matsim.vehicles.Vehicle;
 import picocli.CommandLine;
 
 import java.io.BufferedWriter;
