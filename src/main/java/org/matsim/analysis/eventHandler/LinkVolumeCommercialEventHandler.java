@@ -11,7 +11,10 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.vehicles.MatsimVehicleReader;
 import org.matsim.vehicles.Vehicle;
+import org.matsim.vehicles.VehicleUtils;
+import org.matsim.vehicles.Vehicles;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -23,6 +26,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerMode = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerType = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = new Object2DoubleOpenHashMap<>();
+	private final HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicle = new HashMap<>();
 	private final HashMap<Id<Vehicle>, String> vehicleSubpopulation = new HashMap<>();
 
 	private final Map<Integer, Object2DoubleMap<String>> relations = new HashMap<>();
@@ -31,12 +35,16 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	private final Geometry geometryRuhrArea;
 	private final double sampleSize;
 	Map<String, Map<String, String>> personMap = new HashMap<>();
+	private final Vehicles vehicles;
 
 	public LinkVolumeCommercialEventHandler(Scenario scenario, String personFile, double sampleSize, ShpOptions shpZones, ShpOptions shpRuhrArea) {
 		this.indexZones = shpZones.createIndex(shpZones.getShapeCrs(), "name");
 		this.geometryRuhrArea = shpRuhrArea.getGeometry();
 		this.scenario = scenario;
 		this.sampleSize = sampleSize;
+
+		vehicles = VehicleUtils.createVehiclesContainer();
+		new  MatsimVehicleReader(vehicles).readFile(personFile.replace("_persons.csv", "_allVehicles.xml"));
 
 		try (BufferedReader br = IOUtils.getBufferedReader(personFile)) {
 			String line = br.readLine();  // Read the header line
@@ -73,6 +81,7 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		this.travelDistancesPerMode.clear();
 		this.travelDistancesPerType.clear();
 		this.travelDistancesPerSubpopulation.clear();
+		this.travelDistancesPerVehicle.clear();
 	}
 
 	@Override
@@ -169,6 +178,8 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble("allCommercialVehicles", factorForSampleOfInput, Double::sum);
+		String vehicleType = vehicles.getVehicles().get(event.getVehicleId()).getType().getId().toString();
+		travelDistancesPerVehicle.computeIfAbsent(vehicleType, (k) -> new Object2DoubleOpenHashMap<>()).mergeDouble(event.getVehicleId().toString(), link.getLength(), Double::sum);
 		if (inRuhrArea) {
 			travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
 		}
@@ -195,6 +206,12 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	}
 	public Object2DoubleOpenHashMap<String> getTravelDistancesPerType() {
 		return travelDistancesPerType;
+	}
+	public HashMap<String, Object2DoubleOpenHashMap<String>> getTravelDistancesPerVehicle() {
+		return travelDistancesPerVehicle;
+	}
+	public HashMap<Id<Vehicle>, String> getVehicleSubpopulation() {
+		return vehicleSubpopulation;
 	}
 
 	public Map<Integer, Object2DoubleMap<String>> getRelations() {

@@ -121,6 +121,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		final String OD_zones_resultsOutputFile = analysisOutputDirectory + runId + ".OD_inZones.csv";
 		log.info("Writing OD-Zones results to: {}", OD_zones_resultsOutputFile);
 
+		final String travelDistancesPerVehicleOutputFile = analysisOutputDirectory + runId + ".travelDistances_perVehicle.csv";
+		log.info("Writing travel distances per vehicle to: {}", travelDistancesPerVehicleOutputFile);
+
 		final String relationsOutputFile = analysisOutputDirectory + runId + ".relations.csv";
 		log.info("Writing relations to: {}", relationsOutputFile);
 
@@ -156,12 +159,67 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
 		createTravelDistancesShares(travelDistancesPerModeOutputFile, linkDemandEventHandler);
 		createRelationsAnalysis(relationsOutputFile, linkDemandEventHandler);
+		createAnalysisPerVehicle(travelDistancesPerVehicleOutputFile, linkDemandEventHandler);
 //		createShpForDashboards(scenario, dirShape);
 
 		log.info("Done");
 		log.info("All output written to {}", analysisOutputDirectory);
 		log.info("-------------------------------------------------");
 		return 0;
+	}
+
+	private void createAnalysisPerVehicle(String travelDistancesPerVehicleOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler) {
+
+		HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicle = linkDemandEventHandler.getTravelDistancesPerVehicle();
+		HashMap<Id<Vehicle>, String> vehicleSubpopulations = linkDemandEventHandler.getVehicleSubpopulation();
+
+		Map<String, Integer> maxDistanceWithDepotChargingInKilometers = new HashMap<>();
+
+		// Fahrzeugtyp und zugehörige maximale Reichweite (in Kilometern)
+		maxDistanceWithDepotChargingInKilometers.put("golf1.4", 200);
+		maxDistanceWithDepotChargingInKilometers.put("vwCaddy", 120); // https://www.vw-nutzfahrzeuge.at/caddy/caddy/ehybrid
+		maxDistanceWithDepotChargingInKilometers.put("mercedes313_parcel", 440); //https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/mercedes-benz/esprinter/
+		maxDistanceWithDepotChargingInKilometers.put("mercedes313", 440);
+		maxDistanceWithDepotChargingInKilometers.put("light8t", 174);
+		maxDistanceWithDepotChargingInKilometers.put("medium18t", 395);
+		maxDistanceWithDepotChargingInKilometers.put("medium18t_parcel", 395);
+		maxDistanceWithDepotChargingInKilometers.put("waste_collection_diesel", 280);
+		maxDistanceWithDepotChargingInKilometers.put("heavy40t", 416);
+		maxDistanceWithDepotChargingInKilometers.put("truck40t", 416);
+
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(travelDistancesPerVehicleOutputFile));
+			bw.write("vehicleId;");
+			bw.write("vehicleType;");
+			bw.write("subpopulation;");
+			bw.write("distanceInKm;");
+			bw.write("distanceInKmWithDepotCharging;");
+			bw.write("shareOfTravelDistanceWithDepotCharging");
+			bw.newLine();
+			for (String vehicleType : travelDistancesPerVehicle.keySet()) {
+				Object2DoubleOpenHashMap<String> travelDistancesForVehiclesWithThisType = travelDistancesPerVehicle.get(vehicleType);
+				for (String vehicleId : travelDistancesForVehiclesWithThisType.keySet()) {
+					bw.write(vehicleId + ";");
+					bw.write(vehicleType + ";");
+					bw.write(vehicleSubpopulations.get(Id.createVehicleId(vehicleId)) + ";");
+					double traveledDistanceInKm = Math.round(travelDistancesForVehiclesWithThisType.getDouble(vehicleId)/10)/100.0;
+					bw.write(traveledDistanceInKm + ";");
+					String maxDistanceWithoutRecharging;
+					if (maxDistanceWithDepotChargingInKilometers.containsKey(vehicleType)) {
+						maxDistanceWithoutRecharging = String.valueOf(maxDistanceWithDepotChargingInKilometers.get(vehicleType));
+						bw.write(maxDistanceWithoutRecharging + ";");
+					} else {
+						throw new IllegalArgumentException("Vehicle type " + vehicleType + " not found in maxDistanceWithDepotChargingInKilometers map.");
+					}
+					bw.write(String.valueOf(
+						Math.round(traveledDistanceInKm / (maxDistanceWithDepotChargingInKilometers.get(vehicleType)) * 100) / 100.0));
+					bw.newLine();
+				}
+			}
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void createRelationsAnalysis(String relationsOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler) {
