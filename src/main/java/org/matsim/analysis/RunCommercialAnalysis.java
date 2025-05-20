@@ -209,7 +209,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			}
 			bw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Could not create output file", e);
 		}
 	}
 
@@ -240,7 +240,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			}
 			bw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Could not create output file", e);
 		}
 
 	}
@@ -292,7 +292,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			bw.newLine();
 			bw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Could not create output file", e);
 		}
 	}
 
@@ -321,7 +321,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 			}
 			bw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Could not create output file", e);
 		}
 	}
 }
