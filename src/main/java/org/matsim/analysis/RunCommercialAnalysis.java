@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.matsim.analysis.eventHandler.LinkVolumeCommercialEventHandler;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -164,19 +165,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicle = linkDemandEventHandler.getTravelDistancesPerVehicle();
 		HashMap<Id<Vehicle>, String> vehicleSubpopulations = linkDemandEventHandler.getVehicleSubpopulation();
 
-		Map<String, Integer> maxDistanceWithDepotChargingInKilometers = new HashMap<>();
-
-		// Fahrzeugtyp und zugehörige maximale Reichweite (in Kilometern)
-		maxDistanceWithDepotChargingInKilometers.put("golf1.4", 200);
-		maxDistanceWithDepotChargingInKilometers.put("vwCaddy", 120); // https://www.vw-nutzfahrzeuge.at/caddy/caddy/ehybrid
-		maxDistanceWithDepotChargingInKilometers.put("mercedes313_parcel", 440); //https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/mercedes-benz/esprinter/
-		maxDistanceWithDepotChargingInKilometers.put("mercedes313", 440);
-		maxDistanceWithDepotChargingInKilometers.put("light8t", 174);
-		maxDistanceWithDepotChargingInKilometers.put("medium18t", 395);
-		maxDistanceWithDepotChargingInKilometers.put("medium18t_parcel", 395);
-		maxDistanceWithDepotChargingInKilometers.put("waste_collection_diesel", 280);
-		maxDistanceWithDepotChargingInKilometers.put("heavy40t", 416);
-		maxDistanceWithDepotChargingInKilometers.put("truck40t", 416);
+		Map<String, Integer> maxDistanceWithDepotChargingInKilometers = createBatterieCapacitiesPerVehicleType();
 
 		try {
 			BufferedWriter bw = new BufferedWriter(new FileWriter(travelDistancesPerVehicleOutputFile));
@@ -211,6 +200,24 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		} catch (IOException e) {
 			log.error("Could not create output file", e);
 		}
+	}
+
+	@NotNull
+	private static Map<String, Integer> createBatterieCapacitiesPerVehicleType() {
+		Map<String, Integer> maxDistanceWithDepotChargingInKilometers = new HashMap<>();
+
+		// Fahrzeugtyp und zugehörige maximale Reichweite (in Kilometern)
+		maxDistanceWithDepotChargingInKilometers.put("golf1.4", 200);
+		maxDistanceWithDepotChargingInKilometers.put("vwCaddy", 120); // https://www.vw-nutzfahrzeuge.at/caddy/caddy/ehybrid
+		maxDistanceWithDepotChargingInKilometers.put("mercedes313_parcel", 440); //https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/mercedes-benz/esprinter/
+		maxDistanceWithDepotChargingInKilometers.put("mercedes313", 440);
+		maxDistanceWithDepotChargingInKilometers.put("light8t", 174);
+		maxDistanceWithDepotChargingInKilometers.put("medium18t", 395);
+		maxDistanceWithDepotChargingInKilometers.put("medium18t_parcel", 395);
+		maxDistanceWithDepotChargingInKilometers.put("waste_collection_diesel", 280);
+		maxDistanceWithDepotChargingInKilometers.put("heavy40t", 416);
+		maxDistanceWithDepotChargingInKilometers.put("truck40t", 416);
+		return maxDistanceWithDepotChargingInKilometers;
 	}
 
 	private void createRelationsAnalysis(String relationsOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler) {
