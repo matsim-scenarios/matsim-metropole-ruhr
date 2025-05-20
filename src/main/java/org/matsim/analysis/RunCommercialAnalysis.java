@@ -4,8 +4,6 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.geotools.api.feature.simple.SimpleFeature;
-import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
 import org.matsim.analysis.eventHandler.LinkVolumeCommercialEventHandler;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -18,14 +16,6 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.geotools.MGC;
-import org.matsim.core.utils.gis.PointFeatureFactory;
-import org.matsim.core.utils.gis.ShapeFileWriter;
-import org.matsim.core.utils.misc.Time;
-import org.matsim.facilities.ActivityFacilities;
-import org.matsim.facilities.ActivityFacility;
-import org.matsim.facilities.ActivityFacilityImpl;
-import org.matsim.facilities.OpeningTime;
 import org.matsim.vehicles.Vehicle;
 import picocli.CommandLine;
 
@@ -117,7 +107,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		log.info("Writing volume per link to: {}", linkDemandOutputFile);
 
 		final String travelDistancesPerModeOutputFile = analysisOutputDirectory + runId + ".travelDistancesShares.csv";
-		log.info("Writing volume per link to: {}", travelDistancesPerModeOutputFile);
+		log.info("Writing travel distances per mode to: {}", travelDistancesPerModeOutputFile);
 
 		final String OD_zones_resultsOutputFile = analysisOutputDirectory + runId + ".OD_inZones.csv";
 		log.info("Writing OD-Zones results to: {}", OD_zones_resultsOutputFile);
