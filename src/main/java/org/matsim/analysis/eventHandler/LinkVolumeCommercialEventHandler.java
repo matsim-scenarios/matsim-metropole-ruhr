@@ -21,7 +21,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.*;
 
-public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler, ActivityEndEventHandler {
+public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler, VehicleLeavesTrafficEventHandler,ActivityEndEventHandler {
 
 	private final Map<Id<Link>, Object2DoubleOpenHashMap<String>> linkVolumesPerMode = new HashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerMode = new Object2DoubleOpenHashMap<>();
@@ -29,6 +29,9 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = new Object2DoubleOpenHashMap<>();
 	private final HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicle = new HashMap<>();
 	private final HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicleInRuhrArea = new HashMap<>();
+
+	private final HashMap<Id<Vehicle>, Double> tourStartPerPerson = new HashMap<>();
+	private final HashMap<Id<Vehicle>, Double> tourEndPerPerson = new HashMap<>();
 
 	private final List<Id<Person>> currentTrips_Started_InRuhrArea = new ArrayList<>();
 	private final List<Id<Person>> currentTrips_Started_OutsideRuhrArea = new ArrayList<>();
@@ -333,15 +336,34 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		return distancesPerTrip_perPerson_all_inRuhrArea;
 	}
 
+	public HashMap<Id<Vehicle>, Double> getTourDurationPerPerson() {
+		HashMap<Id<Vehicle>, Double> tourDurationPerPerson = new HashMap<>();
+		for (Id<Vehicle> vehicleId : tourStartPerPerson.keySet()) {
+			if (tourEndPerPerson.containsKey(vehicleId)) {
+				tourDurationPerPerson.put(vehicleId, tourEndPerPerson.get(vehicleId) - tourStartPerPerson.get(vehicleId));
+			}
+		}
+		return tourDurationPerPerson;
+	}
+
+	public HashMap<Id<Vehicle>, Id<Person>> getVehicleIdToPersonId() {
+		return vehicleIdToPersonId;
+	}
+
 	@Override
-	public void handleEvent(VehicleEntersTrafficEvent vehicleEntersTrafficEvent) {
-		if (vehicleEntersTrafficEvent.getLinkId().toString().contains("pt_") || vehicleEntersTrafficEvent.getNetworkMode().equals("bike"))
+	public void handleEvent(VehicleEntersTrafficEvent event) {
+		if (event.getLinkId().toString().contains("pt_") || event.getNetworkMode().equals("bike"))
 			return;
 
-		String subpopulation = personMap.get(vehicleEntersTrafficEvent.getPersonId().toString()).get("subpopulation");
+		String subpopulation = personMap.get(event.getPersonId().toString()).get("subpopulation");
+		tourStartPerPerson.computeIfAbsent(event.getVehicleId(), (k) -> event.getTime());
+		vehicleSubpopulation.computeIfAbsent(event.getVehicleId(), (k) -> subpopulation);
+		vehicleIdToPersonId.put(event.getVehicleId(), event.getPersonId());
+	}
 
-		vehicleSubpopulation.computeIfAbsent(vehicleEntersTrafficEvent.getVehicleId(), (k) -> subpopulation);
-		vehicleIdToPersonId.put(vehicleEntersTrafficEvent.getVehicleId(), vehicleEntersTrafficEvent.getPersonId());
+	@Override
+	public void handleEvent(VehicleLeavesTrafficEvent event) {
+		tourEndPerPerson.put(event.getVehicleId(), event.getTime());
 	}
 }
 

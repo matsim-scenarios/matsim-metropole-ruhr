@@ -121,6 +121,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		final String relationsOutputFile = analysisOutputDirectory + runId + ".relations.csv";
 		log.info("Writing relations to: {}", relationsOutputFile);
 
+		final String tourDurationsOutputFile = analysisOutputDirectory + runId + ".tour_durations.csv";
+		log.info("Writing tour durations to: {}", tourDurationsOutputFile);
+
 		final String generalTravelDataOutputFile = analysisOutputDirectory + runId + ".generalTravelData.csv";
 		log.info("Writing general travel data to: {}", generalTravelDataOutputFile);
 
@@ -158,12 +161,43 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		createRelationsAnalysis(relationsOutputFile, linkDemandEventHandler);
 		createGeneralTravelDataAnalysis(generalTravelDataOutputFile, linkDemandEventHandler, scenario);
 		createAnalysisPerVehicle(travelDistancesPerVehicleOutputFile, linkDemandEventHandler);
+		createTourDurationPerVehicle(tourDurationsOutputFile, linkDemandEventHandler, scenario);
 //		createShpForDashboards(scenario, dirShape);
 
 		log.info("Done");
 		log.info("All output written to {}", analysisOutputDirectory);
 		log.info("-------------------------------------------------");
 		return 0;
+	}
+
+	private void createTourDurationPerVehicle(String tourDurationsOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler,
+											  Scenario scenario) {
+
+		HashMap<Id<Vehicle>, Double> tourDurations = linkDemandEventHandler.getTourDurationPerPerson();
+		HashMap<Id<Vehicle>, Id<Person>> vehicleToPersonId = linkDemandEventHandler.getVehicleIdToPersonId();
+
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(tourDurationsOutputFile));
+			bw.write("personId;");
+			bw.write("vehicleId;");
+			bw.write("subpopulation;");
+			bw.write("tourDurationInSeconds;");
+			bw.newLine();
+
+			for (Id<Vehicle> vehicleId : tourDurations.keySet()) {
+				Id<Person> personId = vehicleToPersonId.get(vehicleId);
+				bw.write(personId + ";");
+				bw.write(vehicleId + ";");
+				bw.write(scenario.getPopulation().getPersons().get(personId).getAttributes().getAttribute("subpopulation") + ";");
+				bw.write(tourDurations.get(vehicleId) + ";");
+				bw.newLine();
+			}
+
+			bw.close();
+		} catch (IOException e) {
+			log.error("Could not create output file", e);
+		}
+
 	}
 
 	private void createGeneralTravelDataAnalysis(String generalTravelDataOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler, Scenario scenario) {
