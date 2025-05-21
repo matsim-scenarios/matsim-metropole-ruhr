@@ -5,17 +5,40 @@ library(tidyr)
 library(scales)
 
 # CSV einlesen – angepasst für Semikolon-Trennung und DezimalPUNKT
-data <- read_delim("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_0.1pct/commercialTraffic_Run0pct/analysis/traffic/commercialTraffic_Run0pct.generalTravelData.csv",
+setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_0.1pct/commercialTraffic_Run0pct/")
+setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct/commercialTraffic_Run10pct/")
+setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/009_1pct/")
+data <- read_delim("analysis/traffic/commercialTraffic_Run0pct.generalTravelData.csv",
                    delim = ";",
                    locale = locale(decimal_mark = "."))
 
-data <- read_delim("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct/commercialTraffic_Run10pct/analysis/traffic/commercialTraffic_Run10pct.generalTravelData.csv",
+tours <- read_delim("analysis/traffic/009.tour_durations.csv",
                    delim = ";",
                    locale = locale(decimal_mark = "."))
 
-data <- read_delim("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/009_1pct/analysis/traffic/009.generalTravelData.csv",
-                   delim = ";",
-                   locale = locale(decimal_mark = "."))
+distancesPerTour <- read_delim("analysis/traffic/009.travelDistances_perVehicle.csv",
+                    delim = ";",
+                    locale = locale(decimal_mark = "."))
+
+
+data$subpopulation <- ifelse(data$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("LTL_trips"), "LTL", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("longDistanceFreight"), "Transit-GV", data$subpopulation)
+
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("LTL_trips"), "LTL", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("longDistanceFreight"), "Transit-GV", tours$subpopulation)
+
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("LTL_trips"), "LTL", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("longDistanceFreight"), "Transit-GV", distancesPerTour$subpopulation)
+
 
 # Numerische Spalten korrekt umwandeln
 data <- data %>%
@@ -161,3 +184,106 @@ ggplot(avg_combined, aes(x = Kategorie, y = Durchschnitt_km, fill = Typ)) +
     axis.text.x = element_text(angle = 45, hjust = 1),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5)
   )
+
+
+########################## Tour Dauern ##########################
+# 2. Tourdauer in Minuten umrechnen
+tours <- tours %>%
+  mutate(tourDurationMinutes = tourDurationInSeconds / 60)
+
+# Konfigurierbare Bin-Größe
+bin_width <- 60  # z. B. 30-Minuten-Intervalle
+
+# Robuste Erstellung der Bins
+max_min <- ceiling(max(tours$tourDurationMinutes, na.rm = TRUE))
+breaks <- seq(0, max_min + bin_width, by = bin_width)
+
+# Labels automatisch erzeugen
+labels <- paste0(head(breaks, -1), "–", tail(breaks, -1))
+
+# Binning mit cut()
+tours <- tours %>%
+  mutate(duration_bin = cut(tourDurationMinutes,
+                            breaks = breaks,
+                            labels = labels,
+                            include.lowest = TRUE,
+                            right = FALSE))
+
+# Histogramm mit Facetten je Subpopulation
+ggplot(tours, aes(x = duration_bin)) +
+  geom_bar(fill = "steelblue") +
+  facet_wrap(~ subpopulation) +
+  theme_minimal() +
+  labs(title = "Tourdauern je Subpopulation",
+       x = "Tourdauer (Minuten)",
+       y = "Anzahl Touren") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = comma)
+
+
+########################## Fahrtweiten ##########################
+
+# Bin-Größe und manuelle Breaks
+bin_width <- 10
+breaks <- c(0,10,20,30,40,50,60,75,90,105,120,150,180,240,300,420,540,660,780,900,Inf)
+labels <- paste0(head(breaks, -1), "–", tail(breaks, -1))
+
+# Filtern und Binning
+distancesPerTour <- distancesPerTour %>%
+  filter(subpopulation != "person") %>%
+  mutate(
+    distance_bin = cut(distanceInKm, breaks = breaks, labels = labels, include.lowest = TRUE, right = FALSE)
+  )
+
+# Konfigurierbare Bin-Größe
+
+# Histogramm mit Facetten je Subpopulation
+ggplot(distancesPerTour, aes(x = distance_bin)) +
+  geom_bar(fill = "steelblue") +
+  facet_wrap(~ subpopulation) +
+  theme_minimal() +
+  labs(title = "Fahrweiten je Tour je Subpopulation",
+       x = "Fahrweiten (km)",
+       y = "Anzahl Touren") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = comma)
+
+
+
+
+# Prozentuale Anteile berechnen
+bin_counts <- distancesPerTour %>%
+  group_by(subpopulation, distance_bin) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(subpopulation) %>%
+  mutate(
+    percentage = count / sum(count) * 100
+  )
+
+# Mittelwerte berechnen
+means <- distancesPerTour %>%
+  group_by(subpopulation) %>%
+  summarise(mean_distance = mean(distanceInKm, na.rm = TRUE))
+
+# Plot
+ggplot(bin_counts, aes(x = distance_bin, y = percentage)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ subpopulation) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")),
+            vjust = -0.3, size = 3) +
+  geom_text(
+    data = means,
+    aes(x = 1, y = Inf, label = paste0("Ø ", round(mean_distance, 1), " km")),
+    vjust = 1.5, hjust = 0, size = 3.5,
+    inherit.aes = FALSE
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Fahrweiten je Tour je Subpopulation (in %) im Modell",
+    x = "Fahrweiten (km)",
+    y = "Anteil der Touren (%)"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_y_continuous(labels = percent_format(scale = 1))  # % statt Dezimal
