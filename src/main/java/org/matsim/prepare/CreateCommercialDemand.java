@@ -120,6 +120,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
+	@CommandLine.Option(names = "--resistanceFactorForKWM", defaultValue = "0.005", description = "ResistanceFactor for the trip distribution")
+	private double resistanceFactorForKWM;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -283,7 +286,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--network", networkPath,
 				"--nameOutputPopulation", smallScaleCommercialPopulationName,
 				"--numberOfPlanVariantsPerAgent", "5",
-				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes)};
+				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
+				"--resistanceFactor", String.valueOf(resistanceFactorForKWM)};
 			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
 				args = Arrays.copyOf(args, args.length + 2);
 				args[args.length - 2] = "--carrierFilePath";
