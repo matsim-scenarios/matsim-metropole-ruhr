@@ -104,7 +104,6 @@ public class AdjustDemand implements MATSimAppCommand {
 		Population originalPopulation = PopulationUtils.readPopulation(inputFile.toString());
 	// Create a new empty population
 		Population personPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
-		personPopulation.getPersons().clear();
 
 		//only add person agents to the new population
 		for (Person person : originalPopulation.getPersons().values()) {
