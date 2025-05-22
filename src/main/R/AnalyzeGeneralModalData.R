@@ -8,15 +8,15 @@ library(scales)
 setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_0.1pct/commercialTraffic_Run0pct/")
 setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct/commercialTraffic_Run10pct/")
 setwd("C:/Users/erica/shared/matsim-metropole-ruhr/scenarios/metropole-ruhr-v2024.0/output/009_1pct/")
-data <- read_delim("analysis/traffic/commercialTraffic_Run0pct.generalTravelData.csv",
+data <- read_delim("/analysis/traffic/commercialTraffic_Run0pct.generalTravelData.csv",
                    delim = ";",
                    locale = locale(decimal_mark = "."))
 
-tours <- read_delim("analysis/traffic/009.tour_durations.csv",
+tours <- read_delim("/analysis/traffic/009.tour_durations.csv",
                    delim = ";",
                    locale = locale(decimal_mark = "."))
 
-distancesPerTour <- read_delim("analysis/traffic/009.travelDistances_perVehicle.csv",
+distancesPerTour <- read_delim("/analysis/traffic/009.travelDistances_perVehicle.csv",
                     delim = ";",
                     locale = locale(decimal_mark = "."))
 
