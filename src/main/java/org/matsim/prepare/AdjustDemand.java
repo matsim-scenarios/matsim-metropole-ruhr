@@ -55,7 +55,7 @@ public class AdjustDemand implements MATSimAppCommand {
     private boolean ignoreFilter = false;
 
 
-    @CommandLine.Option(names = "--attr-name", defaultValue = "GNcode")
+    @CommandLine.Option(names = "--attr-name", defaultValue = "id")
     private String attrName;
 
     @SuppressWarnings("FieldMayBeFinal")
