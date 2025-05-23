@@ -8,6 +8,7 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.events.*;
 import org.matsim.api.core.v01.events.handler.*;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.io.IOUtils;
@@ -20,14 +21,37 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.*;
 
-public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler {
+public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, ActivityStartEventHandler, VehicleEntersTrafficEventHandler, VehicleLeavesTrafficEventHandler,ActivityEndEventHandler {
 
 	private final Map<Id<Link>, Object2DoubleOpenHashMap<String>> linkVolumesPerMode = new HashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerMode = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerType = new Object2DoubleOpenHashMap<>();
 	private final Object2DoubleOpenHashMap<String> travelDistancesPerSubpopulation = new Object2DoubleOpenHashMap<>();
 	private final HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicle = new HashMap<>();
+	private final HashMap<String, Object2DoubleOpenHashMap<String>> travelDistancesPerVehicleInRuhrArea = new HashMap<>();
+
+	private final HashMap<Id<Vehicle>, Double> tourStartPerPerson = new HashMap<>();
+	private final HashMap<Id<Vehicle>, Double> tourEndPerPerson = new HashMap<>();
+
+	private final List<Id<Person>> currentTrips_Started_InRuhrArea = new ArrayList<>();
+	private final List<Id<Person>> currentTrips_Started_OutsideRuhrArea = new ArrayList<>();
+
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal_inRuhrArea = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming_inRuhrArea = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing_inRuhrArea = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit_inRuhrArea = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all = new HashMap<>();
+	private final HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all_inRuhrArea = new HashMap<>();
+
+	private final Object2DoubleOpenHashMap<Id<Person>> currentTrip_Distance_perPerson = new Object2DoubleOpenHashMap<>();
+	private final Object2DoubleOpenHashMap<Id<Person>> currentTrip_Distance_perPerson_inRuhrArea = new Object2DoubleOpenHashMap<>();
+
 	private final HashMap<Id<Vehicle>, String> vehicleSubpopulation = new HashMap<>();
+	private final HashMap<Id<Vehicle>, Id<Person>> vehicleIdToPersonId = new HashMap<>();
 
 	private final Map<Integer, Object2DoubleMap<String>> relations = new HashMap<>();
 	private final Scenario scenario;
@@ -82,10 +106,73 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		this.travelDistancesPerType.clear();
 		this.travelDistancesPerSubpopulation.clear();
 		this.travelDistancesPerVehicle.clear();
+		this.travelDistancesPerVehicleInRuhrArea.clear();
+		this.currentTrip_Distance_perPerson.clear();
+		this.currentTrip_Distance_perPerson_inRuhrArea.clear();
+		this.distancesPerTrip_perPerson_internal.clear();
+		this.distancesPerTrip_perPerson_internal_inRuhrArea.clear();
+		this.distancesPerTrip_perPerson_incoming.clear();
+		this.distancesPerTrip_perPerson_incoming_inRuhrArea.clear();
+		this.distancesPerTrip_perPerson_outgoing.clear();
+		this.distancesPerTrip_perPerson_outgoing_inRuhrArea.clear();
+		this.distancesPerTrip_perPerson_transit.clear();
+		this.distancesPerTrip_perPerson_transit_inRuhrArea.clear();
+		this.distancesPerTrip_perPerson_all.clear();
+		this.distancesPerTrip_perPerson_all_inRuhrArea.clear();
+		this.currentTrips_Started_InRuhrArea.clear();
+		this.currentTrips_Started_OutsideRuhrArea.clear();
+	}
+
+	@Override
+	public void handleEvent(ActivityEndEvent event) {
+		boolean inRuhrArea = geometryRuhrArea.contains(MGC.coord2Point(event.getCoord()));
+		if (inRuhrArea)
+			currentTrips_Started_InRuhrArea.add(event.getPersonId());
+		else
+			currentTrips_Started_OutsideRuhrArea.add(event.getPersonId());
 	}
 
 	@Override
 	public void handleEvent(ActivityStartEvent event) {
+		if ((currentTrips_Started_InRuhrArea.contains(event.getPersonId()) || currentTrips_Started_OutsideRuhrArea.contains(event.getPersonId())) && currentTrip_Distance_perPerson.getDouble(event.getPersonId()) > 0) {
+
+			boolean inRuhrArea = geometryRuhrArea.contains(MGC.coord2Point(event.getCoord()));
+			distancesPerTrip_perPerson_all.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+				currentTrip_Distance_perPerson.getDouble(event.getPersonId()));
+			distancesPerTrip_perPerson_all_inRuhrArea.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+				currentTrip_Distance_perPerson_inRuhrArea.getDouble(event.getPersonId()));
+			if (currentTrips_Started_InRuhrArea.contains(event.getPersonId())) {
+				if (inRuhrArea) {
+					//internal trips
+					distancesPerTrip_perPerson_internal.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson.removeDouble(event.getPersonId()));
+					distancesPerTrip_perPerson_internal_inRuhrArea.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson_inRuhrArea.removeDouble(event.getPersonId()));
+				} else {
+					// outgoing trips
+					distancesPerTrip_perPerson_outgoing.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson.removeDouble(event.getPersonId()));
+					distancesPerTrip_perPerson_outgoing_inRuhrArea.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson_inRuhrArea.removeDouble(event.getPersonId()));
+				}
+				currentTrips_Started_InRuhrArea.remove(event.getPersonId());
+			} else if (currentTrips_Started_OutsideRuhrArea.contains(event.getPersonId())) {
+				if (inRuhrArea) {
+					// incoming trips
+					distancesPerTrip_perPerson_incoming.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson.removeDouble(event.getPersonId()));
+					distancesPerTrip_perPerson_incoming_inRuhrArea.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson_inRuhrArea.removeDouble(event.getPersonId()));
+				} else {
+					// transit trips
+					distancesPerTrip_perPerson_transit.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson.removeDouble(event.getPersonId()));
+					distancesPerTrip_perPerson_transit_inRuhrArea.computeIfAbsent(event.getPersonId(), k -> new ArrayList<>()).add(
+						currentTrip_Distance_perPerson_inRuhrArea.removeDouble(event.getPersonId()));
+				}
+				currentTrips_Started_OutsideRuhrArea.remove(event.getPersonId());
+			}
+		}
 
 		String personID = event.getPersonId().toString();
 		Map<String, String> personAttributes = personMap.get(personID);
@@ -176,20 +263,21 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 		else if (vehicleSubpopulation.get(event.getVehicleId()).equals("person"))
 			modelType = "Person";
 
+		// Add the link volume for the specific modes or modelTypes
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(modelType, factorForSampleOfInput, Double::sum);
 		linkVolumesPerMode.get(event.getLinkId()).mergeDouble("allCommercialVehicles", factorForSampleOfInput, Double::sum);
+		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(mode, factorForSampleOfInput, Double::sum);
+
 		String vehicleType = vehicles.getVehicles().get(event.getVehicleId()).getType().getId().toString();
 		travelDistancesPerVehicle.computeIfAbsent(vehicleType, (k) -> new Object2DoubleOpenHashMap<>()).mergeDouble(event.getVehicleId().toString(), link.getLength(), Double::sum);
-		if (inRuhrArea) {
-			travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
-		}
 
-		linkVolumesPerMode.get(event.getLinkId()).mergeDouble(mode, factorForSampleOfInput, Double::sum);
+		currentTrip_Distance_perPerson.merge(vehicleIdToPersonId.get(event.getVehicleId()), link.getLength(), Double::sum);
 		if (inRuhrArea) {
+			currentTrip_Distance_perPerson_inRuhrArea.mergeDouble(vehicleIdToPersonId.get(event.getVehicleId()), link.getLength(), Double::sum);
+			travelDistancesPerType.mergeDouble(modelType, link.getLength(), Double::sum);
 			travelDistancesPerSubpopulation.mergeDouble(vehicleSubpopulation.get(event.getVehicleId()), link.getLength(), Double::sum);
 			travelDistancesPerMode.mergeDouble(mode, link.getLength(), Double::sum);
-//			travelDistancesPerMode.mergeDouble("allModes", link.getLength(), Double::sum);
-//			travelDistancesPerType.mergeDouble("allCommercialVehicles", link.getLength(), Double::sum);
+			travelDistancesPerVehicleInRuhrArea.computeIfAbsent(vehicleType, (k) -> new Object2DoubleOpenHashMap<>()).mergeDouble(event.getVehicleId().toString(), link.getLength(), Double::sum);
 		}
 	}
 
@@ -217,15 +305,65 @@ public class LinkVolumeCommercialEventHandler implements LinkLeaveEventHandler, 
 	public Map<Integer, Object2DoubleMap<String>> getRelations() {
 		return relations;
 	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_internal() {
+		return distancesPerTrip_perPerson_internal;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_internal_inRuhrArea() {
+		return distancesPerTrip_perPerson_internal_inRuhrArea;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_incoming() {
+		return distancesPerTrip_perPerson_incoming;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_incoming_inRuhrArea() {
+		return distancesPerTrip_perPerson_incoming_inRuhrArea;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_outgoing() {
+		return distancesPerTrip_perPerson_outgoing;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_outgoing_inRuhrArea() {
+		return distancesPerTrip_perPerson_outgoing_inRuhrArea;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_transit() {
+		return distancesPerTrip_perPerson_transit;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_transit_inRuhrArea() {
+		return distancesPerTrip_perPerson_transit_inRuhrArea;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_all() {
+		return distancesPerTrip_perPerson_all;
+	}
+	public HashMap<Id<Person>, List<Double>> getDistancesPerTrip_perPerson_all_inRuhrArea() {
+		return distancesPerTrip_perPerson_all_inRuhrArea;
+	}
+
+	public HashMap<Id<Vehicle>, Double> getTourDurationPerPerson() {
+		HashMap<Id<Vehicle>, Double> tourDurationPerPerson = new HashMap<>();
+		for (Id<Vehicle> vehicleId : tourStartPerPerson.keySet()) {
+			if (tourEndPerPerson.containsKey(vehicleId)) {
+				tourDurationPerPerson.put(vehicleId, tourEndPerPerson.get(vehicleId) - tourStartPerPerson.get(vehicleId));
+			}
+		}
+		return tourDurationPerPerson;
+	}
+
+	public HashMap<Id<Vehicle>, Id<Person>> getVehicleIdToPersonId() {
+		return vehicleIdToPersonId;
+	}
 
 	@Override
-	public void handleEvent(VehicleEntersTrafficEvent vehicleEntersTrafficEvent) {
-		if (vehicleEntersTrafficEvent.getLinkId().toString().contains("pt_"))
+	public void handleEvent(VehicleEntersTrafficEvent event) {
+		if (event.getLinkId().toString().contains("pt_") || event.getNetworkMode().equals("bike"))
 			return;
-		String subpopulation = personMap.get(vehicleEntersTrafficEvent.getPersonId().toString()).get("subpopulation");
-		if (subpopulation.equals("person"))
-			return;
-		vehicleSubpopulation.computeIfAbsent(vehicleEntersTrafficEvent.getVehicleId(), (k) -> subpopulation);
+
+		String subpopulation = personMap.get(event.getPersonId().toString()).get("subpopulation");
+		tourStartPerPerson.computeIfAbsent(event.getVehicleId(), (k) -> event.getTime());
+		vehicleSubpopulation.computeIfAbsent(event.getVehicleId(), (k) -> subpopulation);
+		vehicleIdToPersonId.put(event.getVehicleId(), event.getPersonId());
+	}
+
+	@Override
+	public void handleEvent(VehicleLeavesTrafficEvent event) {
+		tourEndPerPerson.put(event.getVehicleId(), event.getTime());
 	}
 }
 

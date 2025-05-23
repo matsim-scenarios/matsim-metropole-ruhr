@@ -9,6 +9,7 @@ import org.matsim.analysis.eventHandler.LinkVolumeCommercialEventHandler;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.api.experimental.events.EventsManager;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.matsim.application.ApplicationUtils.globFile;
 
@@ -119,6 +121,12 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		final String relationsOutputFile = analysisOutputDirectory + runId + ".relations.csv";
 		log.info("Writing relations to: {}", relationsOutputFile);
 
+		final String tourDurationsOutputFile = analysisOutputDirectory + runId + ".tour_durations.csv";
+		log.info("Writing tour durations to: {}", tourDurationsOutputFile);
+
+		final String generalTravelDataOutputFile = analysisOutputDirectory + runId + ".generalTravelData.csv";
+		log.info("Writing general travel data to: {}", generalTravelDataOutputFile);
+
 		Config config = ConfigUtils.createConfig();
 		config.vehicles().setVehiclesFile(String.valueOf(globFile(runDirectory, runId, "output_vehicles")));
 		config.network().setInputFile(String.valueOf(globFile(runDirectory, runId, "network")));
@@ -126,7 +134,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 
 		config.global().setCoordinateSystem("EPSG:25832");
 		log.info("Using coordinate system '{}'", config.global().getCoordinateSystem());
-//		config.plans().setInputFile(String.valueOf(globFile(runDirectory, runId, "plans.xml")));
+		config.plans().setInputFile("scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-10pct.plans-initial.xml.gz");
 		config.eventsManager().setNumberOfThreads(null);
 		config.eventsManager().setEstimatedNumberOfEvents(null);
 		config.global().setNumberOfThreads(4);
@@ -148,16 +156,186 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		new MatsimEventsReader(eventsManager).readFile(eventsFile);
 		log.info("Closing events file...");
 
-		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
+		createGeneralTravelDataAnalysis(generalTravelDataOutputFile, linkDemandEventHandler, scenario);
 		createTravelDistancesShares(travelDistancesPerModeOutputFile, linkDemandEventHandler);
+		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
 		createRelationsAnalysis(relationsOutputFile, linkDemandEventHandler);
 		createAnalysisPerVehicle(travelDistancesPerVehicleOutputFile, linkDemandEventHandler);
+		createTourDurationPerVehicle(tourDurationsOutputFile, linkDemandEventHandler, scenario);
 //		createShpForDashboards(scenario, dirShape);
 
 		log.info("Done");
 		log.info("All output written to {}", analysisOutputDirectory);
 		log.info("-------------------------------------------------");
 		return 0;
+	}
+
+	private void createTourDurationPerVehicle(String tourDurationsOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler,
+											  Scenario scenario) {
+
+		HashMap<Id<Vehicle>, Double> tourDurations = linkDemandEventHandler.getTourDurationPerPerson();
+		HashMap<Id<Vehicle>, Id<Person>> vehicleToPersonId = linkDemandEventHandler.getVehicleIdToPersonId();
+
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(tourDurationsOutputFile));
+			bw.write("personId;");
+			bw.write("vehicleId;");
+			bw.write("subpopulation;");
+			bw.write("tourDurationInSeconds;");
+			bw.newLine();
+
+			for (Id<Vehicle> vehicleId : tourDurations.keySet()) {
+				Id<Person> personId = vehicleToPersonId.get(vehicleId);
+				bw.write(personId + ";");
+				bw.write(vehicleId + ";");
+				bw.write(scenario.getPopulation().getPersons().get(personId).getAttributes().getAttribute("subpopulation") + ";");
+				bw.write(tourDurations.get(vehicleId) + ";");
+				bw.newLine();
+			}
+
+			bw.close();
+		} catch (IOException e) {
+			log.error("Could not create output file", e);
+		}
+
+	}
+
+	private void createGeneralTravelDataAnalysis(String generalTravelDataOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler, Scenario scenario) {
+
+		HashMap<Id<Vehicle>, String> subpopulationPerVehicle = linkDemandEventHandler.getVehicleSubpopulation();
+		Map<String, List<Id<Vehicle>>> vehiclesPerSubpopulation = subpopulationPerVehicle.entrySet().stream()
+			.collect(Collectors.groupingBy(
+				Map.Entry::getValue,
+				Collectors.mapping(Map.Entry::getKey, Collectors.toList())
+			));
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal = linkDemandEventHandler.getDistancesPerTrip_perPerson_internal();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming = linkDemandEventHandler.getDistancesPerTrip_perPerson_incoming();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing = linkDemandEventHandler.getDistancesPerTrip_perPerson_outgoing();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit = linkDemandEventHandler.getDistancesPerTrip_perPerson_transit();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all = linkDemandEventHandler.getDistancesPerTrip_perPerson_all();
+
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal_inRuhrArea = linkDemandEventHandler.getDistancesPerTrip_perPerson_internal_inRuhrArea();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming_inRuhrArea = linkDemandEventHandler.getDistancesPerTrip_perPerson_incoming_inRuhrArea();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing_inRuhrArea = linkDemandEventHandler.getDistancesPerTrip_perPerson_outgoing_inRuhrArea();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit_inRuhrArea = linkDemandEventHandler.getDistancesPerTrip_perPerson_transit_inRuhrArea();
+		HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all_inRuhrArea = linkDemandEventHandler.getDistancesPerTrip_perPerson_all_inRuhrArea();
+
+		try {
+			// _Intern: internal trips (start and end inside the area)
+			// _Incoming: incoming trips (start outside the area and end inside the area)
+			// _Outgoing: incoming trips (start inside the area and end outside the area)
+			// _Transit: transit trips (start and end inside the area)
+			// _all: all trips
+			BufferedWriter bw = new BufferedWriter(new FileWriter(generalTravelDataOutputFile));
+			bw.write("subpopulation;");
+			bw.write("numberOfAgents;");
+
+			bw.write("numberOfTrips_Intern;");
+			bw.write("numberOfTrips_Incoming;");
+			bw.write("numberOfTrips_Outgoing;");
+			bw.write("numberOfTrips_Transit;");
+			bw.write("numberOfTrips_all;");
+
+			bw.write("traveledDistance_Intern;");
+			bw.write("traveledDistance_Incoming;");
+			bw.write("traveledDistance_Outgoing;");
+			bw.write("traveledDistance_Transit;");
+			bw.write("traveledDistance_all;");
+
+			bw.write("traveledDistanceInRVR_area_Intern;");
+			bw.write("traveledDistanceInRVR_area_Incoming;");
+			bw.write("traveledDistanceInRVR_area_Outgoing;");
+			bw.write("traveledDistanceInRVR_area_Transit;");
+			bw.write("traveledDistanceInRVR_area_all;");
+
+//			bw.write("averageTripsPerAgent_Intern;");
+//			bw.write("averageTripsPerAgent_Incoming;");
+//			bw.write("averageTripsPerAgent_Outgoing;");
+//			bw.write("averageTripsPerAgent_Transit;");
+			bw.write("averageTripsPerAgent_all;");
+
+			bw.write("averageDistancePerTrip_Intern;");
+			bw.write("averageDistancePerTrip_Incoming;");
+			bw.write("averageDistancePerTrip_Outgoing;");
+			bw.write("averageDistancePerTrip_Transit;");
+			bw.write("averageDistancePerTrip_all;");
+			bw.newLine();
+
+			for (String subpopulation : vehiclesPerSubpopulation.keySet()){
+				bw.write(subpopulation + ";");
+				int numberOfAgentsInSubpopulation = vehiclesPerSubpopulation.get(subpopulation).size();
+				bw.write(numberOfAgentsInSubpopulation + ";");
+
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_internal, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_incoming, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_outgoing, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_transit, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_all, subpopulation, scenario);
+
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_internal_inRuhrArea_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_internal_inRuhrArea, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_incoming_inRuhrArea_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_incoming_inRuhrArea, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_outgoing_inRuhrArea_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_outgoing_inRuhrArea, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_transit_inRuhrArea_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_transit_inRuhrArea, subpopulation, scenario);
+				HashMap<Id<Person>, List<Double>> distancesPerTrip_perPerson_all_inRuhrArea_perSubpopulation = filterBySubpopulation(distancesPerTrip_perPerson_all_inRuhrArea, subpopulation, scenario);
+
+				int numberOfTrips_internal = distancesPerTrip_perPerson_internal_perSubpopulation.values().stream().mapToInt(List::size).sum();
+				int numberOfTrips_incoming = distancesPerTrip_perPerson_incoming_perSubpopulation.values().stream().mapToInt(List::size).sum();
+				int numberOfTrips_outgoing = distancesPerTrip_perPerson_outgoing_perSubpopulation.values().stream().mapToInt(List::size).sum();
+				int numberOfTrips_transit = distancesPerTrip_perPerson_transit_perSubpopulation.values().stream().mapToInt(List::size).sum();
+				int numberOfTrips_all = distancesPerTrip_perPerson_all_perSubpopulation.values().stream().mapToInt(List::size).sum();
+
+				bw.write(numberOfTrips_internal + ";");
+				bw.write(numberOfTrips_incoming + ";");
+				bw.write(numberOfTrips_outgoing + ";");
+				bw.write(numberOfTrips_transit + ";");
+				bw.write(numberOfTrips_all + ";");
+
+				double traveledDistance_internal = distancesPerTrip_perPerson_internal_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum();
+				double traveledDistance_incoming = distancesPerTrip_perPerson_incoming_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum();
+				double traveledDistance_outgoing = distancesPerTrip_perPerson_outgoing_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum();
+				double traveledDistance_transit = distancesPerTrip_perPerson_transit_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum();
+				double traveledDistance_all = distancesPerTrip_perPerson_all_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum();
+
+				bw.write(traveledDistance_internal + ";");
+				bw.write(traveledDistance_incoming + ";");
+				bw.write(traveledDistance_outgoing + ";");
+				bw.write(traveledDistance_transit + ";");
+				bw.write(traveledDistance_all + ";");
+
+				bw.write(distancesPerTrip_perPerson_internal_inRuhrArea_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum() + ";");
+				bw.write(distancesPerTrip_perPerson_incoming_inRuhrArea_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum() + ";");
+				bw.write(distancesPerTrip_perPerson_outgoing_inRuhrArea_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum() + ";");
+				bw.write(distancesPerTrip_perPerson_transit_inRuhrArea_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum() + ";");
+				bw.write(distancesPerTrip_perPerson_all_inRuhrArea_perSubpopulation.values().stream().flatMapToDouble(list -> list.stream().mapToDouble(Double::doubleValue)).sum() + ";");
+
+				bw.write(numberOfTrips_all == 0 ? "0" : (double) numberOfTrips_all / numberOfAgentsInSubpopulation + ";");
+
+				bw.write(numberOfTrips_internal == 0 ? "0;" : traveledDistance_internal / numberOfTrips_internal + ";");
+				bw.write(numberOfTrips_incoming == 0 ? "0;" : traveledDistance_incoming / numberOfTrips_incoming + ";");
+				bw.write(numberOfTrips_outgoing == 0 ? "0;" : traveledDistance_outgoing / numberOfTrips_outgoing + ";");
+				bw.write(numberOfTrips_transit == 0 ? "0;" : traveledDistance_transit / numberOfTrips_transit + ";");
+				bw.write(numberOfTrips_all == 0 ? "0" : String.valueOf(traveledDistance_all / numberOfTrips_all));
+
+				bw.newLine();
+			}
+
+
+			bw.close();
+		} catch (IOException e) {
+			log.error("Could not create output file", e);
+		}
+
+	}
+
+	private HashMap<Id<Person>, List<Double>> filterBySubpopulation(HashMap<Id<Person>, List<Double>> distancesPerTripPerPerson, String subpopulation, Scenario scenario) {
+		HashMap<Id<Person>, List<Double>> filteredList = new HashMap<>();
+		distancesPerTripPerPerson.keySet().stream().filter(personId -> {
+			Person person = scenario.getPopulation().getPersons().get(personId);
+			return person.getAttributes().getAttribute("subpopulation").equals(subpopulation);
+		}).forEach(personId -> {
+			filteredList.put(personId, distancesPerTripPerPerson.get(personId));
+		});
+		return filteredList;
 	}
 
 	private void createAnalysisPerVehicle(String travelDistancesPerVehicleOutputFile, LinkVolumeCommercialEventHandler linkDemandEventHandler) {
@@ -208,6 +386,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 
 		// Fahrzeugtyp und zugehörige maximale Reichweite (in Kilometern)
 		maxDistanceWithDepotChargingInKilometers.put("golf1.4", 200);
+		maxDistanceWithDepotChargingInKilometers.put("car", 200);
 		maxDistanceWithDepotChargingInKilometers.put("vwCaddy", 120); // https://www.vw-nutzfahrzeuge.at/caddy/caddy/ehybrid
 		maxDistanceWithDepotChargingInKilometers.put("mercedes313_parcel", 440); //https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/mercedes-benz/esprinter/
 		maxDistanceWithDepotChargingInKilometers.put("mercedes313", 440);
