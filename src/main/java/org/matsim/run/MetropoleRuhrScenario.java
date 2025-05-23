@@ -431,6 +431,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private static void matchCounts(Counts<Link> mmCounts, Network network, Double factor ) {
 		for (MeasurementLocation<Link> measurementLocation: mmCounts.getMeasureLocations().values()) {
 			Measurable vol_car = measurementLocation.getVolumesForMode(TransportMode.car);
+			System.out.println(measurementLocation.getId());
+			System.out.println(measurementLocation.getAttributes().getAttribute("location"));
 
 			OptionalDouble maxVolume = OptionalDouble.empty();
 			int maxHour = -1;
@@ -452,7 +454,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				System.out.println("No volume data found.");
 			}
 
-			Link link = network.getLinks().get(measurementLocation.getId());
+			Link link = network.getLinks().get(Id.createLinkId(measurementLocation.getId().toString()));
 			if (link.getCapacity() < maxVolume.getAsDouble()) {
 				network.getLinks().get(measurementLocation.getId()).setCapacity(link.getCapacity() * factor );
 			}
