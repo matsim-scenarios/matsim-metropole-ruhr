@@ -336,15 +336,16 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		bike.setNetworkMode(TransportMode.bike);
 
 		//adjust primary and trunk link speeds
+		log.info("adjustNetworkSpeed om primary and trunk with " + freeSpeedFactor);
 		adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
 
 		//reduce capacity on count stations that are overloaded
 		Counts counts = new Counts();
 		new MatsimCountsReader(counts).readFile(scenario.getConfig().counts().getCountsFileName());
-		matchCounts(counts, scenario.getNetwork(), adjustCapacityOnCountStationsFactor);
-
-		NetworkUtils.writeNetwork(scenario.getNetwork(), "testNetwork.xml.gz");
-
+		if (adjustCapacityOnCountStationsFactor != 1.0)  {
+			log.info("adjustCapacityOnCountStationsFactor: " + adjustCapacityOnCountStationsFactor);
+			matchCounts(counts, scenario.getNetwork(), adjustCapacityOnCountStationsFactor);
+		}
 	}
 
 	@Override
