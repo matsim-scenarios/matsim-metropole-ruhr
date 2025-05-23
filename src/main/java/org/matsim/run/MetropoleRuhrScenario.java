@@ -49,6 +49,7 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -99,8 +100,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--free-speed-factor-for-fast-primary", description = "This is additional free speed factor for primary and trunk links > 50 km/h ", defaultValue = "1.0")
 	private double freeSpeedFactor;
 
-	@CommandLine.Option(names = "--adjust-capcity-on-count-stations", description = "Adjust capacity on count stations", defaultValue = "false")
-	private boolean adjustCapacityOnCountStations;
+	@CommandLine.Option(names = "--adjust-capacity-on-count-stations", description = "Adjust capacity on count stations", defaultValue = "1.0")
+	private double adjustCapacityOnCountStationsFactor;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -337,11 +338,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		//adjust primary and trunk link speeds
 		adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
 
-		if (adjustCapacityOnCountStations) {
-			Counts counts = new Counts();
-			new MatsimCountsReader(counts).readFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_counts.xml");
-			matchCounts(counts, scenario.getNetwork());
-		}
+		//reduce capacity on count stations that are overloaded
+		Counts counts = new Counts();
+		new MatsimCountsReader(counts).readFile(scenario.getConfig().counts().getCountsFileName());
+		matchCounts(counts, scenario.getNetwork(), adjustCapacityOnCountStationsFactor);
+
+		NetworkUtils.writeNetwork(scenario.getNetwork(), "testNetwork.xml.gz");
 
 	}
 
@@ -426,11 +428,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	 * It then set the maximum capacity for that link to this highest volume.
 	 */
 
-	private static void matchCounts(Counts<Link> mmCounts, Network network ) {
+	private static void matchCounts(Counts<Link> mmCounts, Network network, Double factor ) {
 		for (MeasurementLocation<Link> measurementLocation: mmCounts.getMeasureLocations().values()) {
-			measurementLocation.getId();
-			Link link = network.getLinks().get(measurementLocation.getId());
 			Measurable vol_car = measurementLocation.getVolumesForMode(TransportMode.car);
+
 			OptionalDouble maxVolume = OptionalDouble.empty();
 			int maxHour = -1;
 
@@ -450,6 +451,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			} else {
 				System.out.println("No volume data found.");
 			}
+
+			Link link = network.getLinks().get(measurementLocation.getId());
+			if (link.getCapacity() < maxVolume.getAsDouble()) {
+				network.getLinks().get(measurementLocation.getId()).setCapacity(link.getCapacity() * factor );
+			}
+
 		}
 
 	}
