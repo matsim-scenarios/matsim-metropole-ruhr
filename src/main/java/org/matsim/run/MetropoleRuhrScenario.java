@@ -430,33 +430,35 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	private static void matchCounts(Counts<Link> mmCounts, Network network, Double factor ) {
 		for (MeasurementLocation<Link> measurementLocation: mmCounts.getMeasureLocations().values()) {
+
 			Measurable vol_car = measurementLocation.getVolumesForMode(TransportMode.car);
-			System.out.println(measurementLocation.getId());
-			System.out.println(measurementLocation.getAttributes().getAttribute("location"));
+			Measurable vol_truck = measurementLocation.getVolumesForMode("truck");
 
 			OptionalDouble maxVolume = OptionalDouble.empty();
 			int maxHour = -1;
 
 			for (int ii = 1; ii <= 24; ii++) {
-				OptionalDouble volume = vol_car.getAtHour(ii);
-				if (volume != null) {
-					OptionalDouble value = volume;
+				OptionalDouble volumeCar = vol_car.getAtHour(ii);
+				OptionalDouble volumeTruck = vol_truck.getAtHour(ii);
+
+				if (volumeCar != null && volumeTruck != null) {
+					OptionalDouble value = OptionalDouble.of(volumeCar.getAsDouble() + volumeTruck.getAsDouble());
 					if (maxVolume.isEmpty() || value.getAsDouble() > maxVolume.getAsDouble()) {
-						maxVolume = volume;
+						maxVolume = value;
 						maxHour = ii;
 					}
 				}
 			}
 
 			if (maxVolume.isPresent()) {
-				System.out.println("Maximum volume: " + maxVolume.getAsDouble() + " at hour " + maxHour + "for the link" +  measurementLocation.getId());
+				System.out.println("Maximum volume: " + maxVolume.getAsDouble() + " at hour " + maxHour + "for the link" +  measurementLocation.getRefId());
 			} else {
 				System.out.println("No volume data found.");
 			}
 
-			Link link = network.getLinks().get(Id.createLinkId(measurementLocation.getId().toString()));
+			Link link = network.getLinks().get(Id.createLinkId(measurementLocation.getRefId().toString()));
 			if (link.getCapacity() < maxVolume.getAsDouble()) {
-				network.getLinks().get(measurementLocation.getId()).setCapacity(link.getCapacity() * factor );
+				network.getLinks().get(measurementLocation.getRefId()).setCapacity(link.getCapacity() * factor );
 			}
 
 		}
