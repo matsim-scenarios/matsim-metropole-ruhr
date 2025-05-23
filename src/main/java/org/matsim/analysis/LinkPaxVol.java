@@ -19,9 +19,14 @@ public class LinkPaxVol {
 	public static void main(String[] args) {
 
 		//set the path to the events file
-		String eventsFile = "";
+		String eventsFile = "/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_events.xml.gz";
 		//set the path to the config file
-		Config config = ConfigUtils.loadConfig("");
+		Config config = ConfigUtils.loadConfig("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_config.xml");
+		config.network().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_network.xml.gz");
+		config.plans().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_plans.xml.gz");
+		config.transit().setTransitScheduleFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_transitSchedule.xml.gz");
+		config.transit().setVehiclesFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_transitVehicles.xml.gz");
+		config.vehicles().setVehiclesFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_vehicles.xml.gz");
 		//load the scenario
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		// event reader add event handler  for linkPaxVolumes
