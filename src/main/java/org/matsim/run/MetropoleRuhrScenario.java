@@ -32,6 +32,8 @@ import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -93,6 +95,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
+	//default value of 1 to ensure backwards compatibility
+	@CommandLine.Option(names = "--free-speed-factor-for-fast-primary", description = "This is additional free speed factor for primary and trunk links > 50 km/h ", defaultValue = "1.0")
+	private double freeSpeedFactor;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -325,6 +330,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
+
+		//adjust primary and trunk link speeds
+		adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
 	}
 
 	@Override
@@ -383,4 +391,20 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new BicycleModule());
 	}
 
+	 /*
+	  * We use this method to adjust the free speed of the primary and trunk links in the network.
+	  * This is because we had to high traffic volumes on these links in the simulation.
+	  * We observed that many primary and trunk links had not been adjusted by CreateSupply.class.
+	 */
+	private static void adjustNetworkSpeed(Network network, double factor) {
+		for (Link link: network.getLinks().values()) {
+			String type = (String) link.getAttributes().getAttribute("type");
+			if (type != null && (type.contains("trunk") || type.contains("primary"))) {
+				// this is only valid as long as the SupersonicOsmNetworkReader does the opposite.
+				if (link.getFreespeed() >= 51 / 3.6)  {
+					link.setFreespeed(link.getFreespeed() * factor);
+				}
+			}
+		}
+	}
 }
