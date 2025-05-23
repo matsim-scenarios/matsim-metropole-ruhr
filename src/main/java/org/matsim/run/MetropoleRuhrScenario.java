@@ -36,6 +36,7 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
+import org.matsim.application.options.CountsOptions;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
@@ -51,6 +52,7 @@ import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
+import org.matsim.counts.*;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsConfigGroup;
@@ -67,14 +69,12 @@ import picocli.CommandLine;
 import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
 import org.matsim.contrib.vsp.pt.fare.FareZoneBasedPtFareParams;
 import org.matsim.contrib.vsp.pt.fare.PtFareConfigGroup;
+import playground.vsp.andreas.osmBB.convertCountsData.ReadCountStations;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -98,6 +98,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	//default value of 1 to ensure backwards compatibility
 	@CommandLine.Option(names = "--free-speed-factor-for-fast-primary", description = "This is additional free speed factor for primary and trunk links > 50 km/h ", defaultValue = "1.0")
 	private double freeSpeedFactor;
+
+	@CommandLine.Option(names = "--adjust-capcity-on-count-stations", description = "Adjust capacity on count stations", defaultValue = "false")
+	private boolean adjustCapacityOnCountStations;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -333,6 +336,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		//adjust primary and trunk link speeds
 		adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
+
+		if (adjustCapacityOnCountStations) {
+			Counts counts = new Counts();
+			new MatsimCountsReader(counts).readFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_counts.xml");
+			matchCounts(counts, scenario.getNetwork());
+		}
+
 	}
 
 	@Override
@@ -395,16 +405,53 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	  * We use this method to adjust the free speed of the primary and trunk links in the network.
 	  * This is because we had to high traffic volumes on these links in the simulation.
 	  * We observed that many primary and trunk links had not been adjusted by CreateSupply.class.
+	  * This method will correct that.
 	 */
 	private static void adjustNetworkSpeed(Network network, double factor) {
 		for (Link link: network.getLinks().values()) {
 			String type = (String) link.getAttributes().getAttribute("type");
 			if (type != null && (type.contains("trunk") || type.contains("primary"))) {
-				// this is only valid as long as the SupersonicOsmNetworkReader does the opposite.
+				// the 0.75 is to make it consistent with the other primary and trunk links, that are adjusted in the SuperSonicOsmNetworkReader
 				if (link.getFreespeed() >= 51 / 3.6)  {
+					link.setFreespeed(link.getFreespeed() * factor * 0.75);
+				} else {
 					link.setFreespeed(link.getFreespeed() * factor);
 				}
 			}
 		}
 	}
+
+	/*
+	 * This method looks for the highes volume for each link in the counts object.
+	 * It then set the maximum capacity for that link to this highest volume.
+	 */
+
+	private static void matchCounts(Counts<Link> mmCounts, Network network ) {
+		for (MeasurementLocation<Link> measurementLocation: mmCounts.getMeasureLocations().values()) {
+			measurementLocation.getId();
+			Link link = network.getLinks().get(measurementLocation.getId());
+			Measurable vol_car = measurementLocation.getVolumesForMode(TransportMode.car);
+			OptionalDouble maxVolume = OptionalDouble.empty();
+			int maxHour = -1;
+
+			for (int ii = 1; ii <= 24; ii++) {
+				OptionalDouble volume = vol_car.getAtHour(ii);
+				if (volume != null) {
+					OptionalDouble value = volume;
+					if (maxVolume.isEmpty() || value.getAsDouble() > maxVolume.getAsDouble()) {
+						maxVolume = volume;
+						maxHour = ii;
+					}
+				}
+			}
+
+			if (maxVolume.isPresent()) {
+				System.out.println("Maximum volume: " + maxVolume.getAsDouble() + " at hour " + maxHour + "for the link" +  measurementLocation.getId());
+			} else {
+				System.out.println("No volume data found.");
+			}
+		}
+
+	}
+
 }
