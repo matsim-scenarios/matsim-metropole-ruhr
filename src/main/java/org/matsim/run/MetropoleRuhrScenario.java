@@ -486,13 +486,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				// We do this because the simulated traffic should not exceed the observed traffic in order to match the counts (better).
 				log.info("Adjusting capacity for link {}: simulated traffic ({}) > observed traffic ({}). Setting capacity to observed traffic.", link.getId(), simulated, observed);
 				log.info("Link {}: old capacity = {}, new capacity = {}", link.getId(), link.getCapacity(), observed);
-				capacityChanges.add(new CapacityChange("Bast", link.getId(), simulated, observed, link.getCapacity(), observed));
 
 				if(observed>link.getCapacity()){
 					log.info("This seems unplausible, as the observed traffic is higher than the current capacity. NOT adjusting capacity to observed traffic.");
-					break;
+					capacityChanges.add(new CapacityChange("Bast", link.getId(), simulated, observed, link.getCapacity(), link.getCapacity()));
+					continue;
 				}
-
+				capacityChanges.add(new CapacityChange("Bast", link.getId(), simulated, observed, link.getCapacity(), observed));
 				link.setCapacity(observed);
 			} else {
 				// If the simulated traffic is lower than the observed traffic, we do not adjust the capacity.
@@ -542,13 +542,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				// We do this because the dailySimulated traffic should not exceed the dailyObserved traffic in order to match the counts (better).
 				log.info("Adjusting capacity for link {}: dailySimulated traffic ({}) > dailyObserved traffic ({}). Setting capacity to dailyObserved traffic.", link.getId(), dailySimulated, dailyObserved);
 				log.info("Link {}: old capacity = {}, new capacity = {}", link.getId(), link.getCapacity(), dailyObserved * factor);
-				capacityChanges.add(new CapacityChange("dtv", link.getId(), dailySimulated * factor, dailyObserved * factor, link.getCapacity(), dailyObserved * factor));
 
-				if(dailyObserved * factor>link.getCapacity()){
+				if(dailyObserved * factor > link.getCapacity()){
 					log.info("This seems unplausible, as the observed traffic is higher than the current capacity. NOT adjusting capacity to observed traffic.");
-					break;
+					capacityChanges.add(new CapacityChange("dtv", link.getId(), dailySimulated * factor, dailyObserved * factor, link.getCapacity(), link.getCapacity()));
+					continue;
 				}
-
+				capacityChanges.add(new CapacityChange("dtv", link.getId(), dailySimulated * factor, dailyObserved * factor, link.getCapacity(), dailyObserved * factor));
 				link.setCapacity(dailyObserved * factor);
 			} else {
 				capacityChanges.add(new CapacityChange("dtv", link.getId(), dailySimulated * factor, dailyObserved * factor, link.getCapacity(), link.getCapacity()));
@@ -589,7 +589,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	private static Map<Id<Link>, DtvCountEntry> readDtvCountsCsvFile(Path csvFile) {
 		String line;
-		String csvSplitBy = ",";
+		String csvSplitBy = ";";
 
 		Map<Id<Link>, DtvCountEntry> result = new HashMap<>();
 		try (BufferedReader br = new BufferedReader(new FileReader(String.valueOf(csvFile)))) {
@@ -603,11 +603,11 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				// Id zurück
 				Id<Link> linkId_backward = Id.createLinkId(fields[1]);
 
-				int observedPkw = Integer.parseInt(fields[2].replace("\"", ""));
-				int observedLkw = Integer.parseInt(fields[3].replace("\"", ""));
+				double observedPkw = Double.parseDouble(fields[2].replace("\"", ""));
+				double observedLkw = Double.parseDouble(fields[3].replace("\"", ""));
 
-				int simulatedPkw = Integer.parseInt(fields[6].replace("\"", "")); // (6!!)
-				int simulatedLkw = Integer.parseInt(fields[5].replace("\"", "")); // (5!!)
+				double simulatedPkw = Double.parseDouble(fields[6].replace("\"", "")); // (6!!)
+				double simulatedLkw = Double.parseDouble(fields[5].replace("\"", "")); // (5!!)
 
 				// We assume that the observed traffic is split evenly between forward and backward directions
 				DtvCountEntry forwardEntry = new DtvCountEntry(observedPkw / 2, observedLkw / 2, simulatedPkw / 2, simulatedLkw / 2);
@@ -629,7 +629,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private record BastCountEntry(String name, int hour, double observedTraffic, double simulatedTraffic) {
 	}
 
-	private record DtvCountEntry(int observedPkw, int observedLkw, int simulatedPkw, int simulatedLkw) {
+	private record DtvCountEntry(double observedPkw, double observedLkw, double simulatedPkw, double simulatedLkw) {
 	}
 
 	private record CapacityChange(String source, Id<Link> linkId, double simulatedTraffic, double observedTraffic, double oldCapacity, double newCapacity) {
