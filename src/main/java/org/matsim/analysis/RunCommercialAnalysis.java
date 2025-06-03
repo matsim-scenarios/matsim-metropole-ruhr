@@ -55,7 +55,6 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	private static final Logger log = LogManager.getLogger(RunCommercialAnalysis.class);
 
 	@CommandLine.Option(names = "--simulationOutputDirectory", required = true, description = "The directory where the simulation output is stored.", defaultValue = "scenarios/metropole-ruhr-v2.0/output/rvr/commercial_100pct/commercialTraffic_Run100pct")
-	@CommandLine.Option(names = "--simulationOutputDirectory", required = true, description = "The directory where the simulation output is stored.", defaultValue = "scenarios/metropole-ruhr-v2024.0/output/016_10pct")
 	private static Path runDirectory;
 
 	@CommandLine.Option(names = "--runId", description = "The run id of the simulation.", defaultValue = "commercialTraffic_Run100pct")
@@ -157,8 +156,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		new MatsimEventsReader(eventsManager).readFile(eventsFile);
 		log.info("Closing events file...");
 
-		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
+		createGeneralTravelDataAnalysis(generalTravelDataOutputFile, linkDemandEventHandler, scenario);
 		createTravelDistancesShares(travelDistancesPerModeOutputFile, linkDemandEventHandler);
+		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
 		createRelationsAnalysis(relationsOutputFile, linkDemandEventHandler);
 		createGeneralTravelDataAnalysis(generalTravelDataOutputFile, linkDemandEventHandler, scenario);
 		createAnalysisPerVehicle(travelDistancesPerVehicleOutputFile, linkDemandEventHandler);

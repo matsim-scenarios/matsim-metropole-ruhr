@@ -14,6 +14,8 @@ import java.util.Random;
 
 /**
  * Class to sample the different subpopulations by different factors.
+ * The values of the percentages are given as remaining share of the population.
+ * So if the value is 0.75, 75% of the population will be kept and 25% will be removed.
  */
 public class PopulationSamplingBySubpopulations implements MATSimAppCommand {
 
@@ -92,7 +94,7 @@ public class PopulationSamplingBySubpopulations implements MATSimAppCommand {
 		double percentageOfPopulationReduction = 1 - (double) numberOfAgentsAfterReduction / numberOfAgentsOriginalPopulation;
 		log.info("Percentage of the population reduction: {}", percentageOfPopulationReduction);
 		String newOutputPopulationPath = outputPopulation.toString().replace("adjusted",
-			"person" + remainingSharePersons + "_smallScalePersonTraffic" + remainingShareSmallScalePersonTraffic + "_smallScaleGoodsTraffic" + remainingShareSmallScaleGoodsTraffic + "_longDistanceFreight" + remainingShareLongDistanceFreight);
+			"remainingPercentages_person" + remainingSharePersons + "_smallScalePersonTraffic" + remainingShareSmallScalePersonTraffic + "_smallScaleGoodsTraffic" + remainingShareSmallScaleGoodsTraffic + "_longDistanceFreight" + remainingShareLongDistanceFreight);
 
 		PopulationUtils.writePopulation(originalPopulation, newOutputPopulationPath);
 		return 0;
