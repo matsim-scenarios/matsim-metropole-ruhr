@@ -72,20 +72,6 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	@CommandLine.Option(names = "--sampleSize", description = "The sample size of the simulation.", defaultValue = "1.0")
 	private static double sampleSize;
 
-	public RunCommercialAnalysis(Path runDirectory, String runId, String analysisOutputDirectory, Path zoneShapeFile, double sampleSize, Path shapeFileRuhrArea) {
-		RunCommercialAnalysis.runDirectory = runDirectory;
-		RunCommercialAnalysis.runId = runId;
-		if (analysisOutputDirectory != null && !analysisOutputDirectory.endsWith("/")) analysisOutputDirectory = analysisOutputDirectory + "/";
-		RunCommercialAnalysis.analysisOutputDirectory = runDirectory + analysisOutputDirectory;
-		RunCommercialAnalysis.zoneShapeFile = zoneShapeFile;
-		RunCommercialAnalysis.sampleSize = sampleSize;
-		RunCommercialAnalysis.shapeFileRuhrArea = shapeFileRuhrArea;
-	}
-
-	public static void main(String[] args) {
-		System.exit(new CommandLine(new RunCommercialAnalysis(runDirectory, runId, analysisOutputDirectory, zoneShapeFile, sampleSize, shapeFileRuhrArea)).execute(args));
-	}
-
 	public Integer call() throws Exception {
 		log.info("++++++++++++++++++ Start Analysis for RVR Freight simulations ++++++++++++++++++++++++++++");
 		String shpZonesCRS = "EPSG:31467";
