@@ -55,6 +55,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	private static final Logger log = LogManager.getLogger(RunCommercialAnalysis.class);
 
 	@CommandLine.Option(names = "--simulationOutputDirectory", required = true, description = "The directory where the simulation output is stored.", defaultValue = "scenarios/metropole-ruhr-v2.0/output/rvr/commercial_100pct/commercialTraffic_Run100pct")
+	@CommandLine.Option(names = "--simulationOutputDirectory", required = true, description = "The directory where the simulation output is stored.", defaultValue = "scenarios/metropole-ruhr-v2024.0/output/016_10pct")
 	private static Path runDirectory;
 
 	@CommandLine.Option(names = "--runId", description = "The run id of the simulation.", defaultValue = "commercialTraffic_Run100pct")
@@ -66,7 +67,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	@CommandLine.Option(names = "--zoneShapeFile", description = "The shape file of the zones of the VP2030.", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
 	private static Path zoneShapeFile;
 
-	@CommandLine.Option(names = "--shapeFileRuhrArea", description = "The shape file of the ruhr area.", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp")
+	@CommandLine.Option(names = "--shapeFileRuhrArea", description = "The shape file of the ruhr area.", defaultValue = "scenarios/metropole-ruhr-v2024.0/input/area/area.shp")
 	private static Path shapeFileRuhrArea;
 
 	@CommandLine.Option(names = "--sampleSize", description = "The sample size of the simulation.", defaultValue = "1.0")
