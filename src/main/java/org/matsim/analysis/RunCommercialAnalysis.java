@@ -66,25 +66,11 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	@CommandLine.Option(names = "--zoneShapeFile", description = "The shape file of the zones of the VP2030.", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
 	private static Path zoneShapeFile;
 
-	@CommandLine.Option(names = "--shapeFileRuhrArea", description = "The shape file of the ruhr area.", defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/matsim-input-files/20210520_regionalverband_ruhr/dilutionArea.shp")
+	@CommandLine.Option(names = "--shapeFileRuhrArea", description = "The shape file of the ruhr area.", defaultValue = "scenarios/metropole-ruhr-v2024.0/input/area/area.shp")
 	private static Path shapeFileRuhrArea;
 
 	@CommandLine.Option(names = "--sampleSize", description = "The sample size of the simulation.", defaultValue = "1.0")
 	private static double sampleSize;
-
-	public RunCommercialAnalysis(Path runDirectory, String runId, String analysisOutputDirectory, Path zoneShapeFile, double sampleSize, Path shapeFileRuhrArea) {
-		RunCommercialAnalysis.runDirectory = runDirectory;
-		RunCommercialAnalysis.runId = runId;
-		if (analysisOutputDirectory != null && !analysisOutputDirectory.endsWith("/")) analysisOutputDirectory = analysisOutputDirectory + "/";
-		RunCommercialAnalysis.analysisOutputDirectory = runDirectory + analysisOutputDirectory;
-		RunCommercialAnalysis.zoneShapeFile = zoneShapeFile;
-		RunCommercialAnalysis.sampleSize = sampleSize;
-		RunCommercialAnalysis.shapeFileRuhrArea = shapeFileRuhrArea;
-	}
-
-	public static void main(String[] args) {
-		System.exit(new CommandLine(new RunCommercialAnalysis(runDirectory, runId, analysisOutputDirectory, zoneShapeFile, sampleSize, shapeFileRuhrArea)).execute(args));
-	}
 
 	public Integer call() throws Exception {
 		log.info("++++++++++++++++++ Start Analysis for RVR Freight simulations ++++++++++++++++++++++++++++");
@@ -134,7 +120,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 
 		config.global().setCoordinateSystem("EPSG:25832");
 		log.info("Using coordinate system '{}'", config.global().getCoordinateSystem());
-		config.plans().setInputFile("scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-10pct.plans-initial.xml.gz");
+		config.plans().setInputFile(String.valueOf(globFile(runDirectory, runId, "plans.xml")));
 		config.eventsManager().setNumberOfThreads(null);
 		config.eventsManager().setEstimatedNumberOfEvents(null);
 		config.global().setNumberOfThreads(4);
@@ -160,6 +146,7 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		createTravelDistancesShares(travelDistancesPerModeOutputFile, linkDemandEventHandler);
 		createLinkVolumeAnalysis(scenario, linkDemandOutputFile, linkDemandEventHandler);
 		createRelationsAnalysis(relationsOutputFile, linkDemandEventHandler);
+		createGeneralTravelDataAnalysis(generalTravelDataOutputFile, linkDemandEventHandler, scenario);
 		createAnalysisPerVehicle(travelDistancesPerVehicleOutputFile, linkDemandEventHandler);
 		createTourDurationPerVehicle(tourDurationsOutputFile, linkDemandEventHandler, scenario);
 //		createShpForDashboards(scenario, dirShape);
