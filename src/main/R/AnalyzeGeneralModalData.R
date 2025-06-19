@@ -21,23 +21,41 @@ distancesPerTour <- read_delim("/analysis/traffic/009.travelDistances_perVehicle
                     locale = locale(decimal_mark = "."))
 
 
-data$subpopulation <- ifelse(data$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", data$subpopulation)
+# data$subpopulation <- ifelse(data$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", data$subpopulation)
+# data$subpopulation <- ifelse(data$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", data$subpopulation)
+# data$subpopulation <- ifelse(data$subpopulation %in% c("LTL_trips"), "LTL", data$subpopulation)
+# data$subpopulation <- ifelse(data$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", data$subpopulation)
+# data$subpopulation <- ifelse(data$subpopulation %in% c("longDistanceFreight"), "Transit-GV", data$subpopulation)
+#
+# tours$subpopulation <- ifelse(tours$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", tours$subpopulation)
+# tours$subpopulation <- ifelse(tours$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", tours$subpopulation)
+# tours$subpopulation <- ifelse(tours$subpopulation %in% c("LTL_trips"), "LTL", tours$subpopulation)
+# tours$subpopulation <- ifelse(tours$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", tours$subpopulation)
+# tours$subpopulation <- ifelse(tours$subpopulation %in% c("longDistanceFreight"), "Transit-GV", tours$subpopulation)
+
+# distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", distancesPerTour$subpopulation)
+# distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", distancesPerTour$subpopulation)
+# distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("LTL_trips"), "LTL", distancesPerTour$subpopulation)
+# distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", distancesPerTour$subpopulation)
+# distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("longDistanceFreight"), "Transit-GV", distancesPerTour$subpopulation)
+
+data$subpopulation <- ifelse(data$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Commercial Person traffic", data$subpopulation)
 data$subpopulation <- ifelse(data$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", data$subpopulation)
 data$subpopulation <- ifelse(data$subpopulation %in% c("LTL_trips"), "LTL", data$subpopulation)
-data$subpopulation <- ifelse(data$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", data$subpopulation)
-data$subpopulation <- ifelse(data$subpopulation %in% c("longDistanceFreight"), "Transit-GV", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("goodsTraffic"), "Small-Scale-Freight-Traffic", data$subpopulation)
+data$subpopulation <- ifelse(data$subpopulation %in% c("longDistanceFreight"), "Transit Freight", data$subpopulation)
 
-tours$subpopulation <- ifelse(tours$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Commercial Person traffic", tours$subpopulation)
 tours$subpopulation <- ifelse(tours$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", tours$subpopulation)
 tours$subpopulation <- ifelse(tours$subpopulation %in% c("LTL_trips"), "LTL", tours$subpopulation)
-tours$subpopulation <- ifelse(tours$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", tours$subpopulation)
-tours$subpopulation <- ifelse(tours$subpopulation %in% c("longDistanceFreight"), "Transit-GV", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("goodsTraffic"), "Small-Scale-Freight-Traffic", tours$subpopulation)
+tours$subpopulation <- ifelse(tours$subpopulation %in% c("longDistanceFreight"), "Transit Freight", tours$subpopulation)
 
-distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Personenwirtschaftsverkehr", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("commercialPersonTraffic", "commercialPersonTraffic_service"), "Commercial Person traffic", distancesPerTour$subpopulation)
 distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("FTL_kv_trip", "FTL_trip"), "FTL", distancesPerTour$subpopulation)
 distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("LTL_trips"), "LTL", distancesPerTour$subpopulation)
-distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("goodsTraffic"), "kleinräumiger WV", distancesPerTour$subpopulation)
-distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("longDistanceFreight"), "Transit-GV", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("goodsTraffic"), "Small-Scale-Freight-Traffic", distancesPerTour$subpopulation)
+distancesPerTour$subpopulation <- ifelse(distancesPerTour$subpopulation %in% c("longDistanceFreight"), "Transit Freight", distancesPerTour$subpopulation)
 
 
 # Numerische Spalten korrekt umwandeln
