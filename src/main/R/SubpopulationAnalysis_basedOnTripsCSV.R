@@ -10,14 +10,17 @@ library(lubridate)
 ##readTrips
 setwd("C:/Users/erica/shared/matsim-metropole-ruhr/")
 
-runID <- "commercial_10pct_0.005_newPLansFrom100pct"
+runFolderName <- "commercial_10pct_0.005_newPLansFrom100pct"
 folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_0.005_newPLansFrom100pct/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
 
-runID <- "commercial_10pct_0.005"
+runFolderName <- "commercial_10pct_0.005"
 folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_0.005/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
 
-runID <- "commercial_10pct_0.01"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_0.01/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
+runFolderName <- "commercial_10pct_3.0"
+folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_3.0/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
+
+runFolderName <- "commercial_1pct_testing"
+folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_1pct_testing/commercialTraffic_Run1pct/commercialTraffic_Run1pct.output_trips.csv.gz"
 
 runID <- "016_10pct"
 folder <- "scenarios/metropole-ruhr-v2024.0/output/016_10pct/016.output_trips.csv.gz"
@@ -64,7 +67,7 @@ ggplot(agents_per_subpop, aes(x = subpopulation, y = unique_agents, fill = subpo
   geom_text(aes(label = paste0(round(share, 1), "%")),
             vjust = -0.5, size = 4) +
   labs(
-    title = paste("Anzahl der Agenten je Subpopulation (Run:", runID, ")"),
+    title = paste("Anzahl der Agenten je Subpopulation (Run:", runFolderName, ")"),
     x = "Subpopulation",
     y = "Anzahl Agenten",
     caption = folder
@@ -82,7 +85,7 @@ ggplot(total_distance_per_subpop, aes(x = subpopulation, y = total_distance_km, 
   geom_col() +
   geom_text(aes(label = paste0(round(share, 1), "%")),
             vjust = -0.5, size = 4) +
-  labs(title = paste("Gesamte Reiseweiten je Subpopulation (Run:", runID, ")"),
+  labs(title = paste("Gesamte Reiseweiten je Subpopulation (Run:", runFolderName, ")"),
        x = "Subpopulation", y = "Reiseweite (km)",
        caption = folder
   ) +
@@ -98,7 +101,7 @@ ggplot(avg_trip_distance, aes(x = subpopulation, y = avg_distance_km, fill = sub
   geom_col() +
   geom_text(aes(label = paste0(round(avg_distance_km, 2), " km")),
             vjust = -0.5, size = 4) +
-  labs(title = paste("Durchschnittliche Trip-Distanz je Subpopulation (Run:", runID, ")"),
+  labs(title = paste("Durchschnittliche Trip-Distanz je Subpopulation (Run:", runFolderName, ")"),
        x = "Subpopulation", y = "Durchschnittliche Distanz (km)",
        caption = folder
   ) +
@@ -124,7 +127,7 @@ ggplot(avg_tour_distance, aes(x = subpopulation, y = avg_tour_distance_km, fill 
   geom_col() +
   geom_text(aes(label = paste0(round(avg_tour_distance_km, 2), " km")),
             vjust = -0.5, size = 4) +
-  labs(title = paste("Durchschnittliche Tourdistanz je Subpopulation (Run:", runID, ")"),
+  labs(title = paste("Durchschnittliche Tourdistanz je Subpopulation (Run:", runFolderName, ")"),
        x = "Subpopulation", y = "Ø Tourdistanz (km)",
        caption = folder
   ) +
@@ -133,7 +136,7 @@ ggplot(avg_tour_distance, aes(x = subpopulation, y = avg_tour_distance_km, fill 
 # Konfigurierbare Bins definieren
 distance_bins <- c(0,10,20,30,40,50,60,75,90,105,120,150,180,240,300,420,540,660,780,900,Inf)
 
-distance_bins <- seq(0, 600, by = 10)     # km
+#distance_bins <- seq(0, 600, by = 10)     # km
 duration_bins <- seq(0, 600, by = 30)     # Minuten
 
 # Prozentuale Verteilung der Tourdistanzen
@@ -148,7 +151,7 @@ tour_distance_per_person %>%
   geom_col() +
   facet_wrap(~ subpopulation, scales = "free_y") +
   labs(
-    title = paste("Prozentuale Verteilung der Tourdistanzen (Run:", runID, ")"),
+    title = paste("Prozentuale Verteilung der Tourdistanzen (Run:", runFolderName, ")"),
     x = "Tourdistanz (km)",
     y = "Anteil (%)"
   ) +
@@ -167,7 +170,7 @@ tour_distance_per_person %>%
   geom_col() +
   facet_wrap(~ subpopulation, scales = "free_y") +
   labs(
-    title = paste("Prozentuale Verteilung der Tourdauern (Run:", runID, ")"),
+    title = paste("Prozentuale Verteilung der Tourdauern (Run:", runFolderName, ")"),
     x = "Tourdauer (Minuten)",
     y = "Anteil (%)"
   ) +
