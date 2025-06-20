@@ -10,21 +10,20 @@ library(lubridate)
 ##readTrips
 setwd("C:/Users/erica/shared/matsim-metropole-ruhr/")
 
-runFolderName <- "commercial_10pct_0.005_newPLansFrom100pct"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_0.005_newPLansFrom100pct/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
-
-runFolderName <- "commercial_10pct_0.005"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_0.005/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
-
-runFolderName <- "commercial_10pct_3.0"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_10pct_3.0/commercialTraffic_Run10pct/commercialTraffic_Run10pct.output_trips.csv.gz"
-
+#1 pct runs
+runFolderName <- "commercial_1pct"
 runFolderName <- "commercial_1pct_testing"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/rvr/commercial_1pct_testing/commercialTraffic_Run1pct/commercialTraffic_Run1pct.output_trips.csv.gz"
 
-runID <- "016_10pct"
-folder <- "scenarios/metropole-ruhr-v2024.0/output/016_10pct/016.output_trips.csv.gz"
+folder <- paste0("scenarios/metropole-ruhr-v2024.0/output/rvr/", runFolderName ,"/commercialTraffic_Run1pct/commercialTraffic_Run1pct.output_trips.csv.gz")
 
+#10 pct runs
+
+runFolderName <- "commercial_10pct_0.005_ruhrOnly"
+runFolderName <- "commercial_10pct_0.005_testing_distance_ruhrOnly"
+runFolderName <- "commercial_10pct_testing_3.0_networkRoutes_withFixed_ruhrOnly"
+runFolderName <- "commercial_10pct_0.005_reduceHighDensityBy50pct"
+
+folder <- paste0("scenarios/metropole-ruhr-v2024.0/output/rvr/", runFolderName, "/commercialTraffic_Run10pct//commercialTraffic_Run10pct.output_trips.csv.gz")
 
 createPlots(folder = folder, runFolderName = runFolderName)
 
