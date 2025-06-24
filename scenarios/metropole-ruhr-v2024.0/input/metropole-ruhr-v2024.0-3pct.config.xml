@@ -221,7 +221,7 @@
 	<module name="ptIntermodalRoutingModes" >
 		<parameterset type="ptIntermodalRoutingMode" >
 			<!-- The routing mode to which is delegated (typically TransportMode.pt). -->
-			<param name="delegateMode" value="pt" />
+			<param name="delegateMode" value="rail,road" />
 			<!-- Routing mode to be installed. -->
 			<param name="routingMode" value="pt_intermodal_allowed" />
 			<parameterset type="personAttribute2ValuePair" >

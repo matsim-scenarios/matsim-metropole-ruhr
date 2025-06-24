@@ -33,6 +33,9 @@ import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -47,6 +50,7 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -59,6 +63,7 @@ import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesC
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
+import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.scoring.AdvancedScoringConfigGroup;
 import org.matsim.run.scoring.AdvancedScoringModule;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
@@ -76,6 +81,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -87,7 +93,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2024.1";
+	public static final String VERSION = "v2024.0";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
@@ -176,7 +182,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
 		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
 		PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
+
 		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
+		swissRailRaptorConfigGroup.setUseModeMappingForPassengers(true);
+		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("bus", "road"));
+		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("subway", "rail"));
+		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("rail", "rail"));
+		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("tram", "rail"));
 
 		// because vsp default reasons
 		config.facilities().setFacilitiesSource(FacilitiesConfigGroup.FacilitiesSource.onePerActivityLinkInPlansFile);
@@ -286,6 +298,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		preparePtFareConfig(config);
 
+		TransitConfigGroup transitConfig = ConfigUtils.addOrGetModule(config, TransitConfigGroup.class);
+		transitConfig.setTransitModes(Set.of("road","rail"));
+
+		config.scoring().addModeParams(new ScoringConfigGroup.ModeParams("pt::rail").setDailyUtilityConstant(0));
+		config.scoring().addModeParams(new ScoringConfigGroup.ModeParams("pt::road").setDailyUtilityConstant(-100));
+
 		return config;
 	}
 
@@ -328,6 +346,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
+
+		retainPtUsersOnly(scenario);
+
 	}
 
 	@Override
@@ -396,6 +417,32 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+	}
+
+	private static void retainPtUsersOnly(Scenario scenario) {
+		var population = scenario.getPopulation();
+
+
+		// Collect persons who use PT (or pt:submode)
+		List<Person> ptUsers = population.getPersons().values().stream()
+			.filter(person -> {
+				Plan plan = person.getSelectedPlan();
+				PopulationUtils.resetRoutes(plan);
+				return plan.getPlanElements().stream()
+					.filter(pe -> pe instanceof Leg)
+					.map(pe -> ((Leg) pe).getMode())
+					.anyMatch(mode -> mode.equals("pt") || mode.startsWith("pt:"));
+			})
+			.collect(Collectors.toList());
+
+		// Clear and add only PT users back
+		int originalSize = population.getPersons().size();
+		population.getPersons().clear();
+		for (Person ptUser : ptUsers) {
+			population.addPerson(ptUser);
+		}
+
+		System.out.println("Filtered population: kept " + ptUsers.size() + " of " + originalSize + " persons using PT.");
 	}
 
 }
