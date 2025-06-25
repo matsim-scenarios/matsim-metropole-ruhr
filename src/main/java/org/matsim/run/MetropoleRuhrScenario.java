@@ -336,7 +336,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
-		retainPtUsersOnly(scenario);
+		//retainPtUsersOnly(scenario);
 	}
 
 	@Override
