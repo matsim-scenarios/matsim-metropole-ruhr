@@ -405,6 +405,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
 
 
 		// add custom in-vehicle cost calculator that makes using the bus less attractive
