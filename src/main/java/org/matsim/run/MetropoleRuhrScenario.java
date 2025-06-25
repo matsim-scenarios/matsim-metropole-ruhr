@@ -20,8 +20,12 @@
 package org.matsim.run;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
+import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
+import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
+import ch.sbb.matsim.routing.pt.raptor.RaptorParameters;
 import com.google.common.collect.Sets;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,13 +65,14 @@ import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTri
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsModule;
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
+import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
-import org.matsim.pt.config.TransitConfigGroup;
 import org.matsim.run.scoring.AdvancedScoringConfigGroup;
 import org.matsim.run.scoring.AdvancedScoringModule;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
@@ -78,7 +83,6 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -90,7 +94,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2024.0";
+	public static final String VERSION = "v2024.1";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
@@ -179,13 +183,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		PtExtensionsConfigGroup ptExtensionsConfigGroup = ConfigUtils.addOrGetModule(config, PtExtensionsConfigGroup.class);
 		IntermodalTripFareCompensatorsConfigGroup intermodalTripFareCompensatorsConfigGroup = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
 		PtIntermodalRoutingModesConfigGroup ptIntermodalRoutingModesConfigGroup = ConfigUtils.addOrGetModule(config, PtIntermodalRoutingModesConfigGroup.class);
-
 		SwissRailRaptorConfigGroup swissRailRaptorConfigGroup = ConfigUtils.addOrGetModule(config, SwissRailRaptorConfigGroup.class);
-		swissRailRaptorConfigGroup.setUseModeMappingForPassengers(true);
-		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("bus", "road"));
-		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("subway", "rail"));
-		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("rail", "rail"));
-		swissRailRaptorConfigGroup.addModeMappingForPassengers(new SwissRailRaptorConfigGroup.ModeMappingForPassengersParameterSet("tram", "rail"));
 
 		// because vsp default reasons
 		config.facilities().setFacilitiesSource(FacilitiesConfigGroup.FacilitiesSource.onePerActivityLinkInPlansFile);
@@ -295,12 +293,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		preparePtFareConfig(config);
 
-		TransitConfigGroup transitConfig = ConfigUtils.addOrGetModule(config, TransitConfigGroup.class);
-		transitConfig.setTransitModes(Set.of("road","rail"));
-
-		config.scoring().addModeParams(new ScoringConfigGroup.ModeParams("pt::rail").setDailyUtilityConstant(0));
-		config.scoring().addModeParams(new ScoringConfigGroup.ModeParams("pt::road").setDailyUtilityConstant(-100));
-
 		return config;
 	}
 
@@ -343,21 +335,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
-
-		//retainPtUsersOnly(scenario);
-
-		for (Person person : scenario.getPopulation().getPersons().values()) {
-			Plan plan = person.getSelectedPlan();
-			for (PlanElement pe : plan.getPlanElements()) {
-				if (pe instanceof Leg leg) {
-					if (leg.getMode().contains("pt")) {
-						leg.setMode("pt::road");
-					}
-				}
-			}
-		}
-
-
+		retainPtUsersOnly(scenario);
 	}
 
 	@Override
@@ -373,7 +351,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new SimWrapperModule());
 
 		// allow for separate pt routing modes (pure walk+pt, bike+walk+pt, car+walk+pt, ...)
-
+		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
 		// throw additional score or money events if pt is combined with bike or car in the same trip
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
@@ -426,6 +404,58 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+
+
+		// add custom in-vehicle cost calculator that makes using the bus less attractive
+		controler.addOverridingModule( new AbstractModule(){
+			@Override public void install(){
+				bind( DefaultRaptorInVehicleCostCalculator.class );
+//				bind( CapacityDependentInVehicleCostCalculator.class );
+				bind( RaptorInVehicleCostCalculator.class ).to( MyRaptorInVehicleCostCalculator.class );
+			}
+		} );
+
+
+
+		List<Id<Vehicle>> buses = new ArrayList<>();
+		for (Vehicle vehicle: controler.getScenario().getTransitVehicles().getVehicles().values()) {
+			if (vehicle.getType().getId().toString().contains("Bus")) {
+				buses.add(vehicle.getId());
+			}
+
+		}
+
+		// add the bus punishment event handler
+		controler.addOverridingModule(new AbstractModule(){
+			@Override
+			public void install() {
+				addEventHandlerBinding().toInstance(new BusPunishmentEventHandler(buses));
+
+			}
+		});
+	}
+
+
+	private static class MyRaptorInVehicleCostCalculator implements RaptorInVehicleCostCalculator {
+		@Inject
+		DefaultRaptorInVehicleCostCalculator delegate;
+		//		@Inject CapacityDependentInVehicleCostCalculator delegate;
+		@Override
+		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RouteSegmentIterator iterator ){
+			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
+			if ( isBus( vehicle ) ) {
+				cost *= 1.2;
+			}
+			return cost;
+		}
+		private boolean isBus( Vehicle vehicle ){
+			// somehow figure out if the vehicle is a bus or something else.
+			if (vehicle.getType().getId().toString().contains("Bus")) {
+				return true;
+			} else {
+				return false;
+			}
+		}
 	}
 
 	private static void retainPtUsersOnly(Scenario scenario) {
@@ -452,7 +482,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			}
 		}
 
+		scenario.getPopulation().getPersons().clear();
+		for (Person person: ptUsers) {
+			scenario.getPopulation().addPerson(person);
+		}
 
 	}
+
 
 }
