@@ -461,11 +461,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		}
 		private boolean isBus( Vehicle vehicle ){
 			// somehow figure out if the vehicle is a bus or something else.
-			if (vehicle.getType().getId().toString().contains("Bus")) {
-				return true;
-			} else {
-				return false;
-			}
+			return vehicle.getType().getId().toString().contains("Bus");
 		}
 	}
 
