@@ -29,6 +29,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
@@ -416,14 +417,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		} );
 
 
-
-		List<Id<Vehicle>> buses = new ArrayList<>();
-		for (Vehicle vehicle: controler.getScenario().getTransitVehicles().getVehicles().values()) {
-			if (vehicle.getType().getId().toString().contains("Bus")) {
-				buses.add(vehicle.getId());
-			}
-
-		}
+		// we somehow need the bus vehicle ids to punish bus users in the event Handler??
+		//there must be a better way to do this....
+		List<Id<Vehicle>> buses = getBusVehicleIds(controler);
 
 		// add the bus punishment event handler
 		controler.addOverridingModule(new AbstractModule(){
@@ -435,7 +431,21 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		});
 	}
 
+	@NotNull
+	private static List<Id<Vehicle>> getBusVehicleIds(Controler controler) {
+		List<Id<Vehicle>> buses = new ArrayList<>();
+		for (Vehicle vehicle: controler.getScenario().getTransitVehicles().getVehicles().values()) {
+			if (vehicle.getType().getId().toString().contains("Bus")) {
+				buses.add(vehicle.getId());
+			}
+		}
+		return buses;
+	}
 
+
+	/*
+	Here we use a custom in-vehicle cost calculator that makes using the bus less attractive.
+	 */
 	private static class MyRaptorInVehicleCostCalculator implements RaptorInVehicleCostCalculator {
 		@Inject
 		DefaultRaptorInVehicleCostCalculator delegate;
@@ -444,6 +454,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RouteSegmentIterator iterator ){
 			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
 			if ( isBus( vehicle ) ) {
+				//TODO find useful value for the bus penalty
 				cost *= 1.2;
 			}
 			return cost;
@@ -458,6 +469,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		}
 	}
 
+	/*
+	 * This method retains only those persons in the population who use public transport in their selected plan.
+	 */
 	private static void retainPtUsersOnly(Scenario scenario) {
 		var population = scenario.getPopulation();
 		List<Person> ptUsers = new ArrayList<>();
