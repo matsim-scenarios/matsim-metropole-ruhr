@@ -36,6 +36,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
+import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -60,7 +61,6 @@ import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTri
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsModule;
 import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesConfigGroup;
-import org.matsim.extensions.pt.routing.ptRoutingModes.PtIntermodalRoutingModesModule;
 import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
 import org.matsim.pt.config.TransitConfigGroup;
@@ -77,10 +77,7 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
@@ -347,7 +344,19 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
 
-		retainPtUsersOnly(scenario);
+		//retainPtUsersOnly(scenario);
+
+		for (Person person : scenario.getPopulation().getPersons().values()) {
+			Plan plan = person.getSelectedPlan();
+			for (PlanElement pe : plan.getPlanElements()) {
+				if (pe instanceof Leg leg) {
+					if (leg.getMode().contains("pt")) {
+						leg.setMode("pt::road");
+					}
+				}
+			}
+		}
+
 
 	}
 
@@ -364,7 +373,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new SimWrapperModule());
 
 		// allow for separate pt routing modes (pure walk+pt, bike+walk+pt, car+walk+pt, ...)
-		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
+
 		// throw additional score or money events if pt is combined with bike or car in the same trip
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
 
@@ -421,28 +430,29 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	private static void retainPtUsersOnly(Scenario scenario) {
 		var population = scenario.getPopulation();
+		List<Person> ptUsers = new ArrayList<>();
 
+		for (Person person: population.getPersons().values()) {
+			Plan plan = person.getSelectedPlan();
+			PopulationUtils.resetRoutes(plan);
 
-		// Collect persons who use PT (or pt:submode)
-		List<Person> ptUsers = population.getPersons().values().stream()
-			.filter(person -> {
-				Plan plan = person.getSelectedPlan();
-				PopulationUtils.resetRoutes(plan);
-				return plan.getPlanElements().stream()
-					.filter(pe -> pe instanceof Leg)
-					.map(pe -> ((Leg) pe).getMode())
-					.anyMatch(mode -> mode.equals("pt") || mode.startsWith("pt:"));
-			})
-			.collect(Collectors.toList());
+			boolean usesPt = false;
+			for (PlanElement pe : plan.getPlanElements()) {
+				if (pe instanceof Leg) {
+					String mode = ((Leg) pe).getMode();
+					if (mode.equals("pt") || mode.startsWith("pt:")) {
+						usesPt = true;
+						break;
+					}
+				}
+			}
 
-		// Clear and add only PT users back
-		int originalSize = population.getPersons().size();
-		population.getPersons().clear();
-		for (Person ptUser : ptUsers) {
-			population.addPerson(ptUser);
+			if (usesPt) {
+				ptUsers.add(person);
+			}
 		}
 
-		System.out.println("Filtered population: kept " + ptUsers.size() + " of " + originalSize + " persons using PT.");
+
 	}
 
 }
