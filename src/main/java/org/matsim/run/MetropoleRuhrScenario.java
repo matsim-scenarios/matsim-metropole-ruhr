@@ -426,7 +426,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			@Override
 			public void install() {
 				addEventHandlerBinding().toInstance(new BusPunishmentEventHandler(buses));
-
 			}
 		});
 	}
