@@ -328,7 +328,7 @@ public class PtCounts implements MATSimAppCommand {
 			for (LineString segment : fs.segments()) {
 				Geometry buffer = segment.buffer(bufferDistance);
 				for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
-					if (buffer.intersects(entry.getValue())) {
+					if (buffer.contains(entry.getValue())) {
 						matched.add(entry.getKey());
 					}
 				}
