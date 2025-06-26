@@ -20,20 +20,27 @@
 package org.matsim.run;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
+import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
+import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
+import ch.sbb.matsim.routing.pt.raptor.RaptorParameters;
 import com.google.common.collect.Sets;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import jakarta.validation.constraints.NotNull;
 import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
 import org.matsim.analysis.TripMatrix;
+import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -63,6 +70,7 @@ import org.matsim.prepare.AdjustDemand;
 import org.matsim.prepare.RuhrUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
@@ -440,6 +448,31 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+
+
+		// add custom in-vehicle cost calculator that makes using the bus less attractive
+		controler.addOverridingModule( new AbstractModule(){
+			@Override public void install(){
+				bind( DefaultRaptorInVehicleCostCalculator.class );
+//				bind( CapacityDependentInVehicleCostCalculator.class );
+				bind( RaptorInVehicleCostCalculator.class ).to( MyRaptorInVehicleCostCalculator.class );
+			}
+		} );
+
+
+		// we somehow need the bus vehicle ids to punish bus users in the event Handler??
+		//there must be a better way to do this....
+		List<Id<Vehicle>> buses = getBusVehicleIds(controler);
+
+		// add the bus punishment event handler
+		controler.addOverridingModule(new AbstractModule(){
+			@Override
+			public void install() {
+				addEventHandlerBinding().toInstance(new BusPunishmentEventHandler(buses));
+			}
+		});
+
 	}
 
 	private void adjustNetworkCapacitiesToBastCounts(Scenario scenario, List<CapacityChange> capacityChanges) {
@@ -625,6 +658,40 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		}
 		return result;
 	}
+
+
+	private static List<Id<Vehicle>> getBusVehicleIds(Controler controler) {
+		List<Id<Vehicle>> buses = new ArrayList<>();
+		for (Vehicle vehicle: controler.getScenario().getTransitVehicles().getVehicles().values()) {
+			if (vehicle.getType().getId().toString().contains("Bus")) {
+				buses.add(vehicle.getId());
+			}
+		}
+		return buses;
+	}
+
+	/*
+	Here we use a custom in-vehicle cost calculator that makes using the bus less attractive.
+	 */
+	private static class MyRaptorInVehicleCostCalculator implements RaptorInVehicleCostCalculator {
+		@Inject
+		DefaultRaptorInVehicleCostCalculator delegate;
+		//		@Inject CapacityDependentInVehicleCostCalculator delegate;
+		@Override
+		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RouteSegmentIterator iterator ){
+			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
+			if ( isBus( vehicle ) ) {
+				//TODO find useful value for the bus penalty
+				cost *= 1.2;
+			}
+			return cost;
+		}
+		private boolean isBus( Vehicle vehicle ){
+			// somehow figure out if the vehicle is a bus or something else.
+			return vehicle.getType().getId().toString().contains("Bus");
+		}
+	}
+
 
 	private record BastCountEntry(String name, int hour, double observedTraffic, double simulatedTraffic) {
 	}
