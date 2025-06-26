@@ -9,7 +9,6 @@ import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.referencing.CRS;
-import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.locationtech.jts.geom.*;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -24,7 +23,6 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
-import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import picocli.CommandLine;
 
 import java.io.*;
@@ -72,7 +70,6 @@ public class PtCounts implements MATSimAppCommand {
 			.filter(link -> !link.getFromNode().getId().toString().contains("fern")) //filter long distance rail links
 			.collect(Collectors.toList());
 
-
 		GeometryFactory gf = new GeometryFactory();
 
 		//convert pt links to LineString geometries
@@ -85,12 +82,7 @@ public class PtCounts implements MATSimAppCommand {
 			ptLinkGeometries.put(link, line);
 		}
 
-
-
-
 		Collection<SimpleFeature> features = shp.readFeatures();
-
-
 		List<LineString> lineStrings = new ArrayList<>();
 
 		for (SimpleFeature feature : features) {
@@ -118,6 +110,8 @@ public class PtCounts implements MATSimAppCommand {
 
 		double bufferDistance = 100.0; // meters
 
+		writeFeaturesWithMatchToCsv(features, ptLinkGeometries, bufferDistance, "features_with_match.csv");
+
 		for (LineString line : lineStrings) {
 			Geometry buffer = line.buffer(bufferDistance);
 			for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
@@ -132,8 +126,6 @@ public class PtCounts implements MATSimAppCommand {
 
 		writeLinksToCsv(matchedLinks, "matched_pt_links.csv");
 		writeFilteredNetwork(scenario, matchedLinks, "filtered_network.xml");
-
-
 		return 0;
 	}
 
@@ -261,6 +253,80 @@ public class PtCounts implements MATSimAppCommand {
 		new NetworkWriter(filteredNetwork).write(outputFile);
 		System.out.println("Filtered network written to " + outputFile + " with " + filteredNetwork.getLinks().size() + " links and " + filteredNetwork.getNodes().size() + " nodes.");
 	}
+
+	private static void writeFeaturesWithMatchToCsv(Collection<SimpleFeature> features,
+													Map<Link, LineString> ptLinkGeometries,
+													double bufferDistance,
+													String csvFilePath) throws IOException {
+		try (PrintWriter writer = new PrintWriter(new FileWriter(csvFilePath))) {
+			// Write header: original attribute names + matched_links column
+			SimpleFeature firstFeature = features.iterator().next();
+			List<String> attributeNames = new ArrayList<>();
+			firstFeature.getFeatureType().getAttributeDescriptors().forEach(desc -> {
+				attributeNames.add(desc.getLocalName());
+			});
+			attributeNames.add("matched_links");  // new column
+
+			writer.println(String.join(",", attributeNames));
+
+			GeometryFactory gf = new GeometryFactory();
+
+			for (SimpleFeature feature : features) {
+				Geometry geom = (Geometry) feature.getDefaultGeometry();
+
+				// Split multi-geometries into line segments for matching
+				List<LineString> lineStrings = new ArrayList<>();
+				if (geom instanceof LineString) {
+					lineStrings.addAll(splitLineString((LineString) geom, gf));
+				} else if (geom instanceof MultiLineString) {
+					MultiLineString mls = (MultiLineString) geom;
+					for (int i = 0; i < mls.getNumGeometries(); i++) {
+						lineStrings.addAll(splitLineString((LineString) mls.getGeometryN(i), gf));
+					}
+				}
+
+				// Collect all matched PT link IDs for this feature
+				Set<String> matchedLinkIds = new HashSet<>();
+
+				for (LineString segment : lineStrings) {
+					Geometry buffer = segment.buffer(bufferDistance);
+					for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
+						if (buffer.intersects(entry.getValue())) {
+							matchedLinkIds.add(entry.getKey().getId().toString());
+						}
+					}
+				}
+
+				// Format matched link IDs as semicolon-separated string, or empty if none
+				String matchedLinksStr = String.join(";", matchedLinkIds);
+
+				// Write all original attributes + matched_links column to CSV
+				List<String> values = new ArrayList<>();
+				for (String attrName : attributeNames) {
+					if ("matched_links".equals(attrName)) {
+						// Put matched links here
+						// Escape quotes/commas if needed
+						String safeValue = matchedLinksStr.replace("\"", "\"\"");
+						if (safeValue.contains(",") || safeValue.contains("\"") || safeValue.contains(";")) {
+							safeValue = "\"" + safeValue + "\"";
+						}
+						values.add(safeValue);
+					} else {
+						Object attrValue = feature.getAttribute(attrName);
+						String safeValue = attrValue == null ? "" : attrValue.toString().replace("\"", "\"\"");
+						if (safeValue.contains(",") || safeValue.contains("\"")) {
+							safeValue = "\"" + safeValue + "\"";
+						}
+						values.add(safeValue);
+					}
+				}
+				writer.println(String.join(",", values));
+			}
+		}
+
+		System.out.println("Written features with matched link IDs to CSV: " + csvFilePath);
+	}
+
 
 
 
