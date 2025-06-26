@@ -83,43 +83,46 @@ public class PtCounts implements MATSimAppCommand {
 		}
 
 		Collection<SimpleFeature> features = shp.readFeatures();
-		List<LineString> lineStrings = new ArrayList<>();
+		List<FeatureSegments> featureSegments = new ArrayList<>();
 
 		for (SimpleFeature feature : features) {
 			Geometry geom = (Geometry) feature.getDefaultGeometry();
+			List<LineString> segments = new ArrayList<>();
 
 			if (geom instanceof LineString) {
-				lineStrings.addAll(splitLineString((LineString) geom, gf));
+				segments.addAll(splitLineString((LineString) geom, gf));
 			} else if (geom instanceof MultiLineString) {
 				MultiLineString mls = (MultiLineString) geom;
 				for (int i = 0; i < mls.getNumGeometries(); i++) {
-					LineString ls = (LineString) mls.getGeometryN(i);
-					lineStrings.addAll(splitLineString(ls, gf));
+					segments.addAll(splitLineString((LineString) mls.getGeometryN(i), gf));
 				}
 			} else {
 				System.out.println("Unsupported geometry: " + geom.getGeometryType());
 			}
 
-
+			featureSegments.add(new FeatureSegments(feature, segments));
 		}
-		System.out.println("Number of line strings: " + lineStrings.size());
 
-		writeLineStringsToShapefile(lineStrings, "pt_counts.shp");
 
-		Set<Link> matchedLinks = new HashSet<>();
+		int totalLineSegments = featureSegments.stream().mapToInt(fs -> fs.segments().size()).sum();
+		System.out.println("Number of line strings: " + totalLineSegments);
+
+		List<LineString> allSegments = featureSegments.stream()
+				.flatMap(fs -> fs.segments().stream())
+				.collect(Collectors.toList());
+
+		writeLineStringsToShapefile(allSegments, "pt_counts.shp");
+
 
 		double bufferDistance = 100.0; // meters
+		Map<SimpleFeature, Set<Link>> featureMatches = matchFeaturesToPtLinks(featureSegments, ptLinkGeometries, bufferDistance);
 
-		writeFeaturesWithMatchToCsv(features, ptLinkGeometries, bufferDistance, "features_with_match.csv");
+		// Collect all matched links (flatten)
+		Set<Link> matchedLinks = featureMatches.values().stream()
+				.flatMap(Set::stream)
+				.collect(Collectors.toSet());
 
-		for (LineString line : lineStrings) {
-			Geometry buffer = line.buffer(bufferDistance);
-			for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
-				if (buffer.intersects(entry.getValue())) {
-					matchedLinks.add(entry.getKey());
-				}
-			}
-		}
+		writeFeaturesWithMatchToCsv(featureSegments, featureMatches, "features_with_match.csv");
 
 		System.out.println("Matched PT links: " + matchedLinks.size());
 
@@ -254,58 +257,43 @@ public class PtCounts implements MATSimAppCommand {
 		System.out.println("Filtered network written to " + outputFile + " with " + filteredNetwork.getLinks().size() + " links and " + filteredNetwork.getNodes().size() + " nodes.");
 	}
 
-	private static void writeFeaturesWithMatchToCsv(Collection<SimpleFeature> features,
-													Map<Link, LineString> ptLinkGeometries,
-													double bufferDistance,
-													String csvFilePath) throws IOException {
+	private static void writeFeaturesWithMatchToCsv(
+			List<FeatureSegments> featureSegments,
+			Map<SimpleFeature, Set<Link>> featureMatches,
+			String csvFilePath
+	) throws IOException {
+
+		if (featureSegments.isEmpty()) {
+			System.out.println("No features to write.");
+			return;
+		}
+
 		try (PrintWriter writer = new PrintWriter(new FileWriter(csvFilePath))) {
-			// Write header: original attribute names + matched_links column
-			SimpleFeature firstFeature = features.iterator().next();
+			// Write header based on the first feature
+			SimpleFeature firstFeature = featureSegments.get(0).feature();
 			List<String> attributeNames = new ArrayList<>();
 			firstFeature.getFeatureType().getAttributeDescriptors().forEach(desc -> {
 				attributeNames.add(desc.getLocalName());
 			});
-			attributeNames.add("matched_links");  // new column
+			attributeNames.add("matched_links");
 
 			writer.println(String.join(",", attributeNames));
 
-			GeometryFactory gf = new GeometryFactory();
+			for (FeatureSegments fs : featureSegments) {
+				SimpleFeature feature = fs.feature();
 
-			for (SimpleFeature feature : features) {
-				Geometry geom = (Geometry) feature.getDefaultGeometry();
+				// Get matched links for this feature
+				Set<String> matchedLinkIds = featureMatches.getOrDefault(feature, Set.of()).stream()
+						.map(link -> link.getId().toString())
+						.collect(Collectors.toCollection(TreeSet::new)); // TreeSet for consistent ordering
 
-				// Split multi-geometries into line segments for matching
-				List<LineString> lineStrings = new ArrayList<>();
-				if (geom instanceof LineString) {
-					lineStrings.addAll(splitLineString((LineString) geom, gf));
-				} else if (geom instanceof MultiLineString) {
-					MultiLineString mls = (MultiLineString) geom;
-					for (int i = 0; i < mls.getNumGeometries(); i++) {
-						lineStrings.addAll(splitLineString((LineString) mls.getGeometryN(i), gf));
-					}
-				}
-
-				// Collect all matched PT link IDs for this feature
-				Set<String> matchedLinkIds = new HashSet<>();
-
-				for (LineString segment : lineStrings) {
-					Geometry buffer = segment.buffer(bufferDistance);
-					for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
-						if (buffer.intersects(entry.getValue())) {
-							matchedLinkIds.add(entry.getKey().getId().toString());
-						}
-					}
-				}
-
-				// Format matched link IDs as semicolon-separated string, or empty if none
+				// Format matched link IDs as a semicolon-separated string
 				String matchedLinksStr = String.join(";", matchedLinkIds);
 
 				// Write all original attributes + matched_links column to CSV
 				List<String> values = new ArrayList<>();
 				for (String attrName : attributeNames) {
 					if ("matched_links".equals(attrName)) {
-						// Put matched links here
-						// Escape quotes/commas if needed
 						String safeValue = matchedLinksStr.replace("\"", "\"\"");
 						if (safeValue.contains(",") || safeValue.contains("\"") || safeValue.contains(";")) {
 							safeValue = "\"" + safeValue + "\"";
@@ -328,6 +316,30 @@ public class PtCounts implements MATSimAppCommand {
 	}
 
 
+	private static Map<SimpleFeature, Set<Link>> matchFeaturesToPtLinks(
+			List<FeatureSegments> featureSegments,
+			Map<Link, LineString> ptLinkGeometries,
+			double bufferDistance
+	) {
+		Map<SimpleFeature, Set<Link>> matches = new LinkedHashMap<>();
+
+		for (FeatureSegments fs : featureSegments) {
+			Set<Link> matched = new HashSet<>();
+			for (LineString segment : fs.segments()) {
+				Geometry buffer = segment.buffer(bufferDistance);
+				for (Map.Entry<Link, LineString> entry : ptLinkGeometries.entrySet()) {
+					if (buffer.intersects(entry.getValue())) {
+						matched.add(entry.getKey());
+					}
+				}
+			}
+			matches.put(fs.feature(), matched);
+		}
+
+		return matches;
+	}
+
+	record FeatureSegments(SimpleFeature feature, List<LineString> segments) {}
 
 
 }
