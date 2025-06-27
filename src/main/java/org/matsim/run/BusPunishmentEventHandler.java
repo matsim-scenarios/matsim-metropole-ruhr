@@ -3,6 +3,7 @@ package org.matsim.run;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.events.PersonEntersVehicleEvent;
 import org.matsim.api.core.v01.events.PersonMoneyEvent;
+import org.matsim.api.core.v01.events.PersonScoreEvent;
 import org.matsim.api.core.v01.events.handler.PersonEntersVehicleEventHandler;
 import org.matsim.vehicles.Vehicle;
 
@@ -28,7 +29,9 @@ public class BusPunishmentEventHandler implements PersonEntersVehicleEventHandle
 				//TODO -100 is a placeholder, adjust the amount as needed, need to find a better value
 				//might be worth considering to make this somehow distance based or time dependent as for short trips the penalty might be too high and there are
 				//also some people that can only the pt when it is a bus?
-				new PersonMoneyEvent(event.getTime(), event.getPersonId(), -100, "bus", null, null);
+				//new PersonMoneyEvent(event.getTime(), event.getPersonId(), -100, "bus", null, null);
+				//person score event
+				new PersonScoreEvent(event.getTime(), event.getPersonId(), -100.0, "punishment_for_using_bus");
 			}
 		}
 	}
