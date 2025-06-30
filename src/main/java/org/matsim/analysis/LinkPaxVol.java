@@ -19,11 +19,12 @@ public class LinkPaxVol {
 	public static void main(String[] args) {
 
 		//set the path to the events file
-		String eventsFile = "";
+		String eventsFile = "/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_events.xml.gz";
 		//set the path to the config file
-		Config config = ConfigUtils.loadConfig("");
+		Config config = ConfigUtils.loadConfig("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_config.xml");
 		//load the scenario
-		Scenario scenario = ScenarioUtils.loadScenario(config);
+		config.network().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_network.xml.gz");
+		Scenario scenario = ScenarioUtils.createScenario(config);
 		// event reader add event handler  for linkPaxVolumes
 		LinkPaxVolumesAnalysis linkPaxVolumesAnalysis = new LinkPaxVolumesAnalysis(scenario.getVehicles(), scenario.getTransitVehicles());
 

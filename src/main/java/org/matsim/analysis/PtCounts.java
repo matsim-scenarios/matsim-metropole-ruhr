@@ -45,7 +45,7 @@ public class PtCounts implements MATSimAppCommand {
 	public Integer call() throws Exception {
 		Config config = ConfigUtils.createConfig();
 		config.global().setCoordinateSystem("EPSG:25832");
-		config.transit().setTransitScheduleFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.0/10pct/016.output_transitSchedule.xml.gz");
+		config.transit().setTransitScheduleFile(transitSchedule);
 		config.network().setInputFile(network);
 
 		Scenario scenario = ScenarioUtils.loadScenario(config);
