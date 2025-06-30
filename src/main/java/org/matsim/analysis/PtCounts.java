@@ -26,9 +26,7 @@ import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.prepare.CreateSupply;
 import org.matsim.prepare.TagTransitSchedule;
-import org.matsim.pt.transitSchedule.api.TransitLine;
-import org.matsim.pt.transitSchedule.api.TransitRoute;
-import org.matsim.pt.transitSchedule.api.TransitSchedule;
+import org.matsim.pt.transitSchedule.api.*;
 import picocli.CommandLine;
 
 import java.io.*;
@@ -56,7 +54,7 @@ public class PtCounts implements MATSimAppCommand {
 	@Override
 	public Integer call() throws Exception {
 //		createAggregatedPtNetwork();
-		readPassengerVolumes();
+
 
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
@@ -69,6 +67,8 @@ public class PtCounts implements MATSimAppCommand {
 		TransitSchedule transitSchedule = scenario.getTransitSchedule();
 
 		Network network = scenario.getNetwork();
+
+		readPassengerVolumes(scenario);
 
 		Set<Id<Link>> ptLinkIdsInSchedule = new HashSet<>();
 
@@ -401,7 +401,7 @@ public class PtCounts implements MATSimAppCommand {
 		);
 	}
 
-	private void readPassengerVolumes() {
+	private void readPassengerVolumes(Scenario scenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
 		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
@@ -425,9 +425,39 @@ public class PtCounts implements MATSimAppCommand {
 			throw new RuntimeException(e);
 		}
 
-		for (CSVRecord record: csvParser.getRecords()) {
-			String fromTransitStop = record.get("stop");
+		List<CSVRecord> records = csvParser.getRecords();
+		List<PassengerVolumes> passengerVolumes = new ArrayList<>(records.size());
+		for (CSVRecord record: records) {
+			Id<TransitLine> transitLineId = Id.create(record.get("transitLine"), TransitLine.class);
+			Id<TransitRoute> transitRouteId = Id.create(record.get("transitRoute"), TransitRoute.class);
+			Id<Departure> departureId = Id.create(record.get("departure"), Departure.class);
+
+			TransitStopFacility fromTransitStop = scenario.getTransitSchedule().getFacilities().get(Id.create(record.get("stop"), TransitStopFacility.class));
+			TransitStopFacility toTransitStop = scenario.getTransitSchedule().getFacilities().get(Id.create(record.get("stopPrevious"), TransitStopFacility.class));
+
+			List<Id<Link>> linkIdsSincePreviousStop = new ArrayList<>();
+			linkIdsSincePreviousStop.add(Id.createLinkId(record.get("linkIdsSincePreviousStop"))); //TODO: separate string list
+
+			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, fromTransitStop.getId(),
+				Integer.parseInt(record.get("stopSequence")), toTransitStop.getId(), Double.parseDouble(record.get("arrivalTimeScheduled")),
+				Double.parseDouble(record.get("arrivalDelay")), Double.parseDouble(record.get("departureTimeScheduled")),
+				Double.parseDouble(record.get("departureDelay")), Double.parseDouble(record.get("passengersAtArrival")),
+				Double.parseDouble(record.get("totalVehicleCapacity")), Double.parseDouble(record.get("passengersAlighting")),
+				Double.parseDouble(record.get("passengersBoarding")), linkIdsSincePreviousStop, fromTransitStop.getStopAreaId(),
+				toTransitStop.getStopAreaId());
+			passengerVolumes.add(entry);
+
 		}
+	}
+
+
+	record PassengerVolumes (Id<TransitLine> transitLineId, Id<TransitRoute> transitRouteId, Id<Departure> departureId, Id<TransitStopFacility> stopId,
+							 int stopSequence, Id<TransitStopFacility> stopPreviousId, double arrivalTimeScheduled, double arrivalDelay,
+							 double departureTimeScheduled, double departureDelay, double passengersAtArrival, double totalVehicleCapacity,
+							 double passengersAlighting, double passengersBoarding, List<Id<Link>> linkIdsSincePreviousStop,
+							 Id<TransitStopArea> stopAreaId, Id<TransitStopArea> stopAreaPreviousId) {}
+	{
+
 	}
 
 }
