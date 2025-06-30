@@ -1,5 +1,8 @@
 package org.matsim.analysis;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.geotools.api.data.FeatureWriter;
 import org.geotools.api.data.Transaction;
 import org.geotools.api.feature.simple.SimpleFeature;
@@ -15,11 +18,14 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
+import org.matsim.application.prepare.pt.CreateTransitScheduleFromGtfs;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.prepare.CreateSupply;
+import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
@@ -27,13 +33,16 @@ import picocli.CommandLine;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class PtCounts implements MATSimAppCommand {
 
-	@CommandLine.Mixin
-	private ShpOptions shp = new ShpOptions();
+	@CommandLine.Option(names = "--vrrSpnvShp",  description = "Path to reference data", defaultValue = "shared-svn/projects/rvr-metropole-ruhr/data/Fahrgastzahlen/2018_VRR/2018_VRR_EPSG25832.shp")
+	private String vrrSpnvShp;
 
 	@CommandLine.Option(names = "--transit-schedule",  description = "Path to transit schedule", required = true)
 	private String transitSchedule;
@@ -41,8 +50,16 @@ public class PtCounts implements MATSimAppCommand {
 	@CommandLine.Option(names="--network", description = "Path to MATSim network", required = true)
 	private String network;
 
+	@CommandLine.Option(names="--rootDirectory", description = "Path to root directory", required = true)
+	private String rootDirectory;
+
 	@Override
 	public Integer call() throws Exception {
+//		createAggregatedPtNetwork();
+		readPassengerVolumes();
+
+		Path rootDirectory = Paths.get(this.rootDirectory);
+
 		Config config = ConfigUtils.createConfig();
 		config.global().setCoordinateSystem("EPSG:25832");
 		config.transit().setTransitScheduleFile(transitSchedule);
@@ -82,7 +99,8 @@ public class PtCounts implements MATSimAppCommand {
 			ptLinkGeometries.put(link, line);
 		}
 
-		Collection<SimpleFeature> features = shp.readFeatures();
+		ShpOptions vrrShape = new ShpOptions(rootDirectory.resolve(vrrSpnvShp), null, null);
+		Collection<SimpleFeature> features = vrrShape.readFeatures();
 		List<FeatureSegments> featureSegments = new ArrayList<>();
 
 		for (SimpleFeature feature : features) {
@@ -341,5 +359,75 @@ public class PtCounts implements MATSimAppCommand {
 
 	record FeatureSegments(SimpleFeature feature, List<LineString> segments) {}
 
+	/** aggregated pt network, transit-schedule etc. to display in Simwrapper*/
+	private void createAggregatedPtNetwork() {
+		Path rootDirectory = Paths.get(this.rootDirectory);
+
+		// copied from CreateSupply: TODO: either make public there or implement other gtfs2matsim options directly there
+		Path gtfsData1 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/20230106_gtfs_nrw_neue_service_ids_korrektur1.zip");
+		Path gtfsData2 = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/gtfs/gtfs-schienenfernverkehr-de_2021-08-19.zip");
+		String gtfsDataDate1 = "2023-01-17";
+		String gtfsDataDate2 = "2021-08-19";
+		String gtfsData1Prefix = "nrw";
+		//private static final String gtfsData2Prefix = "nwl";
+		String gtfsData2Prefix = "fern";
+		Path ruhrShape = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v1.0/original-data/shp-files/ruhrgebiet_boundary/ruhrgebiet_boundary.shp");
+
+
+		Path roadNetwork = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1.network_resolutionHigh.xml.gz");
+		Path outputDir = Paths.get("public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input");
+		String outputName = "metropole-ruhr-v2024.1-pt-aggregated-all-modes";
+
+		new CreateTransitScheduleFromGtfs().execute(
+			rootDirectory.resolve(gtfsData1).toString(), rootDirectory.resolve(gtfsData2).toString(),
+			"--date", gtfsDataDate1, gtfsDataDate2,
+			"--prefix", gtfsData1Prefix + "," + gtfsData2Prefix,
+			"--target-crs", "EPSG:25832",
+			"--network", rootDirectory.resolve(roadNetwork).toString(),
+			"--output", rootDirectory.resolve(outputDir).toString(),
+			"--copy-late-early=true",
+			"--validate=true",
+			"--pseudo-network=withLoopLinks",
+			"--merge-stops=mergeToGtfsParentStation",
+			"--name", outputName
+		);
+
+		// --------------------------------------------------------------------
+
+		new TagTransitSchedule().execute(
+			"--input", rootDirectory.resolve(outputDir) + "/" + outputName + "-transitSchedule.xml.gz",
+			"--shp", rootDirectory.resolve(ruhrShape).toString(),
+			"--output", rootDirectory.resolve(outputDir) + "/" + outputName + "-transitSchedule.xml.gz"
+		);
+	}
+
+	private void readPassengerVolumes() {
+		Path rootDirectory = Paths.get(this.rootDirectory);
+		// TODO: add unzipping
+		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
+
+		Reader reader = null;
+		try {
+			reader = Files.newBufferedReader(rootDirectory.resolve(ptPaxVolumesFile));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+
+		CSVFormat csvFormat = CSVFormat.Builder
+			.create()
+			.setDelimiter(";")
+			.setHeader()
+			.build();
+		CSVParser csvParser = null;
+		try {
+			csvParser = csvFormat.parse(reader);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+
+		for (CSVRecord record: csvParser.getRecords()) {
+			String fromTransitStop = record.get("stop");
+		}
+	}
 
 }
