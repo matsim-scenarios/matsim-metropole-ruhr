@@ -32,6 +32,7 @@ import org.matsim.core.utils.io.IOUtils;
 import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.*;
 import org.matsim.pt.utils.CreatePseudoNetworkWithLoopLinks;
+import org.matsim.pt.utils.TransitScheduleValidator;
 import org.matsim.vehicles.MatsimVehicleWriter;
 import picocli.CommandLine;
 
@@ -501,6 +502,25 @@ public class PtCounts implements MATSimAppCommand {
 		aggregatedScenario.getTransitSchedule().getAttributes().putAttribute("coordinateReferenceSystem",
 			simulatedScenario.getTransitSchedule().getAttributes().getAttribute("coordinateReferenceSystem"));
 
+		for (TransitStopFacility stop: aggregatedSchedule.getFacilities().values()) {
+			if (stop.getCoord()== null) {
+				log.error(stop.getId() + " has coord null");
+			}
+		}
+
+		// throwing compare exception while checking stop coords but all stop coords are not null
+//		TransitScheduleValidator.ValidationResult checkResult = TransitScheduleValidator.validateAll(aggregatedScenario.getTransitSchedule(), aggregatedScenario.getNetwork());
+//		List<String> warnings = checkResult.getWarnings();
+//		if (!warnings.isEmpty())
+//			log.warn("TransitScheduleValidator warnings: {}", String.join("\n", warnings));
+//
+//		if (checkResult.isValid()) {
+//			log.info("TransitSchedule and Network valid according to TransitScheduleValidator");
+//		} else {
+//			log.error("TransitScheduleValidator errors: {}", String.join("\n", checkResult.getErrors()));
+//			throw new RuntimeException("TransitSchedule and/or Network invalid");
+//		}
+
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
 		(new MatsimVehicleWriter(simulatedScenario.getTransitVehicles())).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitVehicles.xml.gz").toString());
@@ -551,7 +571,7 @@ public class PtCounts implements MATSimAppCommand {
 
 			// FIXME: dirty: copied naming convention from CreatePseudoNetworkWithLoopLinks.createAndAddLink()
 			List<Id<Link>> linkIdsSincePreviousStop = new ArrayList<>();
-			linkIdsSincePreviousStop.add(Id.createLinkId(stopPrevious + "-" + stop));
+			linkIdsSincePreviousStop.add(Id.createLinkId("pt_" + stopPrevious + "-" + "pt_" + stop));
 
 			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, stop,
 				Integer.parseInt(record.get("stopSequence")), stopPrevious, Double.parseDouble(record.get("arrivalTimeScheduled")),
