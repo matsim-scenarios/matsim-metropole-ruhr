@@ -3,6 +3,8 @@ package org.matsim.analysis;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.geotools.api.data.FeatureWriter;
 import org.geotools.api.data.Transaction;
 import org.geotools.api.feature.simple.SimpleFeature;
@@ -18,15 +20,17 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
+import org.matsim.application.prepare.network.CreateAvroNetwork;
 import org.matsim.application.prepare.pt.CreateTransitScheduleFromGtfs;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.prepare.CreateSupply;
 import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.*;
+import org.matsim.pt.utils.CreatePseudoNetworkWithLoopLinks;
+import org.matsim.vehicles.MatsimVehicleWriter;
 import picocli.CommandLine;
 
 import java.io.*;
@@ -48,8 +52,15 @@ public class PtCounts implements MATSimAppCommand {
 	@CommandLine.Option(names="--network", description = "Path to MATSim network", required = true)
 	private String network;
 
+	@CommandLine.Option(names="--analysis-output", description = "Path to MATSim analysis", required = true)
+	private String analysisOutput;
+
 	@CommandLine.Option(names="--rootDirectory", description = "Path to root directory", required = true)
 	private String rootDirectory;
+
+	private Map<Id<TransitStopFacility>, Id<TransitStopFacility>> stop2parentStop = new HashMap<>();
+
+	Logger log = LogManager.getLogger(PtCounts.class);
 
 	@Override
 	public Integer call() throws Exception {
@@ -63,12 +74,13 @@ public class PtCounts implements MATSimAppCommand {
 		config.transit().setTransitScheduleFile(transitSchedule);
 		config.network().setInputFile(network);
 
-		Scenario scenario = ScenarioUtils.loadScenario(config);
-		TransitSchedule transitSchedule = scenario.getTransitSchedule();
+		Scenario simulatedScenario = ScenarioUtils.loadScenario(config);
+		TransitSchedule transitSchedule = simulatedScenario.getTransitSchedule();
 
-		Network network = scenario.getNetwork();
+		Network network = simulatedScenario.getNetwork();
 
-		readPassengerVolumes(scenario);
+		Scenario aggregatedScenario = createAggregatedPtNetworkFromExistingNetwork(simulatedScenario);
+		readPassengerVolumes(aggregatedScenario);
 
 		Set<Id<Link>> ptLinkIdsInSchedule = new HashSet<>();
 
@@ -146,7 +158,7 @@ public class PtCounts implements MATSimAppCommand {
 
 
 		writeLinksToCsv(matchedLinks, "matched_pt_links.csv");
-		writeFilteredNetwork(scenario, matchedLinks, "filtered_network.xml");
+		writeFilteredNetwork(simulatedScenario, matchedLinks, "filtered_network.xml");
 		return 0;
 	}
 
@@ -359,8 +371,9 @@ public class PtCounts implements MATSimAppCommand {
 
 	record FeatureSegments(SimpleFeature feature, List<LineString> segments) {}
 
-	/** aggregated pt network, transit-schedule etc. to display in Simwrapper*/
-	private void createAggregatedPtNetwork() {
+	/** aggregated pt network, transit-schedule etc. to display in Simwrapper
+	 * Gives different number of transit routes than original transit schedule */
+	private void createAggregatedPtNetworkFromGtfs() {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
 		// copied from CreateSupply: TODO: either make public there or implement other gtfs2matsim options directly there
@@ -401,7 +414,102 @@ public class PtCounts implements MATSimAppCommand {
 		);
 	}
 
-	private void readPassengerVolumes(Scenario scenario) {
+	private Scenario createAggregatedPtNetworkFromExistingNetwork(Scenario simulatedScenario) {
+		Scenario aggregatedScenario = ScenarioUtils.createScenario(simulatedScenario.getConfig());
+
+		TransitSchedule aggregatedSchedule = aggregatedScenario.getTransitSchedule();
+		TransitScheduleFactory scheduleFactory = aggregatedSchedule.getFactory();
+
+		for (TransitStopFacility simulatedStop : simulatedScenario.getTransitSchedule().getFacilities().values()) {
+			TransitStopFacility simulatedParentStop;
+
+			// unfortunately most TransitStopFacilities are at below track level (pseudo network without loops needs these)
+			// and have as a stop area a track, not the parent station to which belongs the track
+			// try to find the parent station
+			// FIXME: caution: this assumes that as in the nrw data set all parent_stations are called nrw:XX:XXXXX_parent,
+			// see also https://wiki.openstreetmap.org/wiki/DE:Key:ref:IFOPT
+			String firstLevelParentStationString;
+			if (simulatedStop.getStopAreaId() != null) {
+				firstLevelParentStationString = simulatedStop.getStopAreaId().toString();
+			} else {
+				firstLevelParentStationString = simulatedStop.getId().toString();
+			}
+			Id<TransitStopFacility> parentStationId;
+			if (firstLevelParentStationString.endsWith("_Parent")) {
+				parentStationId = Id.create(firstLevelParentStationString, TransitStopFacility.class);
+			} else {
+				String[] parentStationSplit = firstLevelParentStationString.split(":");
+				if (parentStationSplit.length >= 3) {
+					// should be 5 (nrw:XX:XXXXX:XX:XX)
+					parentStationId = Id.create(parentStationSplit[0] + ":" + parentStationSplit[1] + ":" + parentStationSplit[2] + "_Parent",
+						TransitStopFacility.class);
+				} else {
+					// fall back to detailed level stop if no parent station could be found
+					parentStationId = simulatedStop.getId();
+				}
+
+			}
+			simulatedParentStop = simulatedScenario.getTransitSchedule().getFacilities().get(parentStationId);
+
+			if (simulatedParentStop == null) {
+				// fall back to deztailed level stop if no parent station could be found
+				log.error("Should not happen.");
+				simulatedParentStop = simulatedStop;
+			}
+
+			TransitStopFacility aggregatedParentStop = scheduleFactory
+				.createTransitStopFacility(simulatedParentStop.getId(), simulatedParentStop.getCoord(), false);
+			stop2parentStop.put(simulatedStop.getId(), aggregatedParentStop.getId());
+			if (!aggregatedSchedule.getFacilities().containsKey(aggregatedParentStop.getId())) {
+				aggregatedSchedule.addStopFacility(aggregatedParentStop);
+			}
+		}
+
+		for (TransitLine simulatedLine : simulatedScenario.getTransitSchedule().getTransitLines().values()) {
+			TransitLine aggregatedLine = scheduleFactory.createTransitLine(simulatedLine.getId());
+			aggregatedSchedule.addTransitLine(aggregatedLine);
+			for (TransitRoute simulatedRoute: simulatedLine.getRoutes().values()) {
+				List<TransitRouteStop> aggregatedRouteStops = new ArrayList<>();
+				for (TransitRouteStop simulatedRouteStop : simulatedRoute.getStops()) {
+					aggregatedRouteStops.add(scheduleFactory
+						.createTransitRouteStop(
+							aggregatedSchedule.getFacilities().get(stop2parentStop.get(simulatedRouteStop.getStopFacility().getId())),
+							simulatedRouteStop.getArrivalOffset(), simulatedRouteStop.getDepartureOffset()));
+				}
+
+				TransitRoute aggregatedRoute = scheduleFactory.createTransitRoute(simulatedRoute.getId(), null, aggregatedRouteStops,
+					simulatedRoute.getDescription());
+				aggregatedRoute.setTransportMode(simulatedRoute.getTransportMode());
+
+				for (Departure simulatedDeparture : simulatedRoute.getDepartures().values()) {
+					aggregatedRoute.addDeparture(scheduleFactory.createDeparture(simulatedDeparture.getId(), simulatedDeparture.getDepartureTime()));
+				}
+
+				aggregatedLine.addRoute(aggregatedRoute);
+			}
+		}
+		// TransitVehicles not necessary
+
+		new CreatePseudoNetworkWithLoopLinks(aggregatedSchedule, aggregatedScenario.getNetwork(), "pt_", 100.0, 100000.0).createNetwork();
+		aggregatedScenario.getNetwork().getAttributes().putAttribute("coordinateReferenceSystem",
+			simulatedScenario.getNetwork().getAttributes().getAttribute("coordinateReferenceSystem"));
+		aggregatedScenario.getTransitSchedule().getAttributes().putAttribute("coordinateReferenceSystem",
+			simulatedScenario.getTransitSchedule().getAttributes().getAttribute("coordinateReferenceSystem"));
+
+		Path rootDirectory = Paths.get(this.rootDirectory);
+
+		String outputName = "pt-aggregated-for-analysis";
+		(new MatsimVehicleWriter(simulatedScenario.getTransitVehicles())).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitVehicles.xml.gz").toString());
+		(new NetworkWriter(aggregatedScenario.getNetwork())).write(rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString());
+		(new TransitScheduleWriter(aggregatedSchedule)).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitSchedule.xml.gz").toString());
+
+		new CreateAvroNetwork().execute("--network", rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString(),
+			"--output", rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.avro").toString(),
+			"--mode-filter=none");
+		return aggregatedScenario;
+	}
+
+	private void readPassengerVolumes(Scenario aggregatedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
 		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
@@ -431,23 +539,27 @@ public class PtCounts implements MATSimAppCommand {
 			Id<TransitLine> transitLineId = Id.create(record.get("transitLine"), TransitLine.class);
 			Id<TransitRoute> transitRouteId = Id.create(record.get("transitRoute"), TransitRoute.class);
 			Id<Departure> departureId = Id.create(record.get("departure"), Departure.class);
+			Id<TransitStopFacility> stop = stop2parentStop.get(Id.create(record.get("stop"), TransitStopFacility.class));
+			Id<TransitStopFacility> stopPrevious = stop2parentStop.get(Id.create(record.get("stopPrevious"), TransitStopFacility.class));
+			List<Id<Link>> linkIdsSincePreviousStopSimulatedScenario = new ArrayList<>();
+			linkIdsSincePreviousStopSimulatedScenario.addAll(Arrays.stream(record.get("linkIdsSincePreviousStop").split(","))
+				.map(string -> Id.createLinkId(string)).collect(Collectors.toList()));
 
-			TransitStopFacility fromTransitStop = scenario.getTransitSchedule().getFacilities().get(Id.create(record.get("stop"), TransitStopFacility.class));
-			TransitStopFacility toTransitStop = scenario.getTransitSchedule().getFacilities().get(Id.create(record.get("stopPrevious"), TransitStopFacility.class));
-
+			// FIXME: dirty: copied naming convention from CreatePseudoNetworkWithLoopLinks.createAndAddLink()
 			List<Id<Link>> linkIdsSincePreviousStop = new ArrayList<>();
-			linkIdsSincePreviousStop.add(Id.createLinkId(record.get("linkIdsSincePreviousStop"))); //TODO: separate string list
+			linkIdsSincePreviousStop.add(Id.createLinkId(stopPrevious + "-" + stop));
 
-			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, fromTransitStop.getId(),
-				Integer.parseInt(record.get("stopSequence")), toTransitStop.getId(), Double.parseDouble(record.get("arrivalTimeScheduled")),
+			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, stop,
+				Integer.parseInt(record.get("stopSequence")), stopPrevious, Double.parseDouble(record.get("arrivalTimeScheduled")),
 				Double.parseDouble(record.get("arrivalDelay")), Double.parseDouble(record.get("departureTimeScheduled")),
 				Double.parseDouble(record.get("departureDelay")), Double.parseDouble(record.get("passengersAtArrival")),
 				Double.parseDouble(record.get("totalVehicleCapacity")), Double.parseDouble(record.get("passengersAlighting")),
-				Double.parseDouble(record.get("passengersBoarding")), linkIdsSincePreviousStop, fromTransitStop.getStopAreaId(),
-				toTransitStop.getStopAreaId());
+				Double.parseDouble(record.get("passengersBoarding")), linkIdsSincePreviousStop,
+				Id.create(record.get("stop"), TransitStopFacility.class), Id.create(record.get("stopPrevious"), TransitStopFacility.class),
+				linkIdsSincePreviousStopSimulatedScenario);
 			passengerVolumes.add(entry);
-
 		}
+
 	}
 
 
@@ -455,7 +567,9 @@ public class PtCounts implements MATSimAppCommand {
 							 int stopSequence, Id<TransitStopFacility> stopPreviousId, double arrivalTimeScheduled, double arrivalDelay,
 							 double departureTimeScheduled, double departureDelay, double passengersAtArrival, double totalVehicleCapacity,
 							 double passengersAlighting, double passengersBoarding, List<Id<Link>> linkIdsSincePreviousStop,
-							 Id<TransitStopArea> stopAreaId, Id<TransitStopArea> stopAreaPreviousId) {}
+							 Id<TransitStopFacility> stopIdSimulatedScenario, Id<TransitStopFacility> stopPreviousIdSimulatedScenario,
+							 List<Id<Link>> linkIdsSincePreviousStopSimulatedScenario
+							 )
 	{
 
 	}
