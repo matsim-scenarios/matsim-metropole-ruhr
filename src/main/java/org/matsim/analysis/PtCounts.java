@@ -2,6 +2,7 @@ package org.matsim.analysis;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,6 +28,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.utils.io.IOUtils;
 import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.*;
 import org.matsim.pt.utils.CreatePseudoNetworkWithLoopLinks;
@@ -34,6 +36,7 @@ import org.matsim.vehicles.MatsimVehicleWriter;
 import picocli.CommandLine;
 
 import java.io.*;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,6 +65,8 @@ public class PtCounts implements MATSimAppCommand {
 
 	Logger log = LogManager.getLogger(PtCounts.class);
 
+	private static String outputName = "pt-aggregated-for-analysis";
+
 	@Override
 	public Integer call() throws Exception {
 //		createAggregatedPtNetwork();
@@ -80,7 +85,7 @@ public class PtCounts implements MATSimAppCommand {
 		Network network = simulatedScenario.getNetwork();
 
 		Scenario aggregatedScenario = createAggregatedPtNetworkFromExistingNetwork(simulatedScenario);
-		readPassengerVolumes(aggregatedScenario);
+		aggregatePassengerVolumes(aggregatedScenario);
 
 		Set<Id<Link>> ptLinkIdsInSchedule = new HashSet<>();
 
@@ -498,7 +503,6 @@ public class PtCounts implements MATSimAppCommand {
 
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
-		String outputName = "pt-aggregated-for-analysis";
 		(new MatsimVehicleWriter(simulatedScenario.getTransitVehicles())).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitVehicles.xml.gz").toString());
 		(new NetworkWriter(aggregatedScenario.getNetwork())).write(rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString());
 		(new TransitScheduleWriter(aggregatedSchedule)).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitSchedule.xml.gz").toString());
@@ -509,7 +513,7 @@ public class PtCounts implements MATSimAppCommand {
 		return aggregatedScenario;
 	}
 
-	private void readPassengerVolumes(Scenario aggregatedScenario) {
+	private void aggregatePassengerVolumes(Scenario aggregatedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
 		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
@@ -560,6 +564,10 @@ public class PtCounts implements MATSimAppCommand {
 			passengerVolumes.add(entry);
 		}
 
+		writePassengerVolumesCsv(IOUtils.getFileUrl(rootDirectory.resolve(analysisOutput).resolve(outputName + "-pax_volumes.csv.gz").toString()),
+			";", ",", passengerVolumes);
+
+
 	}
 
 
@@ -574,4 +582,55 @@ public class PtCounts implements MATSimAppCommand {
 
 	}
 
+	static Comparator<PassengerVolumes> stop2StopEntryByTransitLineComparator =
+		Comparator.nullsLast(Comparator.comparing(PassengerVolumes::transitLineId));
+	static Comparator<PassengerVolumes> stop2StopEntryByTransitRouteComparator =
+		Comparator.nullsLast(Comparator.comparing(PassengerVolumes::transitRouteId));
+	static Comparator<PassengerVolumes> stop2StopEntryByDepartureComparator =
+		Comparator.nullsLast(Comparator.comparing(PassengerVolumes::departureId));
+	static Comparator<PassengerVolumes> stop2StopEntryByStopSequenceComparator =
+		Comparator.nullsLast(Comparator.comparing(PassengerVolumes::stopSequence));
+
+	public void writePassengerVolumesCsv(URL url, String columnSeparator, String listSeparatorInsideColumn, List<PassengerVolumes> entries) {
+		final String[] HEADER = {"transitLine", "transitRoute", "departure", "stop", "stopSequence",
+			"stopPrevious", "arrivalTimeScheduled", "arrivalDelay", "departureTimeScheduled", "departureDelay",
+			"passengersAtArrival", "totalVehicleCapacity", "passengersAlighting", "passengersBoarding",
+			"linkIdsSincePreviousStop", "stopIdSimulatedScenario", "stopPreviousIdSimulatedScenario",
+			"linkIdsSincePreviousStopSimulatedScenario"};
+
+		entries.sort(stop2StopEntryByTransitLineComparator.
+			thenComparing(stop2StopEntryByTransitRouteComparator).
+			thenComparing(stop2StopEntryByDepartureComparator).
+			thenComparing(stop2StopEntryByStopSequenceComparator));
+		try (CSVPrinter printer = new CSVPrinter(IOUtils.getBufferedWriter(url),
+			CSVFormat.Builder.create()
+				.setDelimiter(columnSeparator)
+				.setHeader(HEADER)
+				.build())
+		) {
+			for (PassengerVolumes entry : entries) {
+				printer.print(entry.transitLineId);
+				printer.print(entry.transitRouteId);
+				printer.print(entry.departureId);
+				printer.print(entry.stopId);
+				printer.print(entry.stopSequence);
+				printer.print(entry.stopPreviousId);
+				printer.print(entry.arrivalTimeScheduled);
+				printer.print(entry.arrivalDelay);
+				printer.print(entry.departureTimeScheduled);
+				printer.print(entry.departureDelay);
+				printer.print(entry.passengersAtArrival);
+				printer.print(entry.totalVehicleCapacity);
+				printer.print(entry.passengersAlighting);
+				printer.print(entry.passengersBoarding);
+				printer.print(entry.linkIdsSincePreviousStop.stream().map(Object::toString).collect(Collectors.joining(listSeparatorInsideColumn)));
+				printer.print(entry.stopIdSimulatedScenario);
+				printer.print(entry.stopPreviousIdSimulatedScenario);
+				printer.print(entry.linkIdsSincePreviousStopSimulatedScenario);
+				printer.println();
+			}
+		} catch (IOException e) {
+			log.error(e);
+		}
+	}
 }
