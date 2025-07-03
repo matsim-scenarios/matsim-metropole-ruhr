@@ -70,7 +70,7 @@ public class PtCounts implements MATSimAppCommand {
 
 	@Override
 	public Integer call() throws Exception {
-//		createAggregatedPtNetwork();
+//		createsimplifiedPtNetwork();
 
 
 		Path rootDirectory = Paths.get(this.rootDirectory);
@@ -85,8 +85,8 @@ public class PtCounts implements MATSimAppCommand {
 
 		Network network = simulatedScenario.getNetwork();
 
-		Scenario aggregatedScenario = createAggregatedPtNetworkFromExistingNetwork(simulatedScenario);
-		aggregatePassengerVolumes(aggregatedScenario);
+		Scenario simplifiedScenario = createSimplifiedPtNetworkFromExistingNetwork(simulatedScenario);
+		aggregatePassengerVolumes(simplifiedScenario);
 
 		Set<Id<Link>> ptLinkIdsInSchedule = new HashSet<>();
 
@@ -377,9 +377,9 @@ public class PtCounts implements MATSimAppCommand {
 
 	record FeatureSegments(SimpleFeature feature, List<LineString> segments) {}
 
-	/** aggregated pt network, transit-schedule etc. to display in Simwrapper
+	/** simplified pt network, transit-schedule etc. to display in Simwrapper
 	 * Gives different number of transit routes than original transit schedule */
-	private void createAggregatedPtNetworkFromGtfs() {
+	private void createSimplifiedPtNetworkFromGtfs() {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
 		// copied from CreateSupply: TODO: either make public there or implement other gtfs2matsim options directly there
@@ -420,11 +420,13 @@ public class PtCounts implements MATSimAppCommand {
 		);
 	}
 
-	private Scenario createAggregatedPtNetworkFromExistingNetwork(Scenario simulatedScenario) {
-		Scenario aggregatedScenario = ScenarioUtils.createScenario(simulatedScenario.getConfig());
+	private Scenario createSimplifiedPtNetworkFromExistingNetwork(Scenario simulatedScenario) {
+		Scenario simplifiedScenario = ScenarioUtils.createScenario(simulatedScenario.getConfig());
 
-		TransitSchedule aggregatedSchedule = aggregatedScenario.getTransitSchedule();
-		TransitScheduleFactory scheduleFactory = aggregatedSchedule.getFactory();
+		TransitSchedule simplifiedSchedule = simplifiedScenario.getTransitSchedule();
+		TransitScheduleFactory scheduleFactory = simplifiedSchedule.getFactory();
+
+		int noParentStopCounter = 0;
 
 		for (TransitStopFacility simulatedStop : simulatedScenario.getTransitSchedule().getFacilities().values()) {
 			TransitStopFacility simulatedParentStop;
@@ -457,83 +459,87 @@ public class PtCounts implements MATSimAppCommand {
 			}
 			simulatedParentStop = simulatedScenario.getTransitSchedule().getFacilities().get(parentStationId);
 
+
 			if (simulatedParentStop == null) {
-				// fall back to deztailed level stop if no parent station could be found
-				log.error("Should not happen.");
+				// fall back to detailed level stop if no parent station could be found
+				noParentStopCounter++;
 				simulatedParentStop = simulatedStop;
 			}
 
-			TransitStopFacility aggregatedParentStop = scheduleFactory
+			TransitStopFacility simplifiedParentStop = scheduleFactory
 				.createTransitStopFacility(simulatedParentStop.getId(), simulatedParentStop.getCoord(), false);
-			stop2parentStop.put(simulatedStop.getId(), aggregatedParentStop.getId());
-			if (!aggregatedSchedule.getFacilities().containsKey(aggregatedParentStop.getId())) {
-				aggregatedSchedule.addStopFacility(aggregatedParentStop);
+			simplifiedParentStop.setName(simulatedParentStop.getName());
+			stop2parentStop.put(simulatedStop.getId(), simplifiedParentStop.getId());
+			if (!simplifiedSchedule.getFacilities().containsKey(simplifiedParentStop.getId())) {
+				simplifiedSchedule.addStopFacility(simplifiedParentStop);
 			}
 		}
 
+		log.warn("No parent stop found for " + noParentStopCounter + " of " +
+			simulatedScenario.getTransitSchedule().getFacilities().size() +" stop facilities. Using stop facility directly instead.");
+
 		for (TransitLine simulatedLine : simulatedScenario.getTransitSchedule().getTransitLines().values()) {
-			TransitLine aggregatedLine = scheduleFactory.createTransitLine(simulatedLine.getId());
-			aggregatedSchedule.addTransitLine(aggregatedLine);
+			TransitLine simplifiedLine = scheduleFactory.createTransitLine(simulatedLine.getId());
+			simplifiedSchedule.addTransitLine(simplifiedLine);
 			for (TransitRoute simulatedRoute: simulatedLine.getRoutes().values()) {
-				List<TransitRouteStop> aggregatedRouteStops = new ArrayList<>();
+				List<TransitRouteStop> simplifiedRouteStops = new ArrayList<>();
 				for (TransitRouteStop simulatedRouteStop : simulatedRoute.getStops()) {
-					aggregatedRouteStops.add(scheduleFactory
+					simplifiedRouteStops.add(scheduleFactory
 						.createTransitRouteStop(
-							aggregatedSchedule.getFacilities().get(stop2parentStop.get(simulatedRouteStop.getStopFacility().getId())),
+							simplifiedSchedule.getFacilities().get(stop2parentStop.get(simulatedRouteStop.getStopFacility().getId())),
 							simulatedRouteStop.getArrivalOffset(), simulatedRouteStop.getDepartureOffset()));
 				}
 
-				TransitRoute aggregatedRoute = scheduleFactory.createTransitRoute(simulatedRoute.getId(), null, aggregatedRouteStops,
+				TransitRoute simplifiedRoute = scheduleFactory.createTransitRoute(simulatedRoute.getId(), null, simplifiedRouteStops,
 					simulatedRoute.getDescription());
-				aggregatedRoute.setTransportMode(simulatedRoute.getTransportMode());
+				simplifiedRoute.setTransportMode(simulatedRoute.getTransportMode());
 
 				for (Departure simulatedDeparture : simulatedRoute.getDepartures().values()) {
-					aggregatedRoute.addDeparture(scheduleFactory.createDeparture(simulatedDeparture.getId(), simulatedDeparture.getDepartureTime()));
+					simplifiedRoute.addDeparture(scheduleFactory.createDeparture(simulatedDeparture.getId(), simulatedDeparture.getDepartureTime()));
 				}
 
-				aggregatedLine.addRoute(aggregatedRoute);
+				simplifiedLine.addRoute(simplifiedRoute);
 			}
 		}
 		// TransitVehicles not necessary
 
-		new CreatePseudoNetworkWithLoopLinks(aggregatedSchedule, aggregatedScenario.getNetwork(), "pt_", 100.0, 100000.0).createNetwork();
-		aggregatedScenario.getNetwork().getAttributes().putAttribute("coordinateReferenceSystem",
+		new CreatePseudoNetworkWithLoopLinks(simplifiedSchedule, simplifiedScenario.getNetwork(), "pt_", 100.0, 100000.0).createNetwork();
+		simplifiedScenario.getNetwork().getAttributes().putAttribute("coordinateReferenceSystem",
 			simulatedScenario.getNetwork().getAttributes().getAttribute("coordinateReferenceSystem"));
-		aggregatedScenario.getTransitSchedule().getAttributes().putAttribute("coordinateReferenceSystem",
+		simplifiedScenario.getTransitSchedule().getAttributes().putAttribute("coordinateReferenceSystem",
 			simulatedScenario.getTransitSchedule().getAttributes().getAttribute("coordinateReferenceSystem"));
 
-		for (TransitStopFacility stop: aggregatedSchedule.getFacilities().values()) {
+		for (TransitStopFacility stop: simplifiedSchedule.getFacilities().values()) {
 			if (stop.getCoord()== null) {
 				log.error(stop.getId() + " has coord null");
 			}
 		}
 
-		// throwing compare exception while checking stop coords but all stop coords are not null
-//		TransitScheduleValidator.ValidationResult checkResult = TransitScheduleValidator.validateAll(aggregatedScenario.getTransitSchedule(), aggregatedScenario.getNetwork());
-//		List<String> warnings = checkResult.getWarnings();
-//		if (!warnings.isEmpty())
-//			log.warn("TransitScheduleValidator warnings: {}", String.join("\n", warnings));
-//
-//		if (checkResult.isValid()) {
-//			log.info("TransitSchedule and Network valid according to TransitScheduleValidator");
-//		} else {
-//			log.error("TransitScheduleValidator errors: {}", String.join("\n", checkResult.getErrors()));
-//			throw new RuntimeException("TransitSchedule and/or Network invalid");
-//		}
+		TransitScheduleValidator.ValidationResult checkResult = TransitScheduleValidator.validateAll(simplifiedScenario.getTransitSchedule(), simplifiedScenario.getNetwork());
+		List<String> warnings = checkResult.getWarnings();
+		if (!warnings.isEmpty())
+			log.warn("TransitScheduleValidator warnings: {}", String.join("\n", warnings));
+
+		if (checkResult.isValid()) {
+			log.info("TransitSchedule and Network valid according to TransitScheduleValidator");
+		} else {
+			log.error("TransitScheduleValidator errors: {}", String.join("\n", checkResult.getErrors()));
+			throw new RuntimeException("TransitSchedule and/or Network invalid");
+		}
 
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
 		(new MatsimVehicleWriter(simulatedScenario.getTransitVehicles())).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitVehicles.xml.gz").toString());
-		(new NetworkWriter(aggregatedScenario.getNetwork())).write(rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString());
-		(new TransitScheduleWriter(aggregatedSchedule)).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitSchedule.xml.gz").toString());
+		(new NetworkWriter(simplifiedScenario.getNetwork())).write(rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString());
+		(new TransitScheduleWriter(simplifiedSchedule)).writeFile(rootDirectory.resolve(analysisOutput).resolve(outputName + "-transitSchedule.xml.gz").toString());
 
 		new CreateAvroNetwork().execute("--network", rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.xml.gz").toString(),
 			"--output", rootDirectory.resolve(analysisOutput).resolve(outputName + "-network.avro").toString(),
 			"--mode-filter=none");
-		return aggregatedScenario;
+		return simplifiedScenario;
 	}
 
-	private void aggregatePassengerVolumes(Scenario aggregatedScenario) {
+	private void aggregatePassengerVolumes(Scenario simplifiedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
 		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
@@ -571,7 +577,10 @@ public class PtCounts implements MATSimAppCommand {
 
 			// FIXME: dirty: copied naming convention from CreatePseudoNetworkWithLoopLinks.createAndAddLink()
 			List<Id<Link>> linkIdsSincePreviousStop = new ArrayList<>();
-			linkIdsSincePreviousStop.add(Id.createLinkId("pt_" + stopPrevious + "-" + "pt_" + stop));
+			if (stopPrevious!=null) {
+				linkIdsSincePreviousStop.add(Id.createLinkId("pt_" + stopPrevious + "-"  + "pt_" + stop));
+			}
+			linkIdsSincePreviousStop.add(Id.createLinkId("pt_" + stop));
 
 			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, stop,
 				Integer.parseInt(record.get("stopSequence")), stopPrevious, Double.parseDouble(record.get("arrivalTimeScheduled")),
@@ -615,8 +624,8 @@ public class PtCounts implements MATSimAppCommand {
 		final String[] HEADER = {"transitLine", "transitRoute", "departure", "stop", "stopSequence",
 			"stopPrevious", "arrivalTimeScheduled", "arrivalDelay", "departureTimeScheduled", "departureDelay",
 			"passengersAtArrival", "totalVehicleCapacity", "passengersAlighting", "passengersBoarding",
-			"linkIdsSincePreviousStop", "stopIdSimulatedScenario", "stopPreviousIdSimulatedScenario",
-			"linkIdsSincePreviousStopSimulatedScenario"};
+			"linkIdsSincePreviousStop"/*, "stopIdSimulatedScenario", "stopPreviousIdSimulatedScenario",
+			"linkIdsSincePreviousStopSimulatedScenario"*/};
 
 		entries.sort(stop2StopEntryByTransitLineComparator.
 			thenComparing(stop2StopEntryByTransitRouteComparator).
@@ -644,9 +653,9 @@ public class PtCounts implements MATSimAppCommand {
 				printer.print(entry.passengersAlighting);
 				printer.print(entry.passengersBoarding);
 				printer.print(entry.linkIdsSincePreviousStop.stream().map(Object::toString).collect(Collectors.joining(listSeparatorInsideColumn)));
-				printer.print(entry.stopIdSimulatedScenario);
-				printer.print(entry.stopPreviousIdSimulatedScenario);
-				printer.print(entry.linkIdsSincePreviousStopSimulatedScenario);
+//				printer.print(entry.stopIdSimulatedScenario);
+//				printer.print(entry.stopPreviousIdSimulatedScenario);
+//				printer.print(entry.linkIdsSincePreviousStopSimulatedScenario.stream().map(Object::toString).collect(Collectors.joining(listSeparatorInsideColumn)));
 				printer.println();
 			}
 		} catch (IOException e) {
