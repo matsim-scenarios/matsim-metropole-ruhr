@@ -1,5 +1,6 @@
 package org.matsim.analysis;
 
+import com.google.common.base.Verify;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
@@ -16,6 +17,7 @@ import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.referencing.CRS;
 import org.locationtech.jts.geom.*;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.*;
@@ -27,8 +29,17 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
+import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutilityFactory;
+import org.matsim.core.router.speedy.SpeedyALTFactory;
+import org.matsim.core.router.util.LeastCostPathCalculator;
+import org.matsim.core.router.util.LeastCostPathCalculatorFactory;
+import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
+import org.matsim.core.utils.collections.QuadTree;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.io.IOUtils;
+import org.matsim.facilities.ActivityFacility;
 import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.*;
 import org.matsim.pt.utils.CreatePseudoNetworkWithLoopLinks;
@@ -70,9 +81,6 @@ public class PtCounts implements MATSimAppCommand {
 
 	@Override
 	public Integer call() throws Exception {
-//		createsimplifiedPtNetwork();
-
-
 		Path rootDirectory = Paths.get(this.rootDirectory);
 
 		Config config = ConfigUtils.createConfig();
@@ -86,7 +94,34 @@ public class PtCounts implements MATSimAppCommand {
 		Network network = simulatedScenario.getNetwork();
 
 		Scenario simplifiedScenario = createSimplifiedPtNetworkFromExistingNetwork(simulatedScenario);
-		aggregatePassengerVolumes(simplifiedScenario);
+		List<PassengerVolumes> passengerVolumesMatsim = matchPassengerVolumesToSimplifiedSchedule(simplifiedScenario);
+
+		Map<Id<TransitStopFacility>, Map<Id<TransitStopFacility>, Double>> railPassengersMatsimPerLink =
+			passengerVolumesMatsim.stream()
+			.filter(p ->
+				simplifiedScenario.getTransitSchedule().getTransitLines().get(p.transitLineId).getRoutes().get(p.transitRouteId)
+					.getTransportMode().equals("rail")
+					&& p.transitLineId.toString().startsWith("nrw")
+			&& p.stopPreviousId != null) // removes entries for arrival at first stop with no passengers yet
+			.collect(Collectors.groupingBy(PassengerVolumes::stopId,Collectors.groupingBy(PassengerVolumes::stopPreviousId,
+				Collectors.summingDouble(PassengerVolumes::passengersAtArrival))));
+
+		ShpOptions vrrShape = new ShpOptions(rootDirectory.resolve(vrrSpnvShp), null, null);
+		Collection<SimpleFeature> vrrShpFeatures = vrrShape.readFeatures();
+
+		Scenario vrrDummyScenario = createVRRDummyScenario(vrrShpFeatures, config.global().getCoordinateSystem());
+
+		// route passenger volumes data on vrrDummyNetwork
+		Map<Id<TransitStopFacility>, Node> simplifiedMatsimStop2vrrDummyNode = new HashMap<>();
+		Map<Id<TransitStopFacility>, Map<Id<TransitStopFacility>, List<Link>>> stop2previousStop2route = new HashMap<>();
+
+		routePassengerVolumesOnNetwork(vrrDummyScenario, railPassengersMatsimPerLink,
+			simplifiedMatsimStop2vrrDummyNode, simplifiedScenario, stop2previousStop2route);
+
+		(new NetworkWriter(vrrDummyScenario.getNetwork()))
+			.write(rootDirectory.resolve(analysisOutput).resolve( "vrrDummy-network.xml.gz").toString());
+
+		// previous G. Rybczak approach starts here
 
 		Set<Id<Link>> ptLinkIdsInSchedule = new HashSet<>();
 
@@ -117,11 +152,9 @@ public class PtCounts implements MATSimAppCommand {
 			ptLinkGeometries.put(link, line);
 		}
 
-		ShpOptions vrrShape = new ShpOptions(rootDirectory.resolve(vrrSpnvShp), null, null);
-		Collection<SimpleFeature> features = vrrShape.readFeatures();
 		List<FeatureSegments> featureSegments = new ArrayList<>();
 
-		for (SimpleFeature feature : features) {
+		for (SimpleFeature feature : vrrShpFeatures) {
 			Geometry geom = (Geometry) feature.getDefaultGeometry();
 			List<LineString> segments = new ArrayList<>();
 
@@ -168,6 +201,168 @@ public class PtCounts implements MATSimAppCommand {
 		return 0;
 	}
 
+	private void routePassengerVolumesOnNetwork(Scenario vrrDummyScenario, Map<Id<TransitStopFacility>, Map<Id<TransitStopFacility>, Double>> railPassengersMatsimPerLink, Map<Id<TransitStopFacility>, Node> simplifiedMatsimStop2vrrDummyNode, Scenario simplifiedScenario, Map<Id<TransitStopFacility>, Map<Id<TransitStopFacility>, List<Link>>> stop2previousStop2route) {
+		FreeSpeedTravelTime travelTime = new FreeSpeedTravelTime();
+		LeastCostPathCalculatorFactory fastAStarLandmarksFactory = new SpeedyALTFactory();
+		OnlyTimeDependentTravelDisutilityFactory disutilityFactory = new OnlyTimeDependentTravelDisutilityFactory();
+		TravelDisutility travelDisutility = disutilityFactory.createTravelDisutility(travelTime);
+		LeastCostPathCalculator router = fastAStarLandmarksFactory.createPathCalculator(vrrDummyScenario.getNetwork(), travelDisutility,
+			travelTime);
+
+		QuadTree<Node> vrrNodesQT = buildQuadTree(vrrDummyScenario.getNetwork());
+
+		for (Link link : vrrDummyScenario.getNetwork().getLinks().values()) {
+			link.getAttributes().putAttribute("matsim_pax_volumes", 0.0d);
+		}
+
+		for (Map.Entry<Id<TransitStopFacility>, Map<Id<TransitStopFacility>, Double>> toStop2previousStopsEntries : railPassengersMatsimPerLink.entrySet()) {
+			Node vrrToNode = simplifiedMatsimStop2vrrDummyNode.get(toStop2previousStopsEntries.getKey());
+			TransitStopFacility simplifiedMatsimToStop = simplifiedScenario.getTransitSchedule().getFacilities().get(toStop2previousStopsEntries.getKey());
+			if (vrrToNode == null) {
+				vrrToNode = vrrNodesQT.getClosest(simplifiedMatsimToStop.getCoord().getX(), simplifiedMatsimToStop.getCoord().getY());
+				simplifiedMatsimStop2vrrDummyNode.put(simplifiedMatsimToStop.getId(), vrrToNode);
+			}
+			Map<Id<TransitStopFacility>, List<Link>> previousStops2Routes = stop2previousStop2route.computeIfAbsent(simplifiedMatsimToStop.getId(), m -> new HashMap<>());
+
+			for (var previousStop2PassengerVolume : toStop2previousStopsEntries.getValue().entrySet()) {
+				Node vrrFromNode = simplifiedMatsimStop2vrrDummyNode.get(previousStop2PassengerVolume.getKey());
+				TransitStopFacility simplifiedMatsimFromStop = simplifiedScenario.getTransitSchedule().getFacilities().get(previousStop2PassengerVolume.getKey());
+				if (vrrFromNode == null) {
+					vrrFromNode = vrrNodesQT.getClosest(simplifiedMatsimFromStop.getCoord().getX(), simplifiedMatsimFromStop.getCoord().getY());
+					simplifiedMatsimStop2vrrDummyNode.put(simplifiedMatsimFromStop.getId(), vrrFromNode);
+				}
+
+				List<Link> savedRoute = previousStops2Routes.get(simplifiedMatsimFromStop.getId());
+				if (savedRoute == null) {
+					savedRoute = new ArrayList<>();
+					LeastCostPathCalculator.Path route = router.calcLeastCostPath(vrrFromNode, vrrToNode, 0.0d, null, null);
+					savedRoute.addAll(route.links);
+				}
+				for (Link link : savedRoute) {
+					link.getAttributes().putAttribute("matsim_pax_volumes",
+						(double) link.getAttributes().getAttribute("matsim_pax_volumes") + previousStop2PassengerVolume.getValue());
+				}
+			}
+		}
+
+		for (Link link : vrrDummyScenario.getNetwork().getLinks().values()) {
+			// add opposite direction pax volumes to compare with bidirectional sums in vrr data
+			Link oppositeLink = NetworkUtils.findLinkInOppositeDirection(link);
+			link.getAttributes().putAttribute("matsim_pax_volumes_bidirectional",
+				(double) link.getAttributes().getAttribute("matsim_pax_volumes")
+					+ (double) oppositeLink.getAttributes().getAttribute("matsim_pax_volumes"));
+		}
+	}
+
+	private Scenario createVRRDummyScenario(Collection<SimpleFeature> vrrShpFeatures, String coordinateSystem) {
+		Config config = ConfigUtils.createConfig();
+		config.global().setCoordinateSystem(coordinateSystem);
+		Scenario vrrDummyScenario = ScenarioUtils.createScenario(config);
+
+		for (SimpleFeature feature : vrrShpFeatures) {
+			Geometry geom = (Geometry) feature.getDefaultGeometry();
+
+			if (geom instanceof LineString) {
+				createNodesAndLinkForLineString((LineString) geom, feature, vrrDummyScenario);
+			} else if (geom instanceof MultiLineString) {
+				MultiLineString mls = (MultiLineString) geom;
+				for (int i = 0; i < mls.getNumGeometries(); i++) {
+					createNodesAndLinkForLineString((LineString) mls.getGeometryN(i), feature, vrrDummyScenario);
+				}
+			} else {
+				System.out.println("Unsupported geometry: " + geom.getGeometryType());
+			}
+		}
+
+		return vrrDummyScenario;
+	}
+
+	private void createNodesAndLinkForLineString(LineString line, SimpleFeature feature, Scenario vrrDummyScenario) {
+		Coordinate[] coords = line.getCoordinates();
+		Coord fromCoord = CoordUtils.createCoord(coords[0]);
+		Coord toCoord = CoordUtils.createCoord(coords[1]);
+
+		String fromStopName = (String) feature.getAttribute("STATIONSNA");
+		String toStopName = (String) feature.getAttribute("STATIONS_1");
+
+		NetworkFactory networkFactory = vrrDummyScenario.getNetwork().getFactory();
+
+		Id<Node> fromNodeId = Id.createNodeId(fromStopName);
+		Node fromNode = vrrDummyScenario.getNetwork().getNodes().get(fromNodeId);
+		if (fromNode == null) {
+			// create and add
+			fromNode = networkFactory.createNode(fromNodeId, fromCoord);
+			fromNode.getAttributes().putAttribute("vrrName", fromStopName);
+			fromNode.getAttributes().putAttribute("DS100Name", feature.getAttribute("DS100_AB"));
+			vrrDummyScenario.getNetwork().addNode(fromNode);
+		} else {
+			// check consistency
+			Verify.verify(CoordUtils.calcEuclideanDistance(fromNode.getCoord(), fromCoord) < 1.0);
+			Verify.verify(fromNode.getAttributes().getAttribute("vrrName").equals(fromStopName));
+			Verify.verify(fromNode.getAttributes().getAttribute("DS100Name").equals(feature.getAttribute("DS100_AB")));
+		}
+
+		Id<Node> toNodeId = Id.createNodeId(toStopName);
+		Node toNode = vrrDummyScenario.getNetwork().getNodes().get(toNodeId);
+		if (toNode == null) {
+			// create and add
+			toNode = networkFactory.createNode(toNodeId, toCoord);
+			toNode.getAttributes().putAttribute("vrrName", toStopName);
+			toNode.getAttributes().putAttribute("DS100Name", feature.getAttribute("DS100_AN"));
+			vrrDummyScenario.getNetwork().addNode(toNode);
+		} else {
+			// check consistency
+			Verify.verify(CoordUtils.calcEuclideanDistance(toNode.getCoord(), toCoord) < 1.0);
+			Verify.verify(toNode.getAttributes().getAttribute("vrrName").equals(toStopName));
+			Verify.verify(toNode.getAttributes().getAttribute("DS100Name").equals(feature.getAttribute("DS100_AN")));
+		}
+
+		// need both directions for routing
+		createAndAddLink(feature, vrrDummyScenario, networkFactory, fromStopName, toStopName, fromNode, toNode);
+		createAndAddLink(feature, vrrDummyScenario, networkFactory, toStopName, fromStopName, toNode, fromNode);
+	}
+
+	private static void createAndAddLink(SimpleFeature feature, Scenario vrrDummyScenario, NetworkFactory networkFactory, String fromStopName, String toStopName, Node fromNode, Node toNode) {
+		Link link = networkFactory.createLink(Id.createLinkId(fromStopName + "-" + toStopName), fromNode, toNode);
+		link.getAttributes().putAttribute("vrrShpLinkId", feature.getAttribute("ID"));
+		link.getAttributes().putAttribute("DS100_AB", feature.getAttribute("DS100_AB"));
+		link.getAttributes().putAttribute("DS100_AN", feature.getAttribute("DS100_AN"));
+		link.getAttributes().putAttribute("BELEGUNG_M", feature.getAttribute("BELEGUNG_M"));
+		vrrDummyScenario.getNetwork().addLink(link);
+	}
+
+	private QuadTree<Node> buildQuadTree(Network network) {
+		double minx = Double.POSITIVE_INFINITY;
+		double miny = Double.POSITIVE_INFINITY;
+		double maxx = Double.NEGATIVE_INFINITY;
+		double maxy = Double.NEGATIVE_INFINITY;
+		for (Node n : network.getNodes().values()) {
+			if (n.getCoord().getX() < minx) {
+				minx = n.getCoord().getX();
+			}
+			if (n.getCoord().getY() < miny) {
+				miny = n.getCoord().getY();
+			}
+			if (n.getCoord().getX() > maxx) {
+				maxx = n.getCoord().getX();
+			}
+			if (n.getCoord().getY() > maxy) {
+				maxy = n.getCoord().getY();
+			}
+		}
+		minx -= 1.0;
+		miny -= 1.0;
+		maxx += 1.0;
+		maxy += 1.0;
+		// yy the above four lines are problematic if the coordinate values are much smaller than one. kai, oct'15
+
+		log.info("building QuadTree for nodes: xrange(" + minx + "," + maxx + "); yrange(" + miny + "," + maxy + ")");
+		QuadTree<Node> quadTree = new QuadTree<>(minx, miny, maxx, maxy);
+		for (Node n : network.getNodes().values()) {
+			quadTree.put(n.getCoord().getX(), n.getCoord().getY(), n);
+		}
+		return quadTree;
+	}
 
 	public static void main(String[] args) {
 		new PtCounts().execute(args);
@@ -539,7 +734,7 @@ public class PtCounts implements MATSimAppCommand {
 		return simplifiedScenario;
 	}
 
-	private void aggregatePassengerVolumes(Scenario simplifiedScenario) {
+	private List<PassengerVolumes> matchPassengerVolumesToSimplifiedSchedule(Scenario simplifiedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
 		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
@@ -596,7 +791,7 @@ public class PtCounts implements MATSimAppCommand {
 		writePassengerVolumesCsv(IOUtils.getFileUrl(rootDirectory.resolve(analysisOutput).resolve(outputName + "-pax_volumes.csv.gz").toString()),
 			";", ",", passengerVolumes);
 
-
+		return passengerVolumes;
 	}
 
 
