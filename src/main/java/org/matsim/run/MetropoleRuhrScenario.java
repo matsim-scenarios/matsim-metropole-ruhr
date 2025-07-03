@@ -40,7 +40,10 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
+import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -392,6 +395,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		bike.setNetworkMode(TransportMode.bike);
 
 		NetworkUtils.writeNetwork(scenario.getNetwork(), "adjustedNetwork_forValidation.xml.gz");
+		retainPtUsersOnly(scenario);
 	}
 
 	@Override
@@ -701,4 +705,42 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	private record CapacityChange(String source, Id<Link> linkId, double simulatedTraffic, double observedTraffic, double oldCapacity, double newCapacity) {
 	}
+
+	/*
+	 * This method retains only those persons in the population who use public transport in their selected plan.
+	 */
+	public static void retainPtUsersOnly(Scenario scenario) {
+		var population = scenario.getPopulation();
+		List<Person> ptUsers = new ArrayList<>();
+
+		int count = 0;
+		for (Person person: population.getPersons().values()) {
+			Plan plan = person.getSelectedPlan();
+			boolean usesPt = false;
+			for (PlanElement pe : plan.getPlanElements()) {
+				if (pe instanceof Leg) {
+					String mode = ((Leg) pe).getMode();
+					if (mode.equals("pt") || mode.startsWith("pt:")) {
+						usesPt = true;
+						break;
+					}
+				}
+			}
+
+			if (usesPt && count <10) { // limit to 100 persons for testing
+				ptUsers.add(person);
+				count++;
+			}
+		}
+
+		scenario.getPopulation().getPersons().clear();
+		for (Person person: ptUsers) {
+			//PopulationUtils.resetRoutes(person.getSelectedPlan());
+			scenario.getPopulation().addPerson(person);
+		}
+		System.out.println(scenario.getPopulation().getPersons().size());
+		System.out.println("Retained " + ptUsers.size() + " persons who use public transport in their plans.");
+	}
+
+
 }
