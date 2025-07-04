@@ -73,6 +73,9 @@ public class PtCounts implements MATSimAppCommand {
 	@CommandLine.Option(names="--rootDirectory", description = "Path to root directory", required = true)
 	private String rootDirectory;
 
+	// more recent matsim-libs versions have upscaling implemented per default in PtStop2StopAnalysis, but this scenario uses an older version
+	private double upScaleSampleFactor = 10.0;
+
 	private Map<Id<TransitStopFacility>, Id<TransitStopFacility>> stop2parentStop = new HashMap<>();
 
 	Logger log = LogManager.getLogger(PtCounts.class);
@@ -248,9 +251,14 @@ public class PtCounts implements MATSimAppCommand {
 		for (Link link : vrrDummyScenario.getNetwork().getLinks().values()) {
 			// add opposite direction pax volumes to compare with bidirectional sums in vrr data
 			Link oppositeLink = NetworkUtils.findLinkInOppositeDirection(link);
-			link.getAttributes().putAttribute("matsim_pax_volumes_bidirectional",
-				(double) link.getAttributes().getAttribute("matsim_pax_volumes")
-					+ (double) oppositeLink.getAttributes().getAttribute("matsim_pax_volumes"));
+			double matsimPaxVolumesBidirectional = (double) link.getAttributes().getAttribute("matsim_pax_volumes")
+				+ (double) oppositeLink.getAttributes().getAttribute("matsim_pax_volumes");
+			double vrrPaxVolumesBidirectional = (double) link.getAttributes().getAttribute("BELEGUNG_M");
+			double diffPaxVolumesBidirectional = matsimPaxVolumesBidirectional - vrrPaxVolumesBidirectional;
+			double sqv = 1 / (1 + Math.sqrt(Math.pow(diffPaxVolumesBidirectional, 2) / (10000 * vrrPaxVolumesBidirectional)));
+			link.getAttributes().putAttribute("matsim_pax_volumes_bidirectional", matsimPaxVolumesBidirectional);
+			link.getAttributes().putAttribute("diff_pax_volumes_bidirectional", diffPaxVolumesBidirectional);
+			link.getAttributes().putAttribute("sqv_pax_volumes_bidirectional", sqv);
 		}
 	}
 
@@ -780,9 +788,12 @@ public class PtCounts implements MATSimAppCommand {
 			PassengerVolumes entry = new PassengerVolumes(transitLineId, transitRouteId, departureId, stop,
 				Integer.parseInt(record.get("stopSequence")), stopPrevious, Double.parseDouble(record.get("arrivalTimeScheduled")),
 				Double.parseDouble(record.get("arrivalDelay")), Double.parseDouble(record.get("departureTimeScheduled")),
-				Double.parseDouble(record.get("departureDelay")), Double.parseDouble(record.get("passengersAtArrival")),
-				Double.parseDouble(record.get("totalVehicleCapacity")), Double.parseDouble(record.get("passengersAlighting")),
-				Double.parseDouble(record.get("passengersBoarding")), linkIdsSincePreviousStop,
+				Double.parseDouble(record.get("departureDelay")),
+				Double.parseDouble(record.get("passengersAtArrival")) * upScaleSampleFactor,
+				Double.parseDouble(record.get("totalVehicleCapacity")),
+				Double.parseDouble(record.get("passengersAlighting")) * upScaleSampleFactor,
+				Double.parseDouble(record.get("passengersBoarding")) * upScaleSampleFactor,
+				linkIdsSincePreviousStop,
 				Id.create(record.get("stop"), TransitStopFacility.class), Id.create(record.get("stopPrevious"), TransitStopFacility.class),
 				linkIdsSincePreviousStopSimulatedScenario);
 			passengerVolumes.add(entry);
