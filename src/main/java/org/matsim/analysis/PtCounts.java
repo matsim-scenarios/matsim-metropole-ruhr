@@ -800,7 +800,7 @@ public class PtCounts implements MATSimAppCommand {
 		}
 
 		writePassengerVolumesCsv(IOUtils.getFileUrl(rootDirectory.resolve(analysisOutput).resolve(outputName + "-pax_volumes.csv.gz").toString()),
-			";", ",", passengerVolumes);
+			",", ";", passengerVolumes);
 
 		return passengerVolumes;
 	}
