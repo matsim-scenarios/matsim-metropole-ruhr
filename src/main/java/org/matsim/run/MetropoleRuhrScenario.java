@@ -686,7 +686,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
 			if ( isBus( vehicle ) ) {
 				//TODO find useful value for the bus penalty
-				cost *= 1.2;
+				cost *= 5.0; // make bus 5 times more expensive than other modes
 			}
 			return cost;
 		}
@@ -713,7 +713,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		var population = scenario.getPopulation();
 		List<Person> ptUsers = new ArrayList<>();
 
-		int count = 0;
 		for (Person person: population.getPersons().values()) {
 			Plan plan = person.getSelectedPlan();
 			boolean usesPt = false;
@@ -727,15 +726,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				}
 			}
 
-			if (usesPt && count <10) { // limit to 100 persons for testing
+			if (usesPt) {
 				ptUsers.add(person);
-				count++;
 			}
 		}
 
 		scenario.getPopulation().getPersons().clear();
 		for (Person person: ptUsers) {
-			//PopulationUtils.resetRoutes(person.getSelectedPlan());
 			scenario.getPopulation().addPerson(person);
 		}
 		System.out.println(scenario.getPopulation().getPersons().size());
