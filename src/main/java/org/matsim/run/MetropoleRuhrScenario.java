@@ -179,7 +179,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
 
-		for (String subpopulation : List.of("LTL_trips", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
+		for (String subpopulation : List.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
 			"FTL_trip", "FTL_kv_trip", "goodsTraffic")) {
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings()
