@@ -1,5 +1,7 @@
 package org.matsim.run;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.events.PersonEntersVehicleEvent;
 import org.matsim.api.core.v01.events.PersonMoneyEvent;
@@ -9,12 +11,16 @@ import org.matsim.vehicles.Vehicle;
 
 import java.util.List;
 
+
+
 /*
  * This handler will give a penalty to all persons entering a bus that are not public transport operators.
  */
 
 public class BusPunishmentEventHandler implements PersonEntersVehicleEventHandler {
 	private final List<Id<Vehicle>> buses;
+	private static final Logger log = LogManager.getLogger(BusPunishmentEventHandler.class);
+
 
 	BusPunishmentEventHandler(List<Id<Vehicle>> buses) {
 		this.buses = buses;
@@ -22,9 +28,12 @@ public class BusPunishmentEventHandler implements PersonEntersVehicleEventHandle
 
 	@Override
 	public void handleEvent(PersonEntersVehicleEvent event) {
+
 		// Only punish persons that are not public transport operators
 		if (!event.getPersonId().toString().contains("pt")) {
+
 			if (buses.contains(event.getVehicleId())) {
+				log.info("BusPunishmentEventHandler: " + event.getPersonId() + " enters bus " + event.getVehicleId());
 				//System.out.println("BusPunishmentEventHandler: " + event.getPersonId() + " enters bus " + event.getVehicleId());
 				//TODO -100 is a placeholder, adjust the amount as needed, need to find a better value
 				//might be worth considering to make this somehow distance based or time dependent as for short trips the penalty might be too high and there are
