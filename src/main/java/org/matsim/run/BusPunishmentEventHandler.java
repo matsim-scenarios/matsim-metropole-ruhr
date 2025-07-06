@@ -39,9 +39,7 @@ public class BusPunishmentEventHandler implements PersonEntersVehicleEventHandle
 		if (!event.getPersonId().toString().contains("pt")) {
 
 			if (buses.contains(event.getVehicleId())) {
-				if (busLogCount.getAndIncrement() < 100) {
-					log.info("BusPunishmentEventHandler: " + event.getPersonId() + " enters bus " + event.getVehicleId());
-				}
+
 
 				//System.out.println("BusPunishmentEventHandler: " + event.getPersonId() + " enters bus " + event.getVehicleId());
 				//TODO -100 is a placeholder, adjust the amount as needed, need to find a better value
