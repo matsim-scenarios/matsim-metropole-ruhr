@@ -86,6 +86,7 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -680,14 +681,21 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private static class MyRaptorInVehicleCostCalculator implements RaptorInVehicleCostCalculator {
 		@Inject
 		DefaultRaptorInVehicleCostCalculator delegate;
+
+		private static final AtomicInteger busLogCount = new AtomicInteger(0);
 		//		@Inject CapacityDependentInVehicleCostCalculator delegate;
 		@Override
 		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RouteSegmentIterator iterator ){
 			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
 			if ( isBus( vehicle ) ) {
 				//TODO find useful value for the bus penalty
-				log.info("Bus penalty applied for vehicle: " + vehicle.getId());
+				if (busLogCount.get() < 100) {
+					log.info("Bus " + vehicle.getId() + " has cost " + cost);
+				}
 				cost *= 5.0; // make bus 5 times more expensive than other modes
+				if (busLogCount.getAndIncrement() < 100) {
+					log.info("Bus " + vehicle.getId() + " has new cost " + cost);
+				}
 			}
 			return cost;
 		}
