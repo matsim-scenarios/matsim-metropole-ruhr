@@ -83,7 +83,7 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 
 				System.out.println("CSV written successfully");
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 		}
 
@@ -235,12 +235,11 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 				DtvCountEntry backwardEntry = new DtvCountEntry(observedPkw / 2, observedLkw / 2, simulatedPkw / 2, simulatedLkw / 2);
 				result.put(linkId_backward, backwardEntry);
 			}
-			return result;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		} catch (NumberFormatException e) {
 			System.err.println("Fehler beim Parsen von numerischen Werten.");
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 		return result;
 	}
@@ -265,13 +264,11 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 
 				csvCountEntries.computeIfAbsent(linkId, k -> new ArrayList<>()).add(new BastCountEntry(name, hour, observedTraffic, simulatedTraffic));
 			}
-
-			return csvCountEntries;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		} catch (NumberFormatException e) {
 			System.err.println("Fehler beim Parsen von numerischen Werten.");
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 		return csvCountEntries;
 	}
