@@ -86,7 +86,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2024.0";
+	public static final String VERSION = "v2024.1";
 
 	private static final double PCU_CAR = 1;
 	private static final double PCU_TRUCK = 3.5;
