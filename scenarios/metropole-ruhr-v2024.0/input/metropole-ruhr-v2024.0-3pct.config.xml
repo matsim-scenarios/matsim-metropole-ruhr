@@ -8,8 +8,8 @@
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v2.0-3pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2.0-3pct/"/>
+		<param name="runId" value="metropole-ruhr-v2024.0-3pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.0-3pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -21,26 +21,26 @@
 	</module>
 	<module name="network">
 		<param name="inputNetworkFile"
-			   value="./metropole-ruhr-v2.0.network_resolutionHigh-with-pt.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.network_resolutionHigh-with-pt.xml.gz"/>
 	</module>
 	<module name="plans">
 		<param name="inputPlansFile"
-			   value="./metropole-ruhr-v2.0-3pct.plans.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-3pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="true"/>
 	</module>
 	<module name="vehicles">
 		<param name="vehiclesFile"
-			   value="./metropole-ruhr-v2.0.mode-vehicles.xml"/>
+			   value="./metropole-ruhr-v2024.0.mode-vehicles.xml"/>
 	</module>
 	<module name="transit">
 		<param name="transitScheduleFile"
-			   value="./metropole-ruhr-v2.0-transitSchedule.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-transitSchedule.xml.gz"/>
 		<param name="useTransit" value="true"/>
 		<param name="vehiclesFile"
-			   value="./metropole-ruhr-v2.0-transitVehicles.xml.gz"/>
+			   value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-transitVehicles.xml.gz"/>
 	</module>
 	<module name="counts">
-		<param name="inputCountsFile" value="./metropole-ruhr-v2.0.counts.xml.gz"/>
+		<param name="inputCountsFile" value="../../../../../public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.counts.xml.gz"/>
 		<param name="countsScaleFactor" value="0.03"/>
 	</module>
 	<module name="routing">
@@ -141,15 +141,15 @@
 			<param name="performing" value="6.00"/>
 			<parameterset type="modeParams" >
 				<param name="mode" value="car" />
-				<!-- We use the same value as for Berlin. See: https://docs.google.com/spreadsheets/d/1HzWpmmws1dBJuo-1Z0TnJ6-w4vD7eXBTUUEu68Hl9Q4/edit#gid=550988004  -->
-				<param name="dailyMonetaryConstant" value="-5" />
-				<param name="constant" value="0.8379675427416293" />
+				<!-- We use -3 to fit the approximate value for Berlin -->
+				<param name="dailyMonetaryConstant" value="-3" />
+				<param name="constant" value="0.56" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 				<param name="monetaryDistanceRate" value="-0.000149" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
-				<param name="constant" value="-2.2644332732845336" />
+				<param name="constant" value="0.27" />
 				<!-- alpha=2, gamma=0.0 -->
 				<!-- adapted in code -->
 				<param name="marginalUtilityOfTraveling_util_hr" value="0" />
@@ -160,13 +160,13 @@
 				<param name="mode" value="pt" />
 				<!-- 49 EUR Ticket  -->
 				<param name="dailyMonetaryConstant" value="-2.35" />
-				<param name="constant" value="0.07469218978843763" />
+				<param name="constant" value="-0.38" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
-				<param name="constant" value="-0.1502904438227941" />
-				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
+				<param name="constant" value="0.33" />
+				<param name="marginalUtilityOfTraveling_util_hr" value="-5.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="walk" />

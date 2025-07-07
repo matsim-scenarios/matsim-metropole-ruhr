@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import sys
 import geopandas as gpd
 
 from matsim.calibration import create_calibration, ASCCalibrator, utils
@@ -12,10 +12,10 @@ fixed_mode = "walk"
 
 # Initial ASCs
 initial = {
-    "bike": -0.15,
-    "pt": 0,
-    "car": 0.8,
-    "ride": -2.3
+    "bike": 0.33,
+    "pt": -0.38,
+    "car": 0.56,
+    "ride": 0.27
 }
 
 # Modal split target
@@ -27,13 +27,15 @@ target = {
     "ride": 0.128936
 }
 
-region = gpd.read_file("../scenarios/metropole-ruhr-v1.0/shape/dilutionArea.shp").set_crs("EPSG:25832")
+input_path = "../../scenarios/metropole-ruhr-v2.0/input"
+
+region = gpd.read_file(input_path + "/pt-pricing/pt_preisstufen_fare_all3.0.shp").set_crs("EPSG:25832")
 
 
 def f(persons):
     persons = gpd.GeoDataFrame(persons, geometry=gpd.points_from_xy(persons.home_x, persons.home_y))
 
-    df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", op="intersects")
+    df = gpd.sjoin(persons.set_crs("EPSG:25832"), region, how="inner", predicate="intersects")
     return df
 
 
@@ -45,18 +47,20 @@ def adjust_trips(df):
 
     return df
 
+# Use addtional arguments to pass to matsim
+addtional_arguments = sys.argv[1] if len(sys.argv) > 1 else ""
 
 study, obj = create_calibration(
     "calib",
     ASCCalibrator(modes, initial, target, lr=utils.linear_scheduler(start=0.3, interval=8)),
-    "matsim-metropole-ruhr-1.4.1-136d8aa.jar",
-    "../scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0-3pct.config.xml",
-    args="--3pct",
-    jvm_args="-Xmx68G -Xmx68G -XX:+AlwaysPreTouch",
+    "matsim-metropole-ruhr-2.0-2e225bc.jar",
+    input_path + "/metropole-ruhr-v2.0-3pct.config.xml",
+    args="--10pct --no-intermodal " + addtional_arguments,
+    jvm_args="-Xmx80G -Xms80G -XX:+AlwaysPreTouch -XX:+UseParallelGC",
     transform_persons=f, transform_trips=adjust_trips,
     chain_runs=utils.default_chain_scheduler, debug=False
 )
 
 # %%
 
-study.optimize(obj, 3)
+study.optimize(obj, 1)
