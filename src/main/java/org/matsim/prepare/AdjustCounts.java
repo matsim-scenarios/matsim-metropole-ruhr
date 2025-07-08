@@ -34,7 +34,6 @@ public class AdjustCounts implements MATSimAppCommand {
 	private void fixMismatchedCountStations(String countsPath) {
 		log.info("Fixing mismatched count stations...");
 
-//		Counts<Link> c = (Counts<Link>) scenario.getScenarioElement(Counts.ELEMENT_NAME);
 		Counts<Link> c = new Counts<>();
 		new MatsimCountsReader(c).readFile(countsPath);
 

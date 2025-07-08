@@ -81,7 +81,7 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 					writer.newLine();
 				}
 
-				System.out.println("CSV written successfully");
+				log.info("CSV written successfully");
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -238,7 +238,7 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		} catch (NumberFormatException e) {
-			System.err.println("Fehler beim Parsen von numerischen Werten.");
+			log.error("Fehler beim Parsen von numerischen Werten.");
 			throw new RuntimeException(e);
 		}
 		return result;
@@ -267,7 +267,7 @@ public class AdjustNetworkCapacities implements MATSimAppCommand {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		} catch (NumberFormatException e) {
-			System.err.println("Fehler beim Parsen von numerischen Werten.");
+			log.error("Fehler beim Parsen von numerischen Werten.");
 			throw new RuntimeException(e);
 		}
 		return csvCountEntries;
