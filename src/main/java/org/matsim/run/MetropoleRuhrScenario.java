@@ -91,7 +91,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
 	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(3, 10, 25, 1);
+	private final SampleOptions sample = new SampleOptions(10, 3, 25, 1);
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
@@ -104,7 +104,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
+		super("./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-10pct.config.xml");
 	}
 
 	/**
