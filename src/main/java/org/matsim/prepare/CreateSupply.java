@@ -169,12 +169,12 @@ public class CreateSupply {
 		new NetworkWriter(network3).write(outputDir.resolve("metropole-ruhr-v2.0.network-onlyBikeNetwork3.xml.gz").toString());
 		new BikeNetworkMerger(network).mergeBikeHighways(network3);
 
-		var simplifier = new NetworkSimplifier();
+		var simplifier = NetworkSimplifier.createNetworkSimplifier(network);
 
 		// Original bike network is not merged
 		BiPredicate<Link, Link> isMergeable = (link1, link2) -> !link1.getId().toString().startsWith("bike") && !link2.getId().toString().startsWith("bike");
-
-		simplifier.run(network, isMergeable, NetworkSimplifier.DEFAULT_TRANSFER_ATTRIBUTES_CONSUMER);
+		simplifier.registerIsMergeablePredicate(isMergeable);
+		simplifier.run(network);
 
 		// Clean unused nodes
 		List<Id<Node>> toRemove = network.getNodes().values().stream()

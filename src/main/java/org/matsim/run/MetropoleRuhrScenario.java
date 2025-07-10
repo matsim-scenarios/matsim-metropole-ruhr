@@ -269,7 +269,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setFlowCapFactor(sample.getSample());
 			config.qsim().setStorageCapFactor(sample.getSample());
 
-			simWrapperConfigGroup.sampleSize = sample.getSample();
+			simWrapperConfigGroup.setSampleSize(sample.getSample());
 
 			config.counts().setCountsScaleFactor(sample.getSample());
 		}
