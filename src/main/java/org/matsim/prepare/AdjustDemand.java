@@ -9,11 +9,13 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.index.quadtree.Quadtree;
+import org.matsim.analysis.PopulationComparison;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
+import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
@@ -98,13 +100,31 @@ public class AdjustDemand implements MATSimAppCommand {
             }
         }
 
-        // read population
-        var population = PopulationUtils.readPopulation(inputFile.toString());
-        QuadTree<Id<Person>> spatialIndex = createSpatialIndex(population);
-        // now go through all the cells and adjust the population according to the values in adjust table
-        adjust(population, preparedFeatures, spatialIndex, filteredAdjustments);
+	// read originalPopulation
+		Population originalPopulation = PopulationUtils.readPopulation(inputFile.toString());
+	// Create a new empty population
+		Population personPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 
-        PopulationUtils.writePopulation(population, outputFile.toString());
+		//only add person agents to the new population
+		for (Person person : originalPopulation.getPersons().values()) {
+			if (person.getAttributes().getAttribute("subpopulation").equals("person")) {
+				personPopulation.addPerson(person);
+			}
+		}
+
+//only use the person demand from here
+		QuadTree<Id<Person>> spatialIndex = createSpatialIndex(personPopulation);
+		// now go through all the cells and adjust the originalPopulation according to the values in adjust table
+		adjust(personPopulation, preparedFeatures, spatialIndex, filteredAdjustments);
+
+		for (Person person : originalPopulation.getPersons().values()) {
+			//add back non-person demand
+			if (!personPopulation.getPersons().containsKey(person.getId())) {
+				personPopulation.addPerson(person);
+			}
+		}
+
+		PopulationUtils.writePopulation(personPopulation, outputFile.toString());
 
         return 0;
     }
