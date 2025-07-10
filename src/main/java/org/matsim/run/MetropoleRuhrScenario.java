@@ -278,7 +278,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		//ride scoring params
 		// alpha can be calibrated
-		double alpha = 2.0;
+		double alpha = 1.0;
 		RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), alpha);
 
 		prepareCommercialTrafficConfig(config);
