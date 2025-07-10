@@ -23,6 +23,7 @@ import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
+import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
@@ -32,6 +33,7 @@ import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -46,6 +48,7 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -69,27 +72,26 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.*;
+import java.nio.file.Path;
+import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = MetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
-		LinkStats.class, TripMatrix.class
+	LinkStats.class, TripMatrix.class
 })
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2024.0";
+	public static final String VERSION = "v2024.1";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
 	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(3, 10, 25, 1);
+	private final SampleOptions sample = new SampleOptions(10, 3, 25, 1);
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
@@ -102,7 +104,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
+		super("./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-10pct.config.xml");
 	}
 
 	/**
@@ -189,7 +191,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 			// intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
 			subtourModeChoice.setModes(
-					Arrays.stream(subtourModeChoice.getModes())
+				Arrays.stream(subtourModeChoice.getModes())
 					.filter(s -> !s.equals("pt_intermodal_allowed"))
 					.toArray(String[]::new)
 			);
@@ -197,34 +199,34 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 			ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
 			changeModeConfigGroup.setModes(
-					Arrays.stream(changeModeConfigGroup.getModes())
-							.filter(s -> !s.equals("pt_intermodal_allowed"))
-							.toArray(String[]::new)
+				Arrays.stream(changeModeConfigGroup.getModes())
+					.filter(s -> !s.equals("pt_intermodal_allowed"))
+					.toArray(String[]::new)
 			);
 
 
 			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
 			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
-					swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
+				swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
 			intermodalAccessEgressParameterSets.clear();
 
 			PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
-					ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
-							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
+				ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
+					toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
 			for (PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization intermodalAccessEgressModeUtilityRandomization : intermodalAccessEgressModeUtilityRandomizationArray) {
 				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalAccessEgressModeUtilityRandomization);
 			}
 
 			IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
-					intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
-							toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
+				intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
+					toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
 			for (IntermodalTripFareCompensatorConfigGroup intermodalTripFareCompensatorConfigGroup : intermodalTripFareCompensatorConfigGroupArray) {
 				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroup);
 			}
 
 			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
-					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
-							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
+				ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
+					toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
 			for (PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet ptIntermodalRoutingModeParameterArray : ptIntermodalRoutingModeParameterArrays) {
 				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArray);
 			}
@@ -322,7 +324,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
-
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
 	}
@@ -332,8 +333,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		if (!controler.getConfig().transit().isUsingTransitInMobsim()) {
 			log.error("Public transit will be teleported and not simulated in the mobsim! "
-					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
-					+ "Should only be used for testing or car-focused studies with fixed modal split.");
+				+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
+				+ "Should only be used for testing or car-focused studies with fixed modal split.");
 			throw new IllegalArgumentException("Pt is teleported, wich is not supported");
 		}
 
@@ -382,5 +383,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
 	}
+
 
 }
