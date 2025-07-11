@@ -422,14 +422,14 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		@Override
 		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RaptorInVehicleCostCalculator.RouteSegmentIterator iterator ){
 			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
-			if (isNotBus(vehicle)) {
+			if (!isBus(vehicle)) {
 				cost *= 5.0; // make everything execpt buses 5 times more expensive than other modes
 			}
 			return cost;
 		}
-		private boolean isNotBus(Vehicle vehicle ){
+		private boolean isBus(Vehicle vehicle ){
 			// somehow figure out if the vehicle is a bus or something else.
-			return !vehicle.getType().getId().toString().contains("Bus");
+			return vehicle.getType().getId().toString().contains("Bus");
 		}
 	}
 
