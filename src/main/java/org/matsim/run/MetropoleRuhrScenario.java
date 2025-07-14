@@ -415,13 +415,19 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private static void adjustNetworkSpeed(Network network, double factor) {
 		for (Link link: network.getLinks().values()) {
 			String type = (String) link.getAttributes().getAttribute("type");
-			if (type != null && (type.contains("trunk") || type.contains("primary"))) {
+//			if (type != null && (type.contains("trunk") || type.contains("primary"))) {
 				// the 0.75 is to make it consistent with the other primary and trunk links, that are adjusted in the SuperSonicOsmNetworkReader
-				if (link.getFreespeed() >= 51 / 3.6)  {
-					link.setFreespeed(link.getFreespeed() * factor * 0.75);
-				} else {
-					link.setFreespeed(link.getFreespeed() * factor);
+
+			if ( type != null && !type.contains( "motorway" ) ) {
+				// (if original freesped < 51 km/h, then the SuperSonicNetworkReader classifies it as "urban" and multiplies the speed by 0.75.  We
+				// thus do the same here for links with freeSpeed >= 51 kmh if they are not motorway.)
+				if (link.getFreespeed() >= 51 / 3.6){
+					link.setFreespeed( link.getFreespeed() * 0.75 );
 				}
+
+				// we apply the factor (which may be 1) to all links that do not have "motorway" in their type:
+				link.setFreespeed(link.getFreespeed() * factor);
+
 			}
 		}
 	}
