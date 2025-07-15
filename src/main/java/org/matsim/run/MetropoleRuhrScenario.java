@@ -333,10 +333,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		bike.setNetworkMode(TransportMode.bike);
 
 		//adjust primary and trunk link speeds
-		if (freeSpeedFactor != 1.0) {
-			log.info("adjustNetworkSpeed om primary and trunk with " + freeSpeedFactor);
-			adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
-		}
+
+		log.info("adjustNetworkSpeed om primary and trunk with " + freeSpeedFactor);
+		adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
+
 
 	}
 
