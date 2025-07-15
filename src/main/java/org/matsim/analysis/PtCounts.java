@@ -745,7 +745,7 @@ public class PtCounts implements MATSimAppCommand {
 	private List<PassengerVolumes> matchPassengerVolumesToSimplifiedSchedule(Scenario simplifiedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
 		// TODO: add unzipping
-		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.pt_stop2stop_departures.csv");
+		Path ptPaxVolumesFile = Paths.get("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/intermodal/000.pt_stop2stop_departures.csv");
 
 		Reader reader = null;
 		try {
