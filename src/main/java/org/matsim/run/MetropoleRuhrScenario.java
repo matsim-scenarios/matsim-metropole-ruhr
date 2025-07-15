@@ -34,6 +34,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -95,6 +96,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
+
+	//default value of 1 to ensure backwards compatibility
+	@CommandLine.Option(names = "--free-speed-factor", description = "This is additional free speed factor", defaultValue = "1.0")
+	private double freeSpeedFactor;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -326,6 +331,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	protected void prepareScenario(Scenario scenario) {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
+
+		//adjust primary and trunk link speeds
+		if (freeSpeedFactor != 1.0) {
+			log.info("adjustNetworkSpeed om primary and trunk with " + freeSpeedFactor);
+			adjustNetworkSpeed(scenario.getNetwork(), freeSpeedFactor);
+		}
+
 	}
 
 	@Override
@@ -383,6 +395,33 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
 	}
+
+	/*
+	 * We use this method to adjust the free speed of the primary and trunk links in the network.
+	 * This is because we had to high traffic volumes on these links in the simulation.
+	 * We observed that many primary and trunk links had not been adjusted by CreateSupply.class.
+	 * This method will correct that.
+	 */
+	private static void adjustNetworkSpeed(Network network, double factor) {
+		for (Link link: network.getLinks().values()) {
+			String type = (String) link.getAttributes().getAttribute("type");
+//			if (type != null && (type.contains("trunk") || type.contains("primary"))) {
+			// the 0.75 is to make it consistent with the other primary and trunk links, that are adjusted in the SuperSonicOsmNetworkReader
+
+			if ( type != null && !type.contains( "motorway" ) ) {
+				// (if original freesped < 51 km/h, then the SuperSonicNetworkReader classifies it as "urban" and multiplies the speed by 0.75.  We
+				// thus do the same here for links with freeSpeed >= 51 kmh if they are not motorway.)
+				if (link.getFreespeed() >= 51 / 3.6){
+					link.setFreespeed( link.getFreespeed() * 0.75 );
+				}
+
+				// we apply the factor (which may be 1) to all links that do not have "motorway" in their type:
+				link.setFreespeed(link.getFreespeed() * factor);
+
+			}
+		}
+	}
+
 
 
 }
