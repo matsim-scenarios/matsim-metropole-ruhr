@@ -39,7 +39,6 @@ import org.matsim.core.trafficmonitoring.FreeSpeedTravelTime;
 import org.matsim.core.utils.collections.QuadTree;
 import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.io.IOUtils;
-import org.matsim.facilities.ActivityFacility;
 import org.matsim.prepare.TagTransitSchedule;
 import org.matsim.pt.transitSchedule.api.*;
 import org.matsim.pt.utils.CreatePseudoNetworkWithLoopLinks;
@@ -254,10 +253,12 @@ public class PtCounts implements MATSimAppCommand {
 			double matsimPaxVolumesBidirectional = (double) link.getAttributes().getAttribute("matsim_pax_volumes")
 				+ (double) oppositeLink.getAttributes().getAttribute("matsim_pax_volumes");
 			double vrrPaxVolumesBidirectional = (double) link.getAttributes().getAttribute("BELEGUNG_M");
-			double diffPaxVolumesBidirectional = matsimPaxVolumesBidirectional - vrrPaxVolumesBidirectional;
-			double sqv = 1 / (1 + Math.sqrt(Math.pow(diffPaxVolumesBidirectional, 2) / (10000 * vrrPaxVolumesBidirectional)));
+			double diffPaxVolumesBidirectionalAbs = matsimPaxVolumesBidirectional - vrrPaxVolumesBidirectional;
+			double diffPaxVolumesBidirectionalRel = diffPaxVolumesBidirectionalAbs / vrrPaxVolumesBidirectional;
+			double sqv = 1 / (1 + Math.sqrt(Math.pow(diffPaxVolumesBidirectionalAbs, 2) / (10000 * vrrPaxVolumesBidirectional)));
 			link.getAttributes().putAttribute("matsim_pax_volumes_bidirectional", matsimPaxVolumesBidirectional);
-			link.getAttributes().putAttribute("diff_pax_volumes_bidirectional", diffPaxVolumesBidirectional);
+			link.getAttributes().putAttribute("diff_pax_volumes_bidirectional_abs", diffPaxVolumesBidirectionalAbs);
+			link.getAttributes().putAttribute("diff_pax_volumes_bidirectional_rel", diffPaxVolumesBidirectionalRel);
 			link.getAttributes().putAttribute("sqv_pax_volumes_bidirectional", sqv);
 		}
 	}
@@ -744,8 +745,8 @@ public class PtCounts implements MATSimAppCommand {
 
 	private List<PassengerVolumes> matchPassengerVolumesToSimplifiedSchedule(Scenario simplifiedScenario) {
 		Path rootDirectory = Paths.get(this.rootDirectory);
-		// TODO: add unzipping
-		Path ptPaxVolumesFile = Paths.get("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/intermodal/000.pt_stop2stop_departures.csv");
+		// TODO: add unzipping instead of manual unzipping outside java and change to .csv.gz
+		Path ptPaxVolumesFile = Paths.get("runs-svn/rvr-ruhrgebiet/v2024.1/intermodal/000.pt_stop2stop_departures.csv");
 
 		Reader reader = null;
 		try {
