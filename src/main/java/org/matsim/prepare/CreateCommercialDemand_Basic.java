@@ -18,6 +18,7 @@ import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.run.MetropoleRuhrScenario;
+import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
@@ -310,7 +311,8 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
 			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
-
+			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
+			simWrapperConfigGroup.sampleSize = sample;
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
 			Controler controller = new Controler(scenario);

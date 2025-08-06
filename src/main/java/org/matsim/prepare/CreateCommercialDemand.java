@@ -354,7 +354,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
 			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
-			simWrapperConfigGroup.setSampleSize(sample);
+			simWrapperConfigGroup.sampleSize = sample;
 			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
