@@ -72,6 +72,10 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 	@CommandLine.Option(names = "--sampleSize", description = "The sample size of the simulation.", defaultValue = "1.0")
 	private static double sampleSize;
 
+	public static void main(String[] args) {
+		new RunCommercialAnalysis().execute(args);
+	}
+
 	public Integer call() throws Exception {
 		log.info("++++++++++++++++++ Start Analysis for RVR Freight simulations ++++++++++++++++++++++++++++");
 		String shpZonesCRS = "EPSG:31467";
@@ -115,12 +119,12 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 
 		Config config = ConfigUtils.createConfig();
 		config.vehicles().setVehiclesFile(String.valueOf(globFile(runDirectory, runId, "output_vehicles")));
-		config.network().setInputFile(String.valueOf(globFile(runDirectory, runId, "network")));
+		config.network().setInputFile(String.valueOf(globFile(runDirectory, runId, "output_network")));
 //		config.facilities().setInputFile(String.valueOf(globFile(runDirectory, runId, "facilities")));
 
 		config.global().setCoordinateSystem("EPSG:25832");
 		log.info("Using coordinate system '{}'", config.global().getCoordinateSystem());
-		config.plans().setInputFile(String.valueOf(globFile(runDirectory, runId, "plans.xml")));
+		config.plans().setInputFile(String.valueOf(globFile(runDirectory, runId, "output_plans.xml")));
 		config.eventsManager().setNumberOfThreads(null);
 		config.eventsManager().setEstimatedNumberOfEvents(null);
 		config.global().setNumberOfThreads(4);
