@@ -17,6 +17,7 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.vehicles.Vehicle;
 import picocli.CommandLine;
@@ -322,7 +323,9 @@ public class RunCommercialAnalysis implements MATSimAppCommand {
 		HashMap<Id<Person>, List<Double>> filteredList = new HashMap<>();
 		distancesPerTripPerPerson.keySet().stream().filter(personId -> {
 			Person person = scenario.getPopulation().getPersons().get(personId);
-			return person.getAttributes().getAttribute("subpopulation").equals(subpopulation);
+			if (PopulationUtils.getSubpopulation(person) == null)
+				log.error("This agent has no subpopulation {}, This should not happen", personId);
+			return PopulationUtils.getSubpopulation(person).equals(subpopulation);
 		}).forEach(personId -> {
 			filteredList.put(personId, distancesPerTripPerPerson.get(personId));
 		});
