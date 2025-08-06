@@ -6,7 +6,7 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.application.prepare.freight.tripExtraction.ExtractRelevantFreightTrips;
+import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
 import org.matsim.application.prepare.population.MergePopulations;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -354,7 +354,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
 			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
-			simWrapperConfigGroup.sampleSize = sample;
+			simWrapperConfigGroup.setSampleSize(sample);
 			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);

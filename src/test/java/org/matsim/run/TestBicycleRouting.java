@@ -170,7 +170,7 @@ public class TestBicycleRouting {
 
             var bikeConfig = ((BicycleConfigGroup) config.getModules().get("bicycle"));
             // set an insanely high disutility for gradients
-            bikeConfig.setMarginalUtilityOfGradient_m_100m(-1000);
+            bikeConfig.setMarginalUtilityOfGradient_pct_m(-1000);
             return preparedConfig;
         }
 

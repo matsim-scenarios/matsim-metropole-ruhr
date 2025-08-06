@@ -5,8 +5,6 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Plan;
 import org.matsim.api.core.v01.population.PopulationFactory;
-import org.matsim.application.prepare.freight.tripGeneration.DefaultNumberOfTripsCalculator;
-import org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.vehicles.VehicleType;
@@ -24,7 +22,7 @@ import java.util.Objects;
  */
 public class FTLFreightAgentGeneratorRuhr {
 	private final DepartureTimeCalculator departureTimeCalculator;
-	private final org.matsim.application.prepare.freight.tripGeneration.FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator;
+	private final NumberOfTripsCalculator numOfTripsCalculator;
 	private final PopulationFactory populationFactory;
 	private final CommercialVehicleSelector commercialVehicleSelector;
 
@@ -38,7 +36,7 @@ public class FTLFreightAgentGeneratorRuhr {
 	 * @param numOfTripsCalculator      the number of trips calculator, if null, a default implementation is used
 	 * @param commercialVehicleSelector the commercial vehicle selector, if null, a default implementation is used
 	 */
-    public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator, FreightAgentGenerator.NumOfTripsCalculator numOfTripsCalculator, CommercialVehicleSelector commercialVehicleSelector) {
+    public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator, NumberOfTripsCalculator numOfTripsCalculator, CommercialVehicleSelector commercialVehicleSelector) {
 		this.departureTimeCalculator = Objects.requireNonNullElseGet(departureTimeCalculator, DefaultDepartureTimeCalculator::new);
 		this.numOfTripsCalculator = Objects.requireNonNullElseGet(numOfTripsCalculator, () -> new DefaultNumberOfTripsCalculator(averageLoad, workingDays, sample));
 		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, DefaultCommercialVehicleSelector::new);
