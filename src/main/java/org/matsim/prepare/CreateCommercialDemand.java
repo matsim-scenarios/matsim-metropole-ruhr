@@ -22,6 +22,7 @@ import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
 import org.matsim.prepare.commercial.GenerateLTLFreightPlansRuhr;
 import org.matsim.prepare.commercial.IntegrationOfExistingCommercialTrafficRuhr;
 import org.matsim.run.MetropoleRuhrScenario;
+import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.IntegrateExistingTrafficToSmallScaleCommercial;
@@ -352,6 +353,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("ptIntermodalRoutingModes");
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
+			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
+			simWrapperConfigGroup.setSampleSize(sample);
 			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
@@ -359,7 +362,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			Controler controller = new Controler(scenario);
 
 			controller.addOverridingModule(new SimWrapperModule());
-
 
 			controller.run();
 		}
