@@ -220,7 +220,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			argumentsForFreightTransitTraffic.add(shapeCRS);
 			argumentsForFreightTransitTraffic.add("--shp-crs");
 			argumentsForFreightTransitTraffic.add(shapeCRS);
-			argumentsForFreightTransitTraffic.add("--tripType");
+			argumentsForFreightTransitTraffic.add("--geographicalTripType");
 			argumentsForFreightTransitTraffic.add("TRANSIT");
 			argumentsForFreightTransitTraffic.add("--legMode");
 			argumentsForFreightTransitTraffic.add("truck40t");
