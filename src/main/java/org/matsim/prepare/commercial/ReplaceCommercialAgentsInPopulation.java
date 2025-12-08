@@ -40,9 +40,9 @@ public class ReplaceCommercialAgentsInPopulation implements MATSimAppCommand {
 
 			log.info("Adding all subpopulations from the existing population to the commercial population which are not already present in the commercial population.");
 
-			Population population = PopulationUtils.readPopulation(commercialPopulationPath.toString());
+			Population newPopulation = PopulationUtils.readPopulation(commercialPopulationPath.toString());
 
-			List<String> subpopulations = new ArrayList<>(population.getPersons().values().stream()
+			List<String> subpopulations = new ArrayList<>(newPopulation.getPersons().values().stream()
 				.map(PopulationUtils::getSubpopulation)
 				.distinct()
 				.toList());
@@ -51,24 +51,24 @@ public class ReplaceCommercialAgentsInPopulation implements MATSimAppCommand {
 			Population existingPopulation = PopulationUtils.readPopulation(existingPopulationPath.toString());
 
 			log.info("Subpopulations in commercial population: {}", subpopulations);
-			log.info("Number of commercial agents in new commercial population: {}", population.getPersons().size());
+			log.info("Number of commercial agents in new commercial population: {}", newPopulation.getPersons().size());
 			log.info("Number of agents in existing population: {}", existingPopulation.getPersons().size());
 			int countNotAdded = 0;
 
 			for(Person person : existingPopulation.getPersons().values()){
 				String subpopulation = PopulationUtils.getSubpopulation(person);
 				if (subpopulation == null || !subpopulations.contains(subpopulation)) {
-					if (population.getPersons().get(person.getId()) != null)
+					if (newPopulation.getPersons().get(person.getId()) != null)
 						log.info("Person {} with subpopulation {} already exists in the commercial population, not adding again.", person.getId(), subpopulation);
-					population.addPerson(person);
+					newPopulation.addPerson(person);
 				}
 				else countNotAdded++;
 			}
 			log.info("Number of commercial agents of the existing population not added to the new population: {}", countNotAdded);
-			log.info("Number of agents in resulting population: {}", population.getPersons().size());
+			log.info("Number of agents in resulting population: {}", newPopulation.getPersons().size());
 
 			log.info("Writing population file to: {}", output);
-			PopulationWriter pw = new PopulationWriter(population);
+			PopulationWriter pw = new PopulationWriter(newPopulation);
 			pw.write(output.toString());
 			return 0;
 		}
