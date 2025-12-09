@@ -133,7 +133,7 @@ createPlots <- function(runFolderName, folder) {
       geom_text(aes(label = paste0(round(avg_tour_distance_km, 1), " km")),
                 vjust = -0.5, size = 4) +
       labs(title = paste("Average tour distance per Subpopulation (Run:", runFolderName, ")"),
-           x = "Subpopulation", y = "Ø Travelled distance (km)",
+           x = "Subpopulation", y = "Mean Travelled distance (km)",
            caption = folder
       ) +
       theme_minimal()
