@@ -17,15 +17,10 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.prepare.commercial.GenerateFTLFreightPlansRuhr;
-import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
-import org.matsim.prepare.commercial.GenerateLTLFreightPlansRuhr;
-import org.matsim.prepare.commercial.IntegrationOfExistingCommercialTrafficRuhr;
 import org.matsim.run.MetropoleRuhrScenario;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
-import org.matsim.smallScaleCommercialTrafficGeneration.IntegrateExistingTrafficToSmallScaleCommercial;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreator;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreatorForOSM_Data;
@@ -33,23 +28,23 @@ import picocli.CommandLine;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * This class is used to create the commercial demand for the Ruhr area. It generates the following parts of freight traffic:
+ * This class is used to create the basic commercial demand for the Ruhr area. It generates the following parts of freight traffic:
  * <ul>
- *     <li>Full truck load freight plans</li>
- *     <li>Less than truck load freight plans</li>
- *     <li>Long distance Transit freight plans</li>
+ *     <li>Long distance Transit freight traffic</li>
  *     <li>Small scale commercial traffic</li>
  * </ul>
  * @author Ricardo Ewert
  */
-public class CreateCommercialDemand implements MATSimAppCommand {
+public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 
-	private static final Logger log = LogManager.getLogger(CreateCommercialDemand.class);
+	private static final Logger log = LogManager.getLogger(CreateCommercialDemand_Basic.class);
 
-	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.01")
+	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.1")
 	private double sample;
 
 	@CommandLine.Option(names = "--generatedInputDataPath", description = "Path to the generated input data", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/output/rvr/generatedInputData")
@@ -58,14 +53,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--pathOutputFolder", description = "Path for the output folder", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/output/rvr/testing/commercial_0.1pct")
 	private Path output;
 
-	@CommandLine.Option(names = "--freightData", description = "Name of the freight population", defaultValue = "ruhr_freightPlans_100pct.plans.xml.gz")
-	private Path freightData;
-
 	@CommandLine.Option(names = "--osmDataLocation", description = "Path to the OSM data location", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/osm/")
 	private Path osmDataLocation;
-
-	@CommandLine.Option(names = "--vpCellsLocation", description = "Path to the cell of the 'Verkehrsprognose (VP)' ", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
-	private Path vpCellsLocation;
 
 	@CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-3pct.config.xml")
 	private Path configPath;
@@ -76,17 +65,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "metropole-ruhr-v2024.0.network_resolutionHigh.xml.gz")
 	private String networkPath;
 
-	@CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0.mode-vehicles.xml")
-	private String vehicleTypesFilePath;
-
-	@CommandLine.Option(names = "--jspritIterationsForLTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
-	private int jspritIterationsForLTL;
-
 	@CommandLine.Option(names = "--jspritIterationsForSmallScaleCommercial", defaultValue = "10", description = "Number of iterations for jsprit for solving the small scale commercial traffic", required = true)
 	private int jspritIterationsForSmallScaleCommercial;
-
-	@CommandLine.Option(names = "--smallScaleCommercialTrafficType", description = "Select traffic type. Options: commercialPersonTraffic, goodsTraffic, completeSmallScaleCommercialTraffic (contains both types)", defaultValue = "completeSmallScaleCommercialTraffic")
-	private String smallScaleCommercialTrafficType;
 
 	@CommandLine.Option(names = "--smallScaleCommercialGenerationOption", description = "Select generation option. Options: useExistingCarrierFileWithSolution, createNewCarrierFile, useExistingCarrierFileWithoutSolution", defaultValue = "createNewCarrierFile")
 	private String smallScaleCommercialGenerationOption;
@@ -96,12 +76,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "30")
 	private int additionalTravelBufferPerIterationInMinutes;
-
-	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
-	private String freightRawData;
-
-	@CommandLine.Option(names = "--freightRawDataKEP", description = "Path to the KEP data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/kep_aufkommen/aufkommen_kep.csv")
-	String freightRawDataKEP;
 
 	@CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
 	private boolean alsoRunCompleteCommercialTraffic;
@@ -121,11 +95,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
-	@CommandLine.Option(names = "--resistanceFactorForKWM", defaultValue = "0.005", description = "ResistanceFactor for the trip distribution")
-	private double resistanceFactorForKWM;
+	@CommandLine.Option(names = "--resistanceFactorForKWM_person", defaultValue = "0.2", description = "ResistanceFactor for the trip distribution")
+	private double resistanceFactorForKWM_person;
+
+	@CommandLine.Option(names = "--resistanceFactorForKWM_freight", defaultValue = "0.1", description = "ResistanceFactor for the trip distribution")
+	private double resistanceFactorForKWM_freight;
 
 	public static void main(String[] args) {
-		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
+		System.exit(new CommandLine(new CreateCommercialDemand_Basic()).execute(args));
 	}
 
 	@Override
@@ -151,56 +128,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 
 		String shapeCRS = "EPSG:25832";
-		log.info("1st step - create freight data from BUW data");
 
-		String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
-		String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
-
-		String freightDataName = "ruhr_freightData_100pct.xml.gz";
-
-		if (Files.exists(generatedInputDataPath.resolve(freightDataName)) || Files.exists(freightData)) {
-			log.warn("Freight data already exists. Skipping generation.");
-		} else {
-			new GenerateFreightDataRuhr().execute(
-				"--data", freightRawData,
-				"--KEPdata", freightRawDataKEP,
-				"--pathOutput", generatedInputDataPath.toString(),
-				"--nameOutputDataFile", freightDataName,
-				"--shpCells", vpCellsLocation.toString()
-			);
-		}
-
-		log.info("2rd step - create FTL freight plans from generated data");
-		if (Files.exists(output.resolve(FTLFreightPopulationName))) {
-			log.warn("Freight population already exists. Skipping generation.");
-		} else {
-			new GenerateFTLFreightPlansRuhr().execute(
-				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-				"--output", output.toString(),
-				"--nameOutputPopulation", FTLFreightPopulationName,
-				"--truck-load", "13.0",
-				"--working-days", "260",
-				"--max-kilometer-for-return-journey", "200",
-				"--sample", String.valueOf(sample)
-			);
-		}
-
-		log.info("3rd step - create LTL freight plans from generated data");
-		if (Files.exists(output.resolve(LTLFreightPopulationName))) {
-			log.warn("Freight population already exists. Skipping generation.");
-		} else {
-			new GenerateLTLFreightPlansRuhr().execute(
-				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-				"--network", configPath.getParent().resolve(networkPath).toString(),
-				"--output", output.toString(),
-				"--nameOutputPopulation", LTLFreightPopulationName,
-				"--working-days", "260",
-				"--sample", String.valueOf(sample),
-				"--vehicleTypesFilePath", vehicleTypesFilePath,
-				"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
-			);
-		}
-		log.info("4rd step - create transit long distance freight traffic");
+		log.info("1rd step - create transit long distance freight traffic");
 		String longDistanceFreightPopulationName = output.resolve(
 			"ruhr_longDistanceFreight." + (int) (sample * 100) + "pct.plans.xml.gz").toString();
 		if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
@@ -221,7 +150,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			argumentsForFreightTransitTraffic.add("--shp-crs");
 			argumentsForFreightTransitTraffic.add(shapeCRS);
 			argumentsForFreightTransitTraffic.add("--geographicalTripType");
-			argumentsForFreightTransitTraffic.add("TRANSIT");
+			argumentsForFreightTransitTraffic.add("ALL");
 			argumentsForFreightTransitTraffic.add("--legMode");
 			argumentsForFreightTransitTraffic.add("truck40t");
 			if (cutFreightTransitAtBoundary) {
@@ -238,7 +167,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			PopulationUtils.sampleDown(population, sample);
 			PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
 		}
-		log.info("5rd step - create input data for small scale commercial traffic");
+		log.info("2rd step - create input data for small scale commercial traffic");
 
 		Path pathCommercialFacilities = generatedInputDataPath.resolve("commercialFacilities.xml.gz");
 		//here possible to create an implementation for ruhrAGIS data
@@ -263,12 +192,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--pathToInvestigationAreaData", pathToInvestigationAreaData
 			);
 		}
-		log.info("6th step - create small scale commercial traffic");
-		String smallScaleCommercialPopulationName = "ruhrSmallScaleCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
-		String outputPathSmallScaleCommercial = output.resolve("smallScaleCommercial").toString();
-		Path resolve = Path.of(outputPathSmallScaleCommercial).resolve(smallScaleCommercialPopulationName);
-		IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(
-			output.resolve(LTLFreightPopulationName));
+		log.info("3th step - create small scale commercial person traffic");
+		String smallScaleCommercialPersonPopulationName = "ruhrSmallScaleCommercialPersons." + (int) (sample * 100) + "pct.plans.xml.gz";
+		String outputPathSmallScaleCommercial_person = output.resolve("smallScaleCommercialPerson").toString();
+		Path resolve = Path.of(outputPathSmallScaleCommercial_person).resolve(smallScaleCommercialPersonPopulationName);
 
 		if (Files.exists(resolve)) {
 			log.warn("Small-scale Commercial demand already exists. Skipping generation.");
@@ -279,46 +206,76 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--sample", String.valueOf(sample),
 				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
 				"--creationOption", smallScaleCommercialGenerationOption,
-				"--smallScaleCommercialTrafficType", smallScaleCommercialTrafficType,
+				"--smallScaleCommercialTrafficType", "commercialPersonTraffic",
 				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
 				"--zoneShapeFileNameColumn", "schluessel",
 				"--shapeCRS", shapeCRS,
-				"--pathOutput", outputPathSmallScaleCommercial,
+				"--pathOutput", outputPathSmallScaleCommercial_person,
 				"--network", networkPath,
-				"--nameOutputPopulation", smallScaleCommercialPopulationName,
+				"--nameOutputPopulation", smallScaleCommercialPersonPopulationName,
 				"--numberOfPlanVariantsPerAgent", "5",
 				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
-				"--resistanceFactor", String.valueOf(resistanceFactorForKWM)};
+				"--resistanceFactor", String.valueOf(resistanceFactorForKWM_person)};
 			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
 				args = Arrays.copyOf(args, args.length + 2);
 				args[args.length - 2] = "--carrierFilePath";
 				args[args.length - 1] = configPath.getParent().relativize(
-					Path.of(outputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
+					Path.of(outputPathSmallScaleCommercial_person).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
 			}
-			else {
-				args = Arrays.copyOf(args, args.length + 1);
-				args[args.length - 1] = "--includeExistingModels";
-			}
-			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
-				args);
-
 			// TODO filter relevant agents for the small scale commercial traffic
+			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null).execute(
+				args);
 		}
-		log.info("7th step - Merge freight and commercial populations");
+
+		log.info("4th step - create small scale commercial Freight traffic");
+		String smallScaleCommercialFreightPopulationName = "ruhrSmallScaleCommercialFreight." + (int) (sample * 100) + "pct.plans.xml.gz";
+		String outputPathSmallScaleCommercialFreight = output.resolve("smallScaleCommercialFreight").toString();
+		Path resolveKWM_freight = Path.of(outputPathSmallScaleCommercialFreight).resolve(smallScaleCommercialPersonPopulationName);
+
+		if (Files.exists(resolveKWM_freight)) {
+			log.warn("Small-scale Commercial demand already exists. Skipping generation.");
+		} else {
+			String[] args = {configPath.toString(),
+				"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
+				"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
+				"--sample", String.valueOf(sample),
+				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
+				"--creationOption", smallScaleCommercialGenerationOption,
+				"--smallScaleCommercialTrafficType", "goodsTraffic",
+				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
+				"--zoneShapeFileNameColumn", "schluessel",
+				"--shapeCRS", shapeCRS,
+				"--pathOutput", outputPathSmallScaleCommercialFreight,
+				"--network", networkPath,
+				"--nameOutputPopulation", smallScaleCommercialFreightPopulationName,
+				"--numberOfPlanVariantsPerAgent", "5",
+				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
+				"--resistanceFactor", String.valueOf(resistanceFactorForKWM_freight)};
+			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
+				args = Arrays.copyOf(args, args.length + 2);
+				args[args.length - 2] = "--carrierFilePath";
+				args[args.length - 1] = configPath.getParent().relativize(
+					Path.of(outputPathSmallScaleCommercialFreight).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
+			}
+			// TODO filter relevant agents for the small scale commercial traffic
+			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null).execute(
+				args);
+		}
+
+		log.info("5th step - Merge freight and commercial populations");
 		String pathMergedPopulation;
 		if (outputPlansPath != null) {
 			pathMergedPopulation = outputPlansPath;
 		} else {
-			pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
+			pathMergedPopulation = output.resolve(longDistanceFreightPopulationName).toString().replace("longDistanceFreight", "commercial_basic").replace(".plans.xml.gz",
 				"") + "_merged.plans.xml.gz";
 		}
 		if (Files.exists(Path.of(pathMergedPopulation))) {
 			log.info("Merged demand already exists. Skipping generation.");
 		} else {
 			new MergePopulations().execute(
-				output.resolve(LTLFreightPopulationName).toString(),
-				output.resolve(FTLFreightPopulationName).toString(),
-				outputPathSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
+				outputPathSmallScaleCommercial_person + "/" + smallScaleCommercialPersonPopulationName,
+				outputPathSmallScaleCommercialFreight + "/" + smallScaleCommercialFreightPopulationName,
 				longDistanceFreightPopulationName,
 				"--output", pathMergedPopulation
 			);
@@ -353,15 +310,15 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("ptIntermodalRoutingModes");
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
+			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
 			simWrapperConfigGroup.setSampleSize(sample);
-			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
-
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
 			Controler controller = new Controler(scenario);
 
 			controller.addOverridingModule(new SimWrapperModule());
+
 
 			controller.run();
 		}

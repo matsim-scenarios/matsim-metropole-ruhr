@@ -20,12 +20,17 @@
 package org.matsim.run;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
+import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
+import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
+import ch.sbb.matsim.routing.pt.raptor.RaptorParameters;
 import com.google.common.collect.Sets;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.analysis.ModeChoiceCoverageControlerListener;
+import org.jetbrains.annotations.NotNull;
+import org.matsim.analysis.ModeChoiceCoverageControllerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
@@ -33,6 +38,10 @@ import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
+import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -47,6 +56,7 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -63,6 +73,7 @@ import org.matsim.run.scoring.AdvancedScoringConfigGroup;
 import org.matsim.run.scoring.AdvancedScoringModule;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 import org.matsim.contrib.vsp.pt.fare.DistanceBasedPtFareParams;
@@ -72,10 +83,7 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -239,10 +247,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-		// this has no effect as described here https://github.com/matsim-org/matsim-libs/issues/3403, but is stated in order to avoid warnings from the
-		// consistency checker
-		bikeConfigGroup.setMaxBicycleSpeedForRouting(5.0);
-
 		// this is needed for the parking cost money events
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
 		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName(RuhrUtils.ONE_HOUR_P_COST);
@@ -269,7 +273,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setFlowCapFactor(sample.getSample());
 			config.qsim().setStorageCapFactor(sample.getSample());
 
-			simWrapperConfigGroup.sampleSize = sample.getSample();
+			simWrapperConfigGroup.setSampleSize(sample.getSample());
 
 			config.counts().setCountsScaleFactor(sample.getSample());
 		}
@@ -328,6 +332,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
+		//retainPtUsersOnly(scenario);
 	}
 
 	@Override
@@ -377,7 +382,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
 				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
-				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
+				addControlerListenerBinding().to(ModeChoiceCoverageControllerListener.class);
 
 				// calculate access/egress leg generalized cost correctly for intermodal pt routing
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
@@ -396,6 +401,99 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+		controler.addOverridingModule(new LinkPaxVolumesAnalysisModule());
+
+
+		// add custom in-vehicle cost calculator that makes using the bus less attractive
+		controler.addOverridingModule( new AbstractModule(){
+			@Override public void install(){
+				bind( DefaultRaptorInVehicleCostCalculator.class );
+//				bind( CapacityDependentInVehicleCostCalculator.class );
+				bind( RaptorInVehicleCostCalculator.class ).to( MyRaptorInVehicleCostCalculator.class );
+			}
+		} );
+
+
+		// we somehow need the bus vehicle ids to punish bus users in the event Handler??
+		//there must be a better way to do this....
+		List<Id<Vehicle>> buses = getBusVehicleIds(controler);
+
+		// add the bus punishment event handler
+		controler.addOverridingModule(new AbstractModule(){
+			@Override
+			public void install() {
+				addEventHandlerBinding().toInstance(new BusPunishmentEventHandler(buses));
+			}
+		});
 	}
+
+	@NotNull
+	private static List<Id<Vehicle>> getBusVehicleIds(Controler controler) {
+		List<Id<Vehicle>> buses = new ArrayList<>();
+		for (Vehicle vehicle: controler.getScenario().getTransitVehicles().getVehicles().values()) {
+			if (vehicle.getType().getId().toString().contains("Bus")) {
+				buses.add(vehicle.getId());
+			}
+		}
+		return buses;
+	}
+
+
+	/*
+	Here we use a custom in-vehicle cost calculator that makes using the bus less attractive.
+	 */
+	private static class MyRaptorInVehicleCostCalculator implements RaptorInVehicleCostCalculator {
+		@Inject
+		DefaultRaptorInVehicleCostCalculator delegate;
+		//		@Inject CapacityDependentInVehicleCostCalculator delegate;
+		@Override
+		public double getInVehicleCost(double inVehicleTime, double marginalUtility_utl_s, Person person, Vehicle vehicle, RaptorParameters parameters, RouteSegmentIterator iterator ){
+			double cost = delegate.getInVehicleCost( inVehicleTime, marginalUtility_utl_s, person, vehicle, parameters, iterator) ;
+			if ( isBus( vehicle ) ) {
+				//TODO find useful value for the bus penalty
+				cost *= 1.2;
+			}
+			return cost;
+		}
+		private boolean isBus( Vehicle vehicle ){
+			// somehow figure out if the vehicle is a bus or something else.
+			return vehicle.getType().getId().toString().contains("Bus");
+		}
+	}
+
+	/*
+	 * This method retains only those persons in the population who use public transport in their selected plan.
+	 */
+	private static void retainPtUsersOnly(Scenario scenario) {
+		var population = scenario.getPopulation();
+		List<Person> ptUsers = new ArrayList<>();
+
+		for (Person person: population.getPersons().values()) {
+			Plan plan = person.getSelectedPlan();
+			PopulationUtils.resetRoutes(plan);
+
+			boolean usesPt = false;
+			for (PlanElement pe : plan.getPlanElements()) {
+				if (pe instanceof Leg) {
+					String mode = ((Leg) pe).getMode();
+					if (mode.equals("pt") || mode.startsWith("pt:")) {
+						usesPt = true;
+						break;
+					}
+				}
+			}
+
+			if (usesPt) {
+				ptUsers.add(person);
+			}
+		}
+
+		scenario.getPopulation().getPersons().clear();
+		for (Person person: ptUsers) {
+			scenario.getPopulation().addPerson(person);
+		}
+
+	}
+
 
 }
