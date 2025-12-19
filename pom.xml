@@ -142,7 +142,7 @@
 		<dependency>
             <groupId>com.github.matsim-org</groupId>
             <artifactId>gtfs2matsim</artifactId>
-			<version>47b0802a29</version>
+			<version>45689bf834</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.matsim</groupId>
@@ -182,6 +182,12 @@
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>small-scale-traffic-generation</artifactId>
 			<version>${matsim.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.11.0</version>
 		</dependency>
 
     </dependencies>
