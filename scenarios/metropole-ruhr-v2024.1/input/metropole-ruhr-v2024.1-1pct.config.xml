@@ -8,8 +8,8 @@
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v2024.1-10pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.1-10pct/"/>
+		<param name="runId" value="metropole-ruhr-v2024.1-1pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.1-1pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -76,7 +76,7 @@
 			<!-- TODO: predefine view
 			<param name="mapCenter" value="13.39,52.51" />
 			<param name="mapZoomLevel" value="9.1" /> -->
-			<param name="sampleSize" value="0.03" />
+			<param name="sampleSize" value="0.01" />
 			<param name="shp" value="./area/area.shp" />
 		</parameterset>
 	</module>
