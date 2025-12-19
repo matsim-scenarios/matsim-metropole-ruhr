@@ -264,13 +264,7 @@ public class ScenarioCutOut implements MATSimAppCommand {
 		log.info("number of links before cleaning: {}", network.getLinks().size());
 		log.info("number of nodes before cleaning: {}", network.getNodes().size());
 
-		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
-		cleaner.removeNodesWithoutLinks();
-
-		for (String m : modes) {
-			log.info("Cleaning mode {}", m);
-			cleaner.run(Set.of(m));
-		}
+		NetworkUtils.cleanNetwork(network, modes);
 
 		log.info("number of links after cleaning: {}", network.getLinks().size());
 		log.info("number of nodes after cleaning: {}", network.getNodes().size());

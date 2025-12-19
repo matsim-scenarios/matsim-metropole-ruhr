@@ -251,7 +251,7 @@ public class RvrTripRelation {
 
     private static void readRelationsFromMainMatrix(Path pathToData, List<RvrTripRelation> tripRelations) throws IOException {
         try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(pathToData, StandardCharsets.ISO_8859_1),
-                CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
+			CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).get())) {
             for (CSVRecord record : parser) {
                 Builder builder = new Builder();
                 // Read locations
@@ -279,7 +279,7 @@ public class RvrTripRelation {
     private static void readRelationsFromKEPMatrix(Path KEPdataFolderPath, List<RvrTripRelation> tripRelations,
                                                    CoordinateTransformation coordinateTransformation, ShpOptions.Index indexZones) throws IOException {
         try (CSVParser parser = CSVParser.parse(Files.newBufferedReader(KEPdataFolderPath, StandardCharsets.ISO_8859_1),
-                CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).build())) {
+			CSVFormat.Builder.create(CSVFormat.DEFAULT).setDelimiter("\t").setHeader().setSkipHeaderRecord(true).get())) {
             for (CSVRecord record : parser) {
                 Builder builder = new Builder();
                 // Read hub

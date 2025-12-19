@@ -30,7 +30,7 @@ import com.google.inject.Singleton;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.matsim.analysis.ModeChoiceCoverageControlerListener;
+import org.matsim.analysis.ModeChoiceCoverageControllerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.linkpaxvolumes.LinkPaxVolumesAnalysisModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
@@ -95,7 +95,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
 
-	public static final String VERSION = "v2024.0";
+	public static final String VERSION = "v2024.1";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
@@ -159,7 +159,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
 		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
 
-		for (String subpopulation : List.of("LTL_trips", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
+		for (String subpopulation : List.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
 			"FTL_trip", "FTL_kv_trip", "goodsTraffic")) {
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings()
@@ -247,10 +247,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		BicycleConfigGroup bikeConfigGroup = ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
 		bikeConfigGroup.setBicycleMode(TransportMode.bike);
 
-		// this has no effect as described here https://github.com/matsim-org/matsim-libs/issues/3403, but is stated in order to avoid warnings from the
-		// consistency checker
-		bikeConfigGroup.setMaxBicycleSpeedForRouting(5.0);
-
 		// this is needed for the parking cost money events
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
 		parkingCostConfigGroup.setFirstHourParkingCostLinkAttributeName(RuhrUtils.ONE_HOUR_P_COST);
@@ -277,7 +273,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			config.qsim().setFlowCapFactor(sample.getSample());
 			config.qsim().setStorageCapFactor(sample.getSample());
 
-			simWrapperConfigGroup.sampleSize = sample.getSample();
+			simWrapperConfigGroup.setSampleSize(sample.getSample());
 
 			config.counts().setCountsScaleFactor(sample.getSample());
 		}
@@ -386,7 +382,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
 				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
-				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
+				addControlerListenerBinding().to(ModeChoiceCoverageControllerListener.class);
 
 				// calculate access/egress leg generalized cost correctly for intermodal pt routing
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
