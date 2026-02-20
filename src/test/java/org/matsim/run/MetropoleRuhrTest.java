@@ -14,14 +14,13 @@ public class MetropoleRuhrTest {
 	private final MatsimTestUtils utils = new MatsimTestUtils();
 
 	@Test
-	@Disabled // Enable once input comes from public-svn
 	void test() {
 		MATSimApplication.execute(MetropoleRuhrScenario.class, "--iterations", "1",
+			"--config", "scenarios/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1-1pct.config.xml",
 			"--config:controller.overwriteFiles=deleteDirectoryIfExists",
 			"--output", utils.getOutputDirectory(),
 			// This plans file contains only one agent, plan includes car and pt.
-			"--config:plans.inputPlansFile", "../../../" + utils.getInputDirectory() + "plans1.metropole-ruhr.v2024.1.xml.gz",
-			"--config:simwrapper.defaultDashboards=disabled",
-			"--1pct");
+//			"--config:plans.inputPlansFile", "../../../" + utils.getInputDirectory() + "plans1.metropole-ruhr.v2024.1.xml.gz",
+			"--config:simwrapper.defaultDashboards=disabled");
 	}
 }
