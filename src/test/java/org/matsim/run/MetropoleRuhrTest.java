@@ -20,7 +20,7 @@ public class MetropoleRuhrTest {
 			"--config:controller.overwriteFiles=deleteDirectoryIfExists",
 			"--output", utils.getOutputDirectory(),
 			// This plans file contains only one agent, plan includes car and pt.
-//			"--config:plans.inputPlansFile", "../../../" + utils.getInputDirectory() + "plans1.metropole-ruhr.v2024.1.xml.gz",
+			"--config:plans.inputPlansFile", "../../../" + utils.getInputDirectory() + "plans1.metropole-ruhr.v2024.1.xml.gz",
 			"--config:simwrapper.defaultDashboards=disabled");
 	}
 }
