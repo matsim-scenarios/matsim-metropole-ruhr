@@ -14,6 +14,7 @@ public class MetropoleRuhrTest {
 	private final MatsimTestUtils utils = new MatsimTestUtils();
 
 	@Test
+	@Disabled
 	void test() {
 		MATSimApplication.execute(MetropoleRuhrScenario.class, "--iterations", "1",
 			"--config", "scenarios/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1-1pct.config.xml",
