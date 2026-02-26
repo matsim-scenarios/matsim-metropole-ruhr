@@ -85,8 +85,8 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 })
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
-
 	public static final String VERSION = "v2024.1";
+	public static final String CONFIG_PATH = "./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-3pct.config.xml";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
@@ -104,20 +104,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-10pct.config.xml");
-	}
-
-	/**
-	 * Have this here for unit testing, the other constructor doesn't seem to work for that 🤷‍♀️
-	 */
-	MetropoleRuhrScenario(Config config) {
-		super(config);
+		super(CONFIG_PATH);
 	}
 
 	public static void main(String[] args) {
 		// (a (presumably crappy) way to give args from java instead of from the command line See KNRunMetropoleRuhrScenario)
 
-		MATSimApplication.run(MetropoleRuhrScenario.class, args);
+		MATSimApplication.execute(MetropoleRuhrScenario.class, args);
 	}
 
 	/**

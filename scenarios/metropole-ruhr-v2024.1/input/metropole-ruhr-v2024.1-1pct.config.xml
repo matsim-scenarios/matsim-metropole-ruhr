@@ -8,8 +8,8 @@
 	<module name="controller">
 		<param name="lastIteration" value="400"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
-		<param name="runId" value="metropole-ruhr-v2024.1-10pct"/>
-		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.1-10pct/"/>
+		<param name="runId" value="metropole-ruhr-v2024.1-1pct"/>
+		<param name="outputDirectory" value="./scenarios/output/output_metropole-ruhr-v2024.1-1pct/"/>
 		<param name="writeEventsInterval" value="100"/>
 		<param name="writePlansInterval" value="100"/>
 		<param name="routingAlgorithmType" value="SpeedyALT"/>
@@ -23,7 +23,7 @@
 		<param name="inputNetworkFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1.network_resolutionHigh-with-pt.xml.gz"/>
 	</module>
 	<module name="plans">
-		<param name="inputPlansFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1-10pct.plans.xml.gz"/>
+		<param name="inputPlansFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1-1pct.plans.xml.gz"/>
 		<param name="removingUnnecessaryPlanAttributes" value="true"/>
 	</module>
 	<module name="vehicles">
@@ -39,7 +39,7 @@
 	</module>
 	<module name="counts">
 		<param name="inputCountsFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.1/input/metropole-ruhr-v2024.1.counts.xml.gz"/>
-		<param name="countsScaleFactor" value="0.1"/>
+		<param name="countsScaleFactor" value="0.01"/>
 	</module>
 	<module name="routing">
 		<param name="networkModes" value="car,ride,bike"/>
@@ -60,8 +60,8 @@
 		<param name="mainMode" value="car,bike"/>
 		<param name="numberOfThreads" value="8"/>
 		<param name="startTime" value="00:00:00"/>
-		<param name="storageCapacityFactor" value="0.10" />
-		<param name="flowCapacityFactor" value="0.10"/>
+		<param name="storageCapacityFactor" value="0.01" />
+		<param name="flowCapacityFactor" value="0.01"/>
 		<param name="stuckTime" value="10.0"/>
 		<param name="trafficDynamics" value="kinematicWaves"/>
 		<param name="vehiclesSource" value="modeVehicleTypesFromVehiclesData"/>
@@ -74,7 +74,7 @@
 			<!-- TODO: predefine view
 			<param name="mapCenter" value="13.39,52.51" />
 			<param name="mapZoomLevel" value="9.1" /> -->
-			<param name="sampleSize" value="0.1" />
+			<param name="sampleSize" value="0.01" />
 			<param name="shp" value="./area/area.shp" />
 		</parameterset>
 	</module>
@@ -141,13 +141,13 @@
 				<param name="mode" value="car" />
 				<!-- We use -3 to fit the approximate value for Berlin -->
 				<param name="dailyMonetaryConstant" value="-3" />
-				<param name="constant" value="-0.2" />
+				<param name="constant" value="1.8386" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 				<param name="monetaryDistanceRate" value="-0.000149" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="ride" />
-				<param name="constant" value="0.24" />
+				<param name="constant" value="-0.01077" />
 				<!-- alpha=2, gamma=0.0 -->
 				<!-- adapted in code -->
 				<param name="marginalUtilityOfTraveling_util_hr" value="0" />
@@ -158,12 +158,12 @@
 				<param name="mode" value="pt" />
 				<!-- 49 EUR Ticket  -->
 				<param name="dailyMonetaryConstant" value="-2.35" />
-				<param name="constant" value="0.05" />
+				<param name="constant" value="-0.5292" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="0.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
 				<param name="mode" value="bike" />
-				<param name="constant" value="0.05" />
+				<param name="constant" value="0.66271" />
 				<param name="marginalUtilityOfTraveling_util_hr" value="-5.0" />
 			</parameterset>
 			<parameterset type="modeParams" >
