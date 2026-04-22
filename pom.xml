@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.matsim</groupId>
 		<artifactId>matsim-all</artifactId>
-		<version>2026.0-PR4172</version>
+		<version>2027.0-PR4877</version>
 		<!--		<version>16.0-SNAPSHOT</version>-->
 	</parent>
 
@@ -154,7 +154,7 @@
 		<dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.4.1</version>
+            <version>5.5.1</version>
         </dependency>
 
 		<!-- for weighted random draw: https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
@@ -165,12 +165,12 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-statistics-distribution</artifactId>
-			<version>1.1</version>
+			<version>1.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-rng-simple</artifactId>
-			<version>1.6</version>
+			<version>1.7</version>
 		</dependency>
 
 		<dependency>
@@ -187,7 +187,7 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-csv</artifactId>
-			<version>1.11.0</version>
+			<version>1.14.1</version>
 		</dependency>
 
     </dependencies>
@@ -199,7 +199,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<release>21</release>
+					<release>25</release>
 					<showWarnings>false</showWarnings>
 					<showDeprecation>false</showDeprecation>
 					<encoding>UTF-8</encoding>

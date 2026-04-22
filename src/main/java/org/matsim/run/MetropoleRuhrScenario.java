@@ -105,15 +105,15 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
 
-	/**
-	 * Constructor for extending scenarios.
-	 */
-	protected MetropoleRuhrScenario(String defaultScenario) {
-		super(defaultScenario);
-	}
+//	/**
+//	 * Constructor for extending scenarios.
+//	 */
+//	protected MetropoleRuhrScenario(String defaultScenario) {
+//		super(defaultScenario);
+//	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
+		super(ConfigUtils.loadConfig("./scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml"));
 	}
 
 	/**

@@ -7,6 +7,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.*;
+import org.matsim.application.options.ShpOptions;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.smallScaleCommercialTrafficGeneration.DefaultIntegrateExistingTrafficToSmallScaleCommercialImpl;
@@ -33,18 +34,18 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 
 	@Override
 	public void readExistingCarriersFromFolder(Scenario scenario, double sampleScenario,
-											   Map<String, Map<Id<Link>, Link>> linksPerZone) {
+	                                           ShpOptions.Index indexZones) {
 		log.warn("Existing plans will not be added to the plans you generate now!");
 	}
 
 	@Override
-	public void reduceDemandBasedOnExistingCarriers(Scenario scenario, Map<String, Map<Id<Link>, Link>> linksPerZone,
-													String smallScaleCommercialTrafficType,
-													Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_start,
-													Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_stop) {
+	public void reduceDemandBasedOnExistingCarriers(Scenario scenario, ShpOptions.Index indexZones,
+	                                                GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType smallScaleCommercialTrafficType,
+	                                                Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_start,
+	                                                Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_stop) {
 		// we only have existing freight traffic
 		if (smallScaleCommercialTrafficType.equals(
-			GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic.toString()))
+			GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic))
 			return;
 
 		log.info("Reducing the demand of '{}' based on the existing LTL trips!", smallScaleCommercialTrafficType);
@@ -61,7 +62,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 				continue;
 			Plan selectedPlan = freightPerson.getSelectedPlan();
 			Id<Link> startLink = PopulationUtils.getFirstActivity(selectedPlan).getLinkId();
-			String startZone = findZoneOfLink(linksPerZone, startLink);
+			String startZone = findZoneOfLink(scenario, indexZones, startLink);
 
 			for (PlanElement planElement : freightPerson.getSelectedPlan().getPlanElements()) {
 				if (planElement instanceof Activity activity) {
@@ -73,7 +74,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 						continue;
 					}
 					if (activity.getType().equals("delivery")) {
-						String stopZone = findZoneOfLink(linksPerZone, activity.getLinkId());
+						String stopZone = findZoneOfLink(scenario, indexZones, activity.getLinkId());
 						List<String> modeORvehTypeOptions = getVehTyp(vehicleTypeMode);
 						String modeORvehType = modeORvehTypeOptions.get(rnd.nextInt(modeORvehTypeOptions.size()));
 						Integer purpose = getPurpose(goodsType);
@@ -125,6 +126,11 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 			case 72 -> 2; // delivery of petrol //TODO: check if this purpose is correct
 			default -> throw new IllegalStateException("Unexpected value for goodsType: " + goodsType);
 		};
+	}
+
+	private String findZoneOfLink(Scenario scenario, ShpOptions.Index indexZones, Id<Link> linkId) {
+		Link link = scenario.getNetwork().getLinks().get(linkId);
+		return indexZones.query(link.getCoord());
 	}
 }
 

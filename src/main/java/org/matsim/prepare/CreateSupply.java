@@ -426,7 +426,7 @@ public class CreateSupply {
 
 		// all regular bike links should have an infrastructure speed factor of 0.64 according to the rvr
 		if (link.getAllowedModes().contains(TransportMode.bike)) {
-			link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 0.64);
+			BicycleUtils.setBicycleInfrastructureFactor(link, 0.64);
 		}
 	}
 

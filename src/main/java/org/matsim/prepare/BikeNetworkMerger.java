@@ -39,7 +39,7 @@ class BikeNetworkMerger {
 			// add link copy to original network
 			originalNetwork.addLink(copyLink(originalNetwork.getFactory(), link));
 		});
-		
+
 		bikeNetwork.getNodes().values().forEach(node -> {
 			connectNodeToNetwork(originalNetwork, bikeNetwork.getNodes(), node);
 		});
@@ -97,7 +97,7 @@ class BikeNetworkMerger {
 
 			// last link to be inserted must be connected to currentNode and toNode
 			Link lastLink = createLinkWithAttributes(bikeNetwork.getFactory(), currentNode, toNode);
-			
+
 			brokenUpLinksToAdd.add(lastLink);
 		}
 	}
@@ -112,14 +112,14 @@ class BikeNetworkMerger {
 				link.getFromNode(), link.getToNode()
 		);
 		result.setAllowedModes(link.getAllowedModes());
-		result.setCapacity(link.getCapacity()); 
+		result.setCapacity(link.getCapacity());
 		result.setFreespeed(link.getFreespeed());
 		result.setNumberOfLanes(link.getNumberOfLanes());
 		result.setLength(link.getLength());
 		for (String attribute : link.getAttributes().getAsMap().keySet()) {
 			result.getAttributes().putAttribute(attribute, link.getAttributes().getAttribute(attribute));
-		}		
-		return result;		
+		}
+		return result;
 	}
 
 	private Link createLinkWithAttributes(NetworkFactory factory, Node fromNode, Node toNode) {
@@ -129,9 +129,9 @@ class BikeNetworkMerger {
 				fromNode, toNode
 		);
 		result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
-		result.setCapacity(800); 
+		result.setCapacity(800);
 		result.setFreespeed(5.55);
-		result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
+		BicycleUtils.setBicycleInfrastructureFactor(result, 1.0);
 		result.setNumberOfLanes(1);
 		result.setLength(NetworkUtils.getEuclideanDistance(fromNode.getCoord(), toNode.getCoord()));
 		return result;

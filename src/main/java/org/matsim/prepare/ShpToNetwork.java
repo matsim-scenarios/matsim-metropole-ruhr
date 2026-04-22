@@ -168,7 +168,7 @@ public class ShpToNetwork {
         result.setAllowedModes(new HashSet<>(Collections.singletonList(TransportMode.bike)));
         result.setCapacity(800);
         result.setFreespeed(5.55); // 20km/h
-        result.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
+		BicycleUtils.setBicycleInfrastructureFactor(result, 1.0);
         result.setNumberOfLanes(1);
         result.setLength(length);
         return result;
