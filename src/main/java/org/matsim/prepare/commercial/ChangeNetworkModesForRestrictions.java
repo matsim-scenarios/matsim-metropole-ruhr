@@ -14,10 +14,7 @@ import org.geotools.api.feature.simple.SimpleFeature;
 import org.locationtech.jts.geom.MultiLineString;
 
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -160,6 +157,7 @@ public class ChangeNetworkModesForRestrictions {
                 }
             }
         }
+		NetworkUtils.cleanNetwork(network, NetworkUtils.getModes(network));
         NetworkUtils.writeNetwork(network, outputPath);
     }
 }
