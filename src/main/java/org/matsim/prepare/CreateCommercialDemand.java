@@ -13,17 +13,25 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlansConfigGroup;
 import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
+import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.scoring.ScoringFunctionFactory;
+import org.matsim.core.scoring.functions.VehicleTypeBasedScoringFunctionFactory;
 import org.matsim.prepare.commercial.GenerateFTLFreightPlansRuhr;
 import org.matsim.prepare.commercial.GenerateFreightDataRuhr;
 import org.matsim.prepare.commercial.GenerateLTLFreightPlansRuhr;
 import org.matsim.prepare.commercial.IntegrationOfExistingCommercialTrafficRuhr;
 import org.matsim.run.MetropoleRuhrScenario;
+import org.matsim.simwrapper.SimWrapper;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.matsim.simwrapper.dashboard.CarrierDashboard;
+import org.matsim.simwrapper.dashboard.CommercialTrafficDashboard;
+import org.matsim.simwrapper.dashboard.OverviewDashboard;
+import org.matsim.simwrapper.dashboard.TripDashboard;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.IntegrateExistingTrafficToSmallScaleCommercial;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
@@ -49,7 +57,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	private static final Logger log = LogManager.getLogger(CreateCommercialDemand.class);
 
-	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.01")
+	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.001")
 	private double sample;
 
 	@CommandLine.Option(names = "--generatedInputDataPath", description = "Path to the generated input data", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/output/rvr/generatedInputData")
@@ -97,6 +105,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "30")
 	private int additionalTravelBufferPerIterationInMinutes;
 
+	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services. If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.2")
+	private int factorForTravelBufferCalculation;
+
 	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
 	private String freightRawData;
 
@@ -121,8 +132,11 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
-	@CommandLine.Option(names = "--resistanceFactorForKWM", defaultValue = "0.005", description = "ResistanceFactor for the trip distribution")
-	private double resistanceFactorForKWM;
+	@CommandLine.Option(names = "--resistanceFactorForKWM_goodsTraffic", defaultValue = "0.2", description = "ResistanceFactor of the goodsTraffic for the trip distribution in the small scale commercial model.")
+	private double resistanceFactorForKWM_goodsTraffic;
+
+	@CommandLine.Option(names = "--resistanceFactorForKWM_commercialPersonTraffic", defaultValue = "0.1", description = "ResistanceFactor of the commercialPersonTraffic for the trip distribution in the small scale commercial model.")
+	private double resistanceFactorForKWM_commercialPersonTraffic;
 
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
@@ -288,7 +302,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--nameOutputPopulation", smallScaleCommercialPopulationName,
 				"--numberOfPlanVariantsPerAgent", "5",
 				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
-				"--resistanceFactor", String.valueOf(resistanceFactorForKWM)};
+				"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
+				"--maxNumberOfLoopsForVRPSolving", "100",
+				"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
+				"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)};
 			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
 				args = Arrays.copyOf(args, args.length + 2);
 				args[args.length - 2] = "--carrierFilePath";
@@ -344,8 +361,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 			config.qsim().setUsePersonIdForMissingVehicleId(false);
 			//to get no traffic jam for the 1 iteration
-			config.qsim().setFlowCapFactor(sample * 4);
-			config.qsim().setStorageCapFactor(sample * 4);
+			config.qsim().setFlowCapFactor(sample);
+			config.qsim().setStorageCapFactor(sample);
 			config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
 			config.scoring().setFractionOfIterationsToStartScoreMSA(0.8);
 			config.getModules().remove("intermodalTripFareCompensators");
@@ -353,16 +370,30 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("ptIntermodalRoutingModes");
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
-			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
-			simWrapperConfigGroup.setSampleSize(sample);
-			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
+
+			SimWrapper sw = SimWrapper.create();
+			sw.getConfigGroup().defaultParams().setShp(null);
+			sw.getConfigGroup().setDefaultDashboards(SimWrapperConfigGroup.DefaultDashboardsMode.disabled);
+			sw.getConfigGroup().setSampleSize(sample);
+			sw.addDashboard(new OverviewDashboard(Set.copyOf(config.qsim().getMainModes())));
+			sw.addDashboard(new CarrierDashboard("(*.)?output_carriers_solvedVRP.xml.gz"));
+			String subpopSetterForDashboards = "commercialPersonTraffic=commercialPersonTraffic,commercialPersonTraffic_service;smallScaleGoodsTraffic=goodsTraffic;LTL=LTL_trip;FTL=FTL_trip,FTL_kv_trip;longDistanceFreight=longDistanceFreight";
+			sw.addDashboard(new TripDashboard().setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards).setAnalysisArgs("--shp-filter", "none"));
+			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
+			MetropoleRuhrScenario.prepareCommercialTrafficConfig(scenario);
+
 			Controler controller = new Controler(scenario);
 
-			controller.addOverridingModule(new SimWrapperModule());
-
+			controller.addOverridingModule(new SimWrapperModule(sw));
+			controller.addOverridingModule(new AbstractModule() {
+				@Override
+				public void install() {
+					bind(ScoringFunctionFactory.class).to(VehicleTypeBasedScoringFunctionFactory.class);
+				}
+			});
 			controller.run();
 		}
 		return 0;

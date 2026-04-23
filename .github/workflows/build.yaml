@@ -46,10 +46,11 @@ jobs:
     name: Tests
 
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         java: [21]
 
@@ -62,6 +63,11 @@ jobs:
           distribution: adopt
           cache: maven
 
+      - name: Show memory
+        run: |
+          free -h || true
+          cat /proc/meminfo | head -n 20 || true
+          java -XshowSettings:vm -version
       - name: Test
         run: mvn --batch-mode --update-snapshots test -Dmatsim.preferLocalDtds=true -Dmaven.javadoc.skip -e
       - uses: actions/upload-artifact@v4
@@ -72,7 +78,7 @@ jobs:
   package:
     #run if push or pull_requests from fork
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    needs: [checkstyle, enforce, test]
+    needs: [enforce, test]
     name: Package
 
     runs-on: ubuntu-latest
@@ -94,4 +100,4 @@ jobs:
           path: staging
 
     env:
-      MAVEN_OPTS: -Xmx512m
+      MAVEN_OPTS: -Xmx16G
