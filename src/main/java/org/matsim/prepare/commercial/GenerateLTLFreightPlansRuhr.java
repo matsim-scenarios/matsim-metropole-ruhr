@@ -188,8 +188,6 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 						case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
 						case PARCEL -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 150);
 					};
-//                freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL);
-
 					CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_noSolution.toString());
 				}
 				filterRelevantVehicleTypesForTourPlanning(scenario);
@@ -224,7 +222,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		readVehicleTypes.keySet().removeIf(vehicleType -> !usedCarrierVehicleTypes.contains(vehicleType));
 	}
 
-	public static void main(String[] args) {
+	static void main(String[] args) {
 		new GenerateLTLFreightPlansRuhr().execute(args);
 	}
 
