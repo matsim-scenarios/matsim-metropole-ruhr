@@ -34,6 +34,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Activity;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -49,8 +50,10 @@ import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorConfigGroup;
@@ -134,49 +137,65 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	/**
 	 * Prepare the config for commercial traffic.
 	 */
-	public static void prepareCommercialTrafficConfig(Config config) {
+	public static void prepareCommercialTrafficConfig(Scenario scenario) {
 
-		Set<String> modes = Set.of("truck8t", "truck18t", "truck26t", "truck40t");
+		Set<String> modes = NetworkUtils.getModes(scenario.getNetwork());
+		Set<String> subpopulations = PopulationUtils.getSubpopulationsOfPopulation(scenario.getPopulation());
+		Config config = scenario.getConfig();
 
-		modes.forEach(mode -> {
-			ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
-			config.scoring().addModeParams(thisModeParams);
+		subpopulations.forEach(subpopulation -> {
+			config.replanning().addStrategySettings(
+				new ReplanningConfigGroup.StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta).setWeight(
+					0.85).setSubpopulation(subpopulation));
+
+			config.replanning().addStrategySettings(
+				new ReplanningConfigGroup.StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute).setWeight(
+					0.1).setSubpopulation(subpopulation));
+
+			Set<String> activityTypesPerSubpopulation = new HashSet<>(
+				scenario.getPopulation().getPersons().values().stream()
+					.filter(person ->PopulationUtils.getSubpopulation(person).equals(subpopulation))
+					.flatMap(person -> PopulationUtils.getActivities(person.getSelectedPlan(),
+						TripStructureUtils.StageActivityHandling.ExcludeStageActivities).stream())
+					.map(Activity::getType)
+					.toList()
+			);
+
+			ScoringConfigGroup.ScoringParameterSet scoringParameters = config.scoring().getOrCreateScoringParameters(subpopulation);
+			double timeCosts;
+
+			if (subpopulations.contains("commercialPersonTraffic")) {
+				timeCosts = -37.27;
+			} else {
+				timeCosts = -25.81;
+			}
+			scoringParameters.setMarginalUtlOfWaiting_utils_hr(timeCosts);
+			scoringParameters.setPerforming_utils_hr(timeCosts);
+			scoringParameters.setMarginalUtilityOfMoney(1.0);
+			scoringParameters.setMarginalUtlOfWaitingPt_utils_hr(timeCosts);
+			activityTypesPerSubpopulation.forEach(activityType -> {
+				ScoringConfigGroup.ActivityParams actParams = new ScoringConfigGroup.ActivityParams(activityType).setTypicalDuration(30 * 60);
+				scoringParameters.addActivityParams(actParams);
+			});
+			modes.forEach(mode -> {
+				ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
+				thisModeParams.setMarginalUtilityOfTraveling(timeCosts);
+				thisModeParams.setMonetaryDistanceRate(0.0);	// mode spezifische Kosten pro Meter TODO
+				scoringParameters.addModeParams(thisModeParams);
+			});
+			ScoringConfigGroup.ModeParams walk = new ScoringConfigGroup.ModeParams("walk");
+			walk.setMarginalUtilityOfTraveling(timeCosts);
+			scoringParameters.addModeParams(walk);
 		});
+		config.scoring().setExplainScores(true);
+		ScoringConfigGroup.ScoringParameterSet defaultScoringParameters = config.scoring().getOrCreateScoringParameters(ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+		config.scoring().addParameterSet(defaultScoringParameters); //TODO this should be not necessary at the end
 
 		Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
 		config.qsim().setMainModes(Sets.union(qsimModes, modes));
 
 		Set<String> networkModes = new HashSet<>(config.routing().getNetworkModes());
 		config.routing().setNetworkModes(Sets.union(networkModes, modes));
-
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_start").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_end").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("service").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("pickup").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("delivery").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("commercial_return").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("start").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("end").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_start").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_end").setTypicalDuration(30 * 60));
-		config.scoring().addActivityParams(new ScoringConfigGroup.ActivityParams("freight_return").setTypicalDuration(30 * 60));
-
-		for (String subpopulation : List.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
-			"FTL_trip", "FTL_kv_trip", "goodsTraffic")) {
-			config.replanning().addStrategySettings(
-				new ReplanningConfigGroup.StrategySettings()
-					.setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
-					.setWeight(0.85)
-					.setSubpopulation(subpopulation)
-			);
-
-			config.replanning().addStrategySettings(
-				new ReplanningConfigGroup.StrategySettings()
-					.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute)
-					.setWeight(0.1)
-					.setSubpopulation(subpopulation)
-			);
-		}
 	}
 
 	@Override
@@ -292,7 +311,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		double alpha = 1.0;
 		RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), alpha);
 
-		prepareCommercialTrafficConfig(config);
+//		prepareCommercialTrafficConfig(config);
 
 		preparePtFareConfig(config);
 
@@ -335,6 +354,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
+		prepareCommercialTrafficConfig(scenario);
 		List<CapacityChange> capacityChanges = new ArrayList<>();
 
 		if(adjustCapacitiesToDtvCounts){
