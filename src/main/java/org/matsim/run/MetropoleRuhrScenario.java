@@ -26,7 +26,7 @@ import com.google.inject.Singleton;
 import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.analysis.ModeChoiceCoverageControlerListener;
+import org.matsim.analysis.ModeChoiceCoverageControllerListener;
 import org.matsim.analysis.TripMatrix;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.analysis.pt.stop2stop.PtStop2StopAnalysisModule;
@@ -117,12 +117,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	/**
 	 * Constructor for extending scenarios.
 	 */
-	protected MetropoleRuhrScenario(String defaultScenario) {
-		super(defaultScenario);
-	}
+//	protected MetropoleRuhrScenario(String defaultScenario) {
+//		super(defaultScenario);
+//	}
 
 	public MetropoleRuhrScenario() {
-		super(CONFIG_PATH);
+		super(ConfigUtils.loadConfig(CONFIG_PATH));
 	}
 
 	public static void main(String[] args) {
@@ -251,7 +251,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		// this has no effect as described here https://github.com/matsim-org/matsim-libs/issues/3403, but is stated in order to avoid warnings from the
 		// consistency checker
-		bikeConfigGroup.setMaxBicycleSpeedForRouting(5.0);
+//		bikeConfigGroup.setMaxBicycleSpeedForRouting(5.0);
 
 		// this is needed for the parking cost money events
 		ParkingCostConfigGroup parkingCostConfigGroup = ConfigUtils.addOrGetModule(config, ParkingCostConfigGroup.class);
@@ -410,7 +410,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				addTravelTimeBinding(TransportMode.ride).to(networkTravelTime());
 				addTravelDisutilityFactoryBinding(TransportMode.ride).to(carTravelDisutilityFactoryKey());
 				addTravelTimeBinding(TransportMode.bike).to(networkTravelTime());
-				addControlerListenerBinding().to(ModeChoiceCoverageControlerListener.class);
+				addControlerListenerBinding().to(ModeChoiceCoverageControllerListener.class);
 
 				// calculate access/egress leg generalized cost correctly for intermodal pt routing
 				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);

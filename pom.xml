@@ -19,6 +19,7 @@
 	<properties>
 		<!-- Don't modify this, change the parent version instead! -->
 		<matsim.version>${project.parent.version}</matsim.version>
+		<matsim.source.dir></matsim.source.dir>
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -138,9 +139,14 @@
 			<version>${matsim.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>small-scale-traffic-generation</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
+		<dependency>
             <groupId>com.github.matsim-org</groupId>
             <artifactId>gtfs2matsim</artifactId>
-			<version>47b0802a29</version>
+			<version>45689bf834</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.matsim</groupId>
@@ -152,7 +158,7 @@
 		<dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.4.1</version>
+            <version>5.5.1</version>
         </dependency>
 
 		<!-- for weighted random draw: https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
@@ -163,23 +169,22 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-statistics-distribution</artifactId>
-			<version>1.1</version>
+			<version>1.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-rng-simple</artifactId>
-			<version>1.6</version>
+			<version>1.7</version>
 		</dependency>
-
 		<dependency>
 			<groupId>com.github.matsim-vsp</groupId>
 			<artifactId>pt-extensions</artifactId>
 			<version>ceef00ef6e</version>
 		</dependency>
 		<dependency>
-			<groupId>org.matsim.contrib</groupId>
-			<artifactId>small-scale-traffic-generation</artifactId>
-			<version>${matsim.version}</version>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.14.1</version>
 		</dependency>
 
     </dependencies>
@@ -189,9 +194,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.11.0</version>
+				<version>3.15.0</version>
 				<configuration>
-					<release>21</release>
+					<release>25</release>
 					<showWarnings>false</showWarnings>
 					<showDeprecation>false</showDeprecation>
 					<encoding>UTF-8</encoding>
@@ -249,7 +254,7 @@
 			<plugin>
 				<groupId>io.github.git-commit-id</groupId>
 				<artifactId>git-commit-id-maven-plugin</artifactId>
-				<version>5.0.0</version>
+				<version>10.0.0</version>
 				<executions>
 					<execution>
 						<id>get-the-git-infos</id>
@@ -261,13 +266,15 @@
 				</executions>
 				<configuration>
 					<failOnNoGitDirectory>false</failOnNoGitDirectory>
+					<gitDescribe>
+						<tags>true</tags>
+					</gitDescribe>
 				</configuration>
 			</plugin>
-
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.2.2</version>
+				<version>3.6.2</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -275,8 +282,7 @@
 							<goal>shade</goal>
 						</goals>
 						<configuration>
-							<outputFile>${project.basedir}/${project.build.finalName}-${git.commit.id.describe-short}.jar</outputFile>
-
+							<outputFile>${project.basedir}/${project.build.finalName}-${git.commit.id.describe}.jar</outputFile>
 							<transformers>
 								<!-- This bit sets the main class for the executable jar as you otherwise would with the assembly plugin -->
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
@@ -285,7 +291,8 @@
 										<Specification-Vendor>org.matsim</Specification-Vendor>
 										<Implementation-Vendor>org.matsim</Implementation-Vendor>
 										<Implementation-Version>${project.version}</Implementation-Version>
-										<SCM-Revision>${git.commit.id.describe-short}</SCM-Revision>
+										<!--suppress UnresolvedMavenProperty -->
+										<SCM-Revision>${git.commit.id.describe}</SCM-Revision>
 										<Multi-Release>true</Multi-Release>
 									</manifestEntries>
 								</transformer>
@@ -307,9 +314,187 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>write-working-tree-diff</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target xmlns:if="ant:if" xmlns:unless="ant:unless">
+								<delete file="${project.build.directory}/git-metadata/uncommitted-changes.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/working-tree.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/working-tree.diff.err" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/matsim-snapshot.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/matsim-snapshot-working-tree.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/matsim-snapshot-working-tree.diff.err" quiet="true"/>
+								<delete file="${project.build.outputDirectory}/META-INF/git/uncommitted-changes.diff" quiet="true"/>
+								<delete file="${project.build.outputDirectory}/META-INF/git/matsim-snapshot-info.txt" quiet="true"/>
+								<delete file="${project.build.outputDirectory}/META-INF/git/matsim-snapshot.diff" quiet="true"/>
 
-			<!-- Generate Git diff in JAR -->
-			<!-- Happens in two steps: Generate git.diff in the target folder and copy the diff file into JAR. Happens before packaging. -->
+								<exec executable="git" outputproperty="git.status.porcelain" failonerror="true">
+									<arg value="status"/>
+									<arg value="--porcelain=v1"/>
+									<arg value="--untracked-files=all"/>
+								</exec>
+
+								<condition property="git.status.present">
+									<not>
+										<!--suppress UnresolvedMavenProperty -->
+										<equals arg1="${git.status.porcelain}" arg2=""/>
+									</not>
+								</condition>
+
+								<mkdir dir="${project.build.directory}/git-metadata" if:set="git.status.present"/>
+								<mkdir dir="${project.build.outputDirectory}/META-INF/git" if:set="git.status.present"/>
+
+								<!--suppress UnresolvedMavenProperty -->
+								<echo file="${project.build.directory}/git-metadata/uncommitted-changes.diff" if:set="git.status.present"># Commit: ${git.commit.id.abbrev}
+									# Dirty: ${git.dirty}
+									#
+									# git status --porcelain=v1 --untracked-files=all
+									${git.status.porcelain}
+
+									# git diff --binary HEAD${line.separator}
+								</echo>
+
+								<exec executable="git"
+								      output="${project.build.directory}/git-metadata/working-tree.diff"
+								      error="${project.build.directory}/git-metadata/working-tree.diff.err"
+								      failonerror="true"
+								      if:set="git.status.present">
+									<arg value="diff"/>
+									<arg value="--binary"/>
+									<arg value="HEAD"/>
+								</exec>
+
+								<concat destfile="${project.build.directory}/git-metadata/uncommitted-changes.diff" append="true" if:set="git.status.present">
+									<filelist dir="${project.build.directory}/git-metadata" files="working-tree.diff"/>
+								</concat>
+
+								<copy file="${project.build.directory}/git-metadata/uncommitted-changes.diff"
+								      tofile="${project.build.outputDirectory}/META-INF/git/uncommitted-changes.diff"
+								      if:set="git.status.present"/>
+
+								<echo message="Working tree clean; skipping diff artifact." unless:set="git.status.present"/>
+
+								<condition property="matsim.source.git.present">
+									<and>
+										<equals arg1="${matsim.version}" arg2="2027.0-SNAPSHOT"/>
+										<not>
+											<equals arg1="${matsim.source.dir}" arg2=""/>
+										</not>
+										<available file="${matsim.source.dir}/.git" type="dir"/>
+									</and>
+								</condition>
+
+								<mkdir dir="${project.build.directory}/git-metadata" if:set="matsim.source.git.present"/>
+								<mkdir dir="${project.build.outputDirectory}/META-INF/git" if:set="matsim.source.git.present"/>
+
+								<exec executable="git" outputproperty="matsim.git.branch" failonerror="true" if:set="matsim.source.git.present">
+									<arg value="-C"/>
+									<arg value="${matsim.source.dir}"/>
+									<arg value="branch"/>
+									<arg value="--show-current"/>
+								</exec>
+								<exec executable="git" outputproperty="matsim.git.commit" failonerror="true" if:set="matsim.source.git.present">
+									<arg value="-C"/>
+									<arg value="${matsim.source.dir}"/>
+									<arg value="rev-parse"/>
+									<arg value="--short"/>
+									<arg value="HEAD"/>
+								</exec>
+								<exec executable="git" outputproperty="matsim.git.describe" failonerror="true" if:set="matsim.source.git.present">
+									<arg value="-C"/>
+									<arg value="${matsim.source.dir}"/>
+									<arg value="describe"/>
+									<arg value="--dirty"/>
+									<arg value="--always"/>
+									<arg value="--tags"/>
+								</exec>
+								<exec executable="git" outputproperty="matsim.git.status.porcelain" failonerror="true" if:set="matsim.source.git.present">
+									<arg value="-C"/>
+									<arg value="${matsim.source.dir}"/>
+									<arg value="status"/>
+									<arg value="--porcelain=v1"/>
+									<arg value="--untracked-files=all"/>
+								</exec>
+
+								<condition property="matsim.git.status.present">
+									<not>
+										<!--suppress UnresolvedMavenProperty -->
+										<equals arg1="${matsim.git.status.porcelain}" arg2=""/>
+									</not>
+								</condition>
+								<condition property="matsim.git.status.clean">
+									<and>
+										<isset property="matsim.source.git.present"/>
+										<not>
+											<isset property="matsim.git.status.present"/>
+										</not>
+									</and>
+								</condition>
+
+								<!--suppress UnresolvedMavenProperty -->
+								<echo file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt" if:set="matsim.source.git.present"># MATSim source checkout used for ${matsim.version}
+									# Path: ${matsim.source.dir}
+									# Branch: ${matsim.git.branch}
+									# Commit: ${matsim.git.commit}
+									# Describe: ${matsim.git.describe}${line.separator}
+								</echo>
+								<echo file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt" append="true" if:set="matsim.git.status.present"># Dirty: true${line.separator}</echo>
+								<echo file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt" append="true" if:set="matsim.git.status.clean"># Dirty: false${line.separator}</echo>
+								<!--suppress UnresolvedMavenProperty -->
+								<echo file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt" append="true" if:set="matsim.source.git.present">#
+									# git status --porcelain=v1 --untracked-files=all
+									${matsim.git.status.porcelain}
+								</echo>
+
+								<!--suppress UnresolvedMavenProperty -->
+								<echo file="${project.build.directory}/git-metadata/matsim-snapshot.diff" if:set="matsim.source.git.present"># MATSim source checkout used for ${matsim.version}
+									# Path: ${matsim.source.dir}
+									# Branch: ${matsim.git.branch}
+									# Commit: ${matsim.git.commit}
+									# Describe: ${matsim.git.describe}
+									#
+									# git diff --binary HEAD${line.separator}
+								</echo>
+
+								<exec executable="git"
+								      output="${project.build.directory}/git-metadata/matsim-snapshot-working-tree.diff"
+								      error="${project.build.directory}/git-metadata/matsim-snapshot-working-tree.diff.err"
+								      failonerror="true"
+								      if:set="matsim.source.git.present">
+									<arg value="-C"/>
+									<arg value="${matsim.source.dir}"/>
+									<arg value="diff"/>
+									<arg value="--binary"/>
+									<arg value="HEAD"/>
+								</exec>
+
+								<concat destfile="${project.build.directory}/git-metadata/matsim-snapshot.diff" append="true" if:set="matsim.source.git.present">
+									<filelist dir="${project.build.directory}/git-metadata" files="matsim-snapshot-working-tree.diff"/>
+								</concat>
+
+								<copy file="${project.build.directory}/git-metadata/matsim-snapshot-info.txt"
+								      tofile="${project.build.outputDirectory}/META-INF/git/matsim-snapshot-info.txt"
+								      if:set="matsim.source.git.present"/>
+								<copy file="${project.build.directory}/git-metadata/matsim-snapshot.diff"
+								      tofile="${project.build.outputDirectory}/META-INF/git/matsim-snapshot.diff"
+								      if:set="matsim.source.git.present"/>
+
+								<echo message="MATSim snapshot git metadata skipped; it is only embedded for matsim.version=2027.0-SNAPSHOT with -Dmatsim.source.dir=... pointing to a Git checkout." unless:set="matsim.source.git.present"/>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-scm-plugin</artifactId>
@@ -352,6 +537,16 @@
 				</executions>
 			</plugin>
 		</plugins>
+		<resources>
+			<!-- git-changes.txt aus target ins JAR legen -->
+			<resource>
+				<directory>${project.build.directory}</directory>
+				<includes>
+					<include>git-changes.txt</include>
+				</includes>
+				<targetPath>META-INF</targetPath>
+			</resource>
+		</resources>
 	</build>
 
 	<reporting>
