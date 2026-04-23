@@ -197,9 +197,9 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 				CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_withSolution.toString());
 			}
 			if (!Files.exists(outputFolderCarriers.resolve("Carriers_Analysis_" + carrierType))) {
-				CarriersAnalysis freightAnalysis = new CarriersAnalysis(CarriersUtils.addOrGetCarriers(scenario),
+				CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
 					outputFolderCarriers.resolve("Carriers_Analysis_" + carrierType).toString());
-				freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersPlans);
+				freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
 			}
 			LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
 		}
