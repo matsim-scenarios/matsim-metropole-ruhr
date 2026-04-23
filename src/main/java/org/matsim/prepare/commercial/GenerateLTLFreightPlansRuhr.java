@@ -179,7 +179,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 					scenario = ScenarioUtils.loadScenario(config);
 
 					log.info("Read carrier vehicle types");
-					CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getCarrierVehicleTypes(scenario);
+					CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getOrAddCarrierVehicleTypes(scenario);
 					new CarrierVehicleTypeReader(carrierVehicleTypes).readURL(
 						IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
 					switch (carrierType) {
