@@ -314,7 +314,74 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>write-working-tree-diff</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target xmlns:if="ant:if" xmlns:unless="ant:unless">
+								<delete file="${project.build.directory}/git-metadata/uncommitted-changes.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/working-tree.diff" quiet="true"/>
+								<delete file="${project.build.directory}/git-metadata/working-tree.diff.err" quiet="true"/>
+								<delete file="${project.build.outputDirectory}/META-INF/git/uncommitted-changes.diff" quiet="true"/>
 
+								<exec executable="git" outputproperty="git.status.porcelain" failonerror="true">
+									<arg value="status"/>
+									<arg value="--porcelain=v1"/>
+									<arg value="--untracked-files=all"/>
+								</exec>
+
+								<condition property="git.status.present">
+									<not>
+										<!--suppress UnresolvedMavenProperty -->
+										<equals arg1="${git.status.porcelain}" arg2=""/>
+									</not>
+								</condition>
+
+								<mkdir dir="${project.build.directory}/git-metadata" if:set="git.status.present"/>
+								<mkdir dir="${project.build.outputDirectory}/META-INF/git" if:set="git.status.present"/>
+
+								<!--suppress UnresolvedMavenProperty -->
+								<echo file="${project.build.directory}/git-metadata/uncommitted-changes.diff" if:set="git.status.present"># Commit: ${git.commit.id.abbrev}
+									# Dirty: ${git.dirty}
+									#
+									# git status --porcelain=v1 --untracked-files=all
+									${git.status.porcelain}
+
+									# git diff --binary HEAD${line.separator}
+								</echo>
+
+								<exec executable="git"
+								      output="${project.build.directory}/git-metadata/working-tree.diff"
+								      error="${project.build.directory}/git-metadata/working-tree.diff.err"
+								      failonerror="true"
+								      if:set="git.status.present">
+									<arg value="diff"/>
+									<arg value="--binary"/>
+									<arg value="HEAD"/>
+								</exec>
+
+								<concat destfile="${project.build.directory}/git-metadata/uncommitted-changes.diff" append="true" if:set="git.status.present">
+									<filelist dir="${project.build.directory}/git-metadata" files="working-tree.diff"/>
+								</concat>
+
+								<copy file="${project.build.directory}/git-metadata/uncommitted-changes.diff"
+								      tofile="${project.build.outputDirectory}/META-INF/git/uncommitted-changes.diff"
+								      if:set="git.status.present"/>
+
+								<echo message="Working tree clean; skipping diff artifact." unless:set="git.status.present"/>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
@@ -344,6 +411,16 @@
 				</executions>
 			</plugin>
 		</plugins>
+		<resources>
+			<!-- git-changes.txt aus target ins JAR legen -->
+			<resource>
+				<directory>${project.build.directory}</directory>
+				<includes>
+					<include>git-changes.txt</include>
+				</includes>
+				<targetPath>META-INF</targetPath>
+			</resource>
+		</resources>
 	</build>
 
 	<reporting>
