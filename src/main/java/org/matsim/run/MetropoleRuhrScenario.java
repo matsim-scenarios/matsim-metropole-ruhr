@@ -81,12 +81,12 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 
 @CommandLine.Command(header = ":: Open Metropole Ruhr Scenario ::", version = MetropoleRuhrScenario.VERSION, showDefaultValues = true)
 @MATSimApplication.Analysis({
-		LinkStats.class, TripMatrix.class
+	LinkStats.class, TripMatrix.class
 })
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
-
-	public static final String VERSION = "v2.0";
+	public static final String VERSION = "v2024.1";
+	public static final String CONFIG_PATH = "./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-3pct.config.xml";
 
 	private static final double PCU_CAR = 1;
 	private static final double PCU_TRUCK = 3.5;
@@ -94,7 +94,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
 
 	@CommandLine.Mixin
-	private final SampleOptions sample = new SampleOptions(3, 10, 25, 1);
+	private final SampleOptions sample = new SampleOptions(10, 3, 25, 1);
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
@@ -122,20 +122,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 	public MetropoleRuhrScenario() {
-		super("./scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-" + VERSION +"-3pct.config.xml");
-	}
-
-	/**
-	 * Have this here for unit testing, the other constructor doesn't seem to work for that 🤷‍♀️
-	 */
-	MetropoleRuhrScenario(Config config) {
-		super(config);
+		super(CONFIG_PATH);
 	}
 
 	public static void main(String[] args) {
 		// (a (presumably crappy) way to give args from java instead of from the command line See KNRunMetropoleRuhrScenario)
 
-		MATSimApplication.run(MetropoleRuhrScenario.class, args);
+		MATSimApplication.execute(MetropoleRuhrScenario.class, args);
 	}
 
 	/**
@@ -209,7 +202,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 			// intermodal pt should not be a chain-based mode, otherwise those would have to be modified too
 			subtourModeChoice.setModes(
-					Arrays.stream(subtourModeChoice.getModes())
+				Arrays.stream(subtourModeChoice.getModes())
 					.filter(s -> !s.equals("pt_intermodal_allowed"))
 					.toArray(String[]::new)
 			);
@@ -217,34 +210,34 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 			ChangeModeConfigGroup changeModeConfigGroup = config.changeMode();
 			changeModeConfigGroup.setModes(
-					Arrays.stream(changeModeConfigGroup.getModes())
-							.filter(s -> !s.equals("pt_intermodal_allowed"))
-							.toArray(String[]::new)
+				Arrays.stream(changeModeConfigGroup.getModes())
+					.filter(s -> !s.equals("pt_intermodal_allowed"))
+					.toArray(String[]::new)
 			);
 
 
 			swissRailRaptorConfigGroup.setUseIntermodalAccessEgress(false);
 			List<SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet> intermodalAccessEgressParameterSets =
-					swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
+				swissRailRaptorConfigGroup.getIntermodalAccessEgressParameterSets();
 			intermodalAccessEgressParameterSets.clear();
 
 			PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[] intermodalAccessEgressModeUtilityRandomizationArray =
-					ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
-							toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
+				ptExtensionsConfigGroup.getIntermodalAccessEgressModeUtilityRandomizations().
+					toArray(new PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization[0]);
 			for (PtExtensionsConfigGroup.IntermodalAccessEgressModeUtilityRandomization intermodalAccessEgressModeUtilityRandomization : intermodalAccessEgressModeUtilityRandomizationArray) {
 				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalAccessEgressModeUtilityRandomization);
 			}
 
 			IntermodalTripFareCompensatorConfigGroup[] intermodalTripFareCompensatorConfigGroupArray =
-					intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
-							toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
+				intermodalTripFareCompensatorsConfigGroup.getIntermodalTripFareCompensatorConfigGroups().
+					toArray(new IntermodalTripFareCompensatorConfigGroup[0]);
 			for (IntermodalTripFareCompensatorConfigGroup intermodalTripFareCompensatorConfigGroup : intermodalTripFareCompensatorConfigGroupArray) {
 				intermodalTripFareCompensatorsConfigGroup.removeParameterSet(intermodalTripFareCompensatorConfigGroup);
 			}
 
 			PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[] ptIntermodalRoutingModeParameterArrays =
-					ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
-							toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
+				ptIntermodalRoutingModesConfigGroup.getPtIntermodalRoutingModeParameterSets().
+					toArray(new PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet[0]);
 			for (PtIntermodalRoutingModesConfigGroup.PtIntermodalRoutingModeParameterSet ptIntermodalRoutingModeParameterArray : ptIntermodalRoutingModeParameterArrays) {
 				ptIntermodalRoutingModesConfigGroup.removeParameterSet(ptIntermodalRoutingModeParameterArray);
 			}
@@ -296,7 +289,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		//ride scoring params
 		// alpha can be calibrated
-		double alpha = 2.0;
+		double alpha = 1.0;
 		RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), alpha);
 
 		prepareCommercialTrafficConfig(config);
@@ -391,8 +384,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		if (!controler.getConfig().transit().isUsingTransitInMobsim()) {
 			log.error("Public transit will be teleported and not simulated in the mobsim! "
-					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
-					+ "Should only be used for testing or car-focused studies with fixed modal split.");
+				+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
+				+ "Should only be used for testing or car-focused studies with fixed modal split.");
 			throw new IllegalArgumentException("Pt is teleported, wich is not supported");
 		}
 

@@ -22,8 +22,6 @@
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<sonar.organization>matsim-scenarios</sonar.organization>
-		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 	</properties>
 
 	<repositories>
@@ -310,31 +308,46 @@
 				</executions>
 			</plugin>
 
+			<!-- Generate Git diff in JAR -->
+			<!-- Happens in two steps: Generate git.diff in the target folder and copy the diff file into JAR. Happens before packaging. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-checkstyle-plugin</artifactId>
-				<version>3.2.0</version>
-				<dependencies>
-					<dependency>
-						<groupId>com.puppycrawl.tools</groupId>
-						<artifactId>checkstyle</artifactId>
-						<version>10.6.0</version>
-					</dependency>
-				</dependencies>
-				<configuration>
-					<configLocation>checkstyle.xml</configLocation>
-					<consoleOutput>true</consoleOutput>
-					<failsOnError>false</failsOnError>
-					<failOnViolation>false</failOnViolation>
-					<linkXRef>false</linkXRef>
-				</configuration>
+				<artifactId>maven-scm-plugin</artifactId>
+				<version>2.2.1</version>
 				<executions>
 					<execution>
-						<id>checkstyle</id>
-						<phase>package</phase>
+						<id>write-git-diff</id>
+						<phase>prepare-package</phase>
 						<goals>
-							<goal>check</goal>
+							<goal>diff</goal>
 						</goals>
+						<configuration>
+							<outputFile>${project.build.directory}/git.diff</outputFile>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- 2) Copy into JAR -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy-git-diff-into-jar</id>
+						<phase>prepare-package</phase>
+						<goals><goal>copy-resources</goal></goals>
+						<configuration>
+							<outputDirectory>${project.build.outputDirectory}</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${project.build.directory}</directory>
+									<includes>
+										<include>git.diff</include>
+									</includes>
+								</resource>
+							</resources>
+							<overwrite>true</overwrite>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
