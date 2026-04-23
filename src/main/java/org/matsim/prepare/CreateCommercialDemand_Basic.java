@@ -309,11 +309,11 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			config.getModules().remove("ptExtensions");
 			config.getModules().remove("ptIntermodalRoutingModes");
 			config.getModules().remove("swissRailRaptor");
-			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
-			MetropoleRuhrScenario.prepareCommercialTrafficConfig(config);
 			SimWrapperConfigGroup simWrapperConfigGroup = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
 			simWrapperConfigGroup.setSampleSize(sample);
 			Scenario scenario = ScenarioUtils.loadScenario(config);
+			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
+			MetropoleRuhrScenario.prepareCommercialTrafficConfig(scenario);
 
 			Controler controller = new Controler(scenario);
 
