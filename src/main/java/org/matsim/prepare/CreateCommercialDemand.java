@@ -60,6 +60,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		freightData,
 		ftl,
 		ltl,
+		ltlRest,
+		ltlWaste,
+		ltlParcel,
+		ltlMerge,
 		longDistanceFreight,
 		smallScaleInputData,
 		smallScaleCommercial,
@@ -133,6 +137,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--MATSimIterations", description = "Number of MATSim iterations for the complete commercial traffic", defaultValue = "0")
 	private int MATSimIterations;
 
+	@CommandLine.Option(names = "--MATSimIterationsKWM", description = "Number of MATSim iterations for the small-scale commercial traffic", defaultValue = "0")
+	private int MATSimIterationsKWM;
+
 	@CommandLine.Option(names = "--germanyFreightPlansFile", description = "Path to the Germany plans file", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/german_freight.100pct.plans.xml.gz")
 	private Path germanyPlansFile;
 
@@ -184,6 +191,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 		String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
 		String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
+		String LTLFreightPopulationNameRest = LTLFreightPopulationName.replace(".plans.xml.gz", "_REST.plans.xml.gz");
+		String LTLFreightPopulationNameWaste = LTLFreightPopulationName.replace(".plans.xml.gz", "_WASTE.plans.xml.gz");
+		String LTLFreightPopulationNameParcel = LTLFreightPopulationName.replace(".plans.xml.gz", "_PARCEL.plans.xml.gz");
 
 		String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
@@ -225,24 +235,59 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 
 		log.info("3rd step - create LTL freight plans from generated data");
-		if (runPart == RunPart.all || runPart == RunPart.ltl) {
+		if (runPart == RunPart.all || runPart == RunPart.ltl || runPart == RunPart.ltlRest || runPart == RunPart.ltlWaste || runPart == RunPart.ltlParcel) {
+			String nameOutputPopulation = LTLFreightPopulationName;
+			String selectedLTLGoodsType = null;
+
+			if (runPart == RunPart.ltlRest) {
+				nameOutputPopulation = LTLFreightPopulationNameRest;
+				selectedLTLGoodsType = "REST";
+			} else if (runPart == RunPart.ltlWaste) {
+				nameOutputPopulation = LTLFreightPopulationNameWaste;
+				selectedLTLGoodsType = "WASTE";
+			} else if (runPart == RunPart.ltlParcel) {
+				nameOutputPopulation = LTLFreightPopulationNameParcel;
+				selectedLTLGoodsType = "PARCEL";
+			}
+
+			List<String> argumentsForLTL = new ArrayList<>(List.of(
+				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
+				"--network", configPath.getParent().resolve(networkPath).toString(),
+				"--output", output.toString(),
+				"--nameOutputPopulation", nameOutputPopulation,
+				"--working-days", "260",
+				"--sample", String.valueOf(sample),
+				"--vehicleTypesFilePath", vehicleTypesFilePath,
+				"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
+			));
+			if (selectedLTLGoodsType != null) {
+				argumentsForLTL.add("--LTL-goods-type");
+				argumentsForLTL.add(selectedLTLGoodsType);
+			}
+
+			if (Files.exists(output.resolve(nameOutputPopulation))) {
+				log.warn("Freight population already exists. Skipping generation.");
+			} else {
+				new GenerateLTLFreightPlansRuhr().execute(argumentsForLTL.toArray(new String[0]));
+			}
+			if (runPart == RunPart.ltl || runPart == RunPart.ltlRest || runPart == RunPart.ltlWaste || runPart == RunPart.ltlParcel) {
+				return 0;
+			}
+		}
+
+		log.info("3b step - merge LTL freight plan parts");
+		if (runPart == RunPart.ltlMerge) {
 			if (Files.exists(output.resolve(LTLFreightPopulationName))) {
 				log.warn("Freight population already exists. Skipping generation.");
 			} else {
-				new GenerateLTLFreightPlansRuhr().execute(
-					"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-					"--network", configPath.getParent().resolve(networkPath).toString(),
-					"--output", output.toString(),
-					"--nameOutputPopulation", LTLFreightPopulationName,
-					"--working-days", "260",
-					"--sample", String.valueOf(sample),
-					"--vehicleTypesFilePath", vehicleTypesFilePath,
-					"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
+				new MergePopulations().execute(
+					output.resolve(LTLFreightPopulationNameRest).toString(),
+					output.resolve(LTLFreightPopulationNameWaste).toString(),
+					output.resolve(LTLFreightPopulationNameParcel).toString(),
+					"--output", output.resolve(LTLFreightPopulationName).toString()
 				);
 			}
-			if (runPart == RunPart.ltl) {
-				return 0;
-			}
+			return 0;
 		}
 		log.info("4rd step - create transit long distance freight traffic");
 		String longDistanceFreightPopulationName = output.resolve(
