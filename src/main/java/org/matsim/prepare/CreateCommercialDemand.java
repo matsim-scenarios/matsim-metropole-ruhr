@@ -424,7 +424,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
 
-			SimWrapper sw = SimWrapper.create();
+			SimWrapper sw = SimWrapper.create(config);
 			sw.getConfigGroup().defaultParams().setShp(null);
 			sw.getConfigGroup().setDefaultDashboards(SimWrapperConfigGroup.DefaultDashboardsMode.disabled);
 			sw.getConfigGroup().setSampleSize(sample);
@@ -433,12 +433,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			String subpopSetterForDashboards = "commercialPersonTraffic=commercialPersonTraffic,commercialPersonTraffic_service;smallScaleGoodsTraffic=goodsTraffic;LTL=LTL_trip;FTL=FTL_trip,FTL_kv_trip;longDistanceFreight=longDistanceFreight";
 			sw.addDashboard(new TripDashboard().setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards).setAnalysisArgs("--shp-filter", "none"));
 			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
+			config.vehicles().setVehiclesFile(configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString());
+			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
 			MetropoleRuhrScenario.prepareCommercialTrafficConfig(scenario);
 
-			Controler controller = new Controler(scenario);
+			Controller controller = ControllerUtils.createController(scenario);
 
 			controller.addOverridingModule(new SimWrapperModule(sw));
 			controller.addOverridingModule(new AbstractModule() {
