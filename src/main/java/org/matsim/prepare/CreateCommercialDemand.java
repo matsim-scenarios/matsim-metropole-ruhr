@@ -95,10 +95,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--vpCellsLocation", description = "Path to the cell of the 'Verkehrsprognose (VP)' ", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/shapeFiles/cells_vp2040/cells_vp2040.shp")
 	private Path vpCellsLocation;
 
-	@CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/input/metropole-ruhr-v2024.0-3pct.config.xml")
+	@CommandLine.Option(names = "--configPath", description = "Path to the config file", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.2/input/metropole-ruhr-v2024.2-10pct.config.xml")
 	private Path configPath;
 
-	@CommandLine.Option(names = "--pathToInvestigationAreaData", description = "Path to the investigation area data", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.0/input/investigationAreaData.csv")
+	@CommandLine.Option(names = "--pathToInvestigationAreaData", description = "Path to the investigation area data", required = true, defaultValue = "scenarios/metropole-ruhr-v2024.2/input/investigationAreaData.csv")
 	private String pathToInvestigationAreaData;
 
 	@CommandLine.Option(names = "--networkPath", description = "Path to the network file", required = true, defaultValue = "metropole-ruhr-v2024.0.network_resolutionHigh.xml.gz")
