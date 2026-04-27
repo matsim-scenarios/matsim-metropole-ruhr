@@ -64,7 +64,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--jsprit-iterations-for-LTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
 	private int jspritIterationsForLTL;
 
-	@CommandLine.Option(names = "--LTL-goods-type-thresholds", description = "Option to select a single LTL goods type: REST, WASTE, PARCEL. If this is selected only this type will run.")
+	@CommandLine.Option(names = "--LTL-goods-type", description = "Option to select a single LTL goods type: REST, WASTE, PARCEL. If this is selected only this type will run.")
 	private LTL_GoodsType selected_LTL_GoodsType;
 
 	@Override
