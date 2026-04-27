@@ -57,6 +57,21 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	private static final Logger log = LogManager.getLogger(CreateCommercialDemand.class);
 
+	private enum RunPart {
+		all,
+		freightData,
+		ftl,
+		ltl,
+		longDistanceFreight,
+		smallScaleInputData,
+		smallScaleCommercial,
+		merge,
+		matsim
+	}
+
+	@CommandLine.Option(names = "--runPart", description = "Part of the workflow to run: ${COMPLETION-CANDIDATES}", defaultValue = "all")
+	private RunPart runPart;
+
 	@CommandLine.Option(names = "--sample", description = "Scaling factor of the small scale commercial traffic (0, 1)", required = true, defaultValue = "0.001")
 	private double sample;
 
@@ -145,7 +160,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@Override
 	public Integer call() {
 
-		alsoRunCompleteCommercialTraffic = true;
+		if (runPart == RunPart.all) {
+			alsoRunCompleteCommercialTraffic = true;
+		}
 
 		if (!Files.exists(output)) {
 			try {
@@ -172,85 +189,105 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 		String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
-		if (Files.exists(generatedInputDataPath.resolve(freightDataName)) || Files.exists(freightData)) {
-			log.warn("Freight data already exists. Skipping generation.");
-		} else {
-			new GenerateFreightDataRuhr().execute(
-				"--data", freightRawData,
-				"--KEPdata", freightRawDataKEP,
-				"--pathOutput", generatedInputDataPath.toString(),
-				"--nameOutputDataFile", freightDataName,
-				"--shpCells", vpCellsLocation.toString()
-			);
+		if (runPart == RunPart.all || runPart == RunPart.freightData) {
+			if (Files.exists(generatedInputDataPath.resolve(freightDataName)) || Files.exists(freightData)) {
+				log.warn("Freight data already exists. Skipping generation.");
+			} else {
+				new GenerateFreightDataRuhr().execute(
+					"--data", freightRawData,
+					"--KEPdata", freightRawDataKEP,
+					"--pathOutput", generatedInputDataPath.toString(),
+					"--nameOutputDataFile", freightDataName,
+					"--shpCells", vpCellsLocation.toString()
+				);
+			}
+			if (runPart == RunPart.freightData) {
+				return 0;
+			}
 		}
 
 		log.info("2rd step - create FTL freight plans from generated data");
-		if (Files.exists(output.resolve(FTLFreightPopulationName))) {
-			log.warn("Freight population already exists. Skipping generation.");
-		} else {
-			new GenerateFTLFreightPlansRuhr().execute(
-				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-				"--output", output.toString(),
-				"--nameOutputPopulation", FTLFreightPopulationName,
-				"--truck-load", "13.0",
-				"--working-days", "260",
-				"--max-kilometer-for-return-journey", "200",
-				"--sample", String.valueOf(sample)
-			);
+		if (runPart == RunPart.all || runPart == RunPart.ftl) {
+			if (Files.exists(output.resolve(FTLFreightPopulationName))) {
+				log.warn("Freight population already exists. Skipping generation.");
+			} else {
+				new GenerateFTLFreightPlansRuhr().execute(
+					"--data", generatedInputDataPath.resolve(freightDataName).toString(),
+					"--output", output.toString(),
+					"--nameOutputPopulation", FTLFreightPopulationName,
+					"--truck-load", "13.0",
+					"--working-days", "260",
+					"--max-kilometer-for-return-journey", "200",
+					"--sample", String.valueOf(sample)
+				);
+			}
+			if (runPart == RunPart.ftl) {
+				return 0;
+			}
 		}
 
 		log.info("3rd step - create LTL freight plans from generated data");
-		if (Files.exists(output.resolve(LTLFreightPopulationName))) {
-			log.warn("Freight population already exists. Skipping generation.");
-		} else {
-			new GenerateLTLFreightPlansRuhr().execute(
-				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-				"--network", configPath.getParent().resolve(networkPath).toString(),
-				"--output", output.toString(),
-				"--nameOutputPopulation", LTLFreightPopulationName,
-				"--working-days", "260",
-				"--sample", String.valueOf(sample),
-				"--vehicleTypesFilePath", vehicleTypesFilePath,
-				"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
-			);
+		if (runPart == RunPart.all || runPart == RunPart.ltl) {
+			if (Files.exists(output.resolve(LTLFreightPopulationName))) {
+				log.warn("Freight population already exists. Skipping generation.");
+			} else {
+				new GenerateLTLFreightPlansRuhr().execute(
+					"--data", generatedInputDataPath.resolve(freightDataName).toString(),
+					"--network", configPath.getParent().resolve(networkPath).toString(),
+					"--output", output.toString(),
+					"--nameOutputPopulation", LTLFreightPopulationName,
+					"--working-days", "260",
+					"--sample", String.valueOf(sample),
+					"--vehicleTypesFilePath", vehicleTypesFilePath,
+					"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
+				);
+			}
+			if (runPart == RunPart.ltl) {
+				return 0;
+			}
 		}
 		log.info("4rd step - create transit long distance freight traffic");
 		String longDistanceFreightPopulationName = output.resolve(
 			"ruhr_longDistanceFreight." + (int) (sample * 100) + "pct.plans.xml.gz").toString();
-		if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
-			log.warn("Long distance freight population already exists. Skipping generation.");
-		} else {
-			List<String> argumentsForFreightTransitTraffic = new ArrayList<>();
-			argumentsForFreightTransitTraffic.add(germanyPlansFile.toString());
-			argumentsForFreightTransitTraffic.add("--network");
-			argumentsForFreightTransitTraffic.add(networkForLongDistanceFreight.toString());
-			argumentsForFreightTransitTraffic.add("--output");
-			argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
-			argumentsForFreightTransitTraffic.add("--shp");
-			argumentsForFreightTransitTraffic.add(osmDataLocation.resolve("regions_25832.shp").toString());
-			argumentsForFreightTransitTraffic.add("--input-crs");
-			argumentsForFreightTransitTraffic.add(shapeCRS);
-			argumentsForFreightTransitTraffic.add("--target-crs");
-			argumentsForFreightTransitTraffic.add(shapeCRS);
-			argumentsForFreightTransitTraffic.add("--shp-crs");
-			argumentsForFreightTransitTraffic.add(shapeCRS);
-			argumentsForFreightTransitTraffic.add("--geographicalTripType");
-			argumentsForFreightTransitTraffic.add("TRANSIT");
-			argumentsForFreightTransitTraffic.add("--legMode");
-			argumentsForFreightTransitTraffic.add("truck40t");
-			if (cutFreightTransitAtBoundary) {
-				argumentsForFreightTransitTraffic.add("--cut-on-boundary");
-			}
+		if (runPart == RunPart.all || runPart == RunPart.longDistanceFreight) {
+			if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
+				log.warn("Long distance freight population already exists. Skipping generation.");
+			} else {
+				List<String> argumentsForFreightTransitTraffic = new ArrayList<>();
+				argumentsForFreightTransitTraffic.add(germanyPlansFile.toString());
+				argumentsForFreightTransitTraffic.add("--network");
+				argumentsForFreightTransitTraffic.add(networkForLongDistanceFreight.toString());
+				argumentsForFreightTransitTraffic.add("--output");
+				argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
+				argumentsForFreightTransitTraffic.add("--shp");
+				argumentsForFreightTransitTraffic.add(osmDataLocation.resolve("regions_25832.shp").toString());
+				argumentsForFreightTransitTraffic.add("--input-crs");
+				argumentsForFreightTransitTraffic.add(shapeCRS);
+				argumentsForFreightTransitTraffic.add("--target-crs");
+				argumentsForFreightTransitTraffic.add(shapeCRS);
+				argumentsForFreightTransitTraffic.add("--shp-crs");
+				argumentsForFreightTransitTraffic.add(shapeCRS);
+				argumentsForFreightTransitTraffic.add("--geographicalTripType");
+				argumentsForFreightTransitTraffic.add("TRANSIT");
+				argumentsForFreightTransitTraffic.add("--legMode");
+				argumentsForFreightTransitTraffic.add("truck40t");
+				if (cutFreightTransitAtBoundary) {
+					argumentsForFreightTransitTraffic.add("--cut-on-boundary");
+				}
 
-			new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
+				new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
 
-			Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
-			log.info("Set mode to truck40t for long distance freight");
-			for (Person person : population.getPersons().values()) {
-				PopulationUtils.putSubpopulation(person, "longDistanceFreight");
+				Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
+				log.info("Set mode to truck40t for long distance freight");
+				for (Person person : population.getPersons().values()) {
+					PopulationUtils.putSubpopulation(person, "longDistanceFreight");
+				}
+				PopulationUtils.sampleDown(population, sample);
+				PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
 			}
-			PopulationUtils.sampleDown(population, sample);
-			PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
+			if (runPart == RunPart.longDistanceFreight) {
+				return 0;
+			}
 		}
 		log.info("5rd step - create input data for small scale commercial traffic");
 
@@ -258,24 +295,29 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		//here possible to create an implementation for ruhrAGIS data
 		LanduseDataConnectionCreator landuseDataConnectionCreator = new LanduseDataConnectionCreatorForOSM_Data();
 		Path pathDataDistributionFile = generatedInputDataPath.resolve("dataDistributionPerZone.csv");
-		if (Files.exists(pathCommercialFacilities)) {
-			log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
-		} else {
-			new CreateDataDistributionOfStructureData(landuseDataConnectionCreator).execute(
-				"--outputFacilityFile", pathCommercialFacilities.toString(),
-				"--outputDataDistributionFile", pathDataDistributionFile.toString(),
-				"--landuseConfiguration", "useOSMBuildingsAndLanduse",
-				"--regionsShapeFileName", osmDataLocation.resolve("regions_25832.shp").toString(),
-				"--regionsShapeRegionColumn", "GEN",
-				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
-				"--zoneShapeFileNameColumn", "schluessel",
-				"--buildingsShapeFileName", osmDataLocation.resolve("buildings_25832.shp").toString(),
-				"--shapeFileBuildingTypeColumn", "building",
-				"--landuseShapeFileName", osmDataLocation.resolve("landuse_v.1.0_25832.shp").toString(),
-				"--shapeFileLanduseTypeColumn", "landuse",
-				"--shapeCRS", shapeCRS,
-				"--pathToInvestigationAreaData", pathToInvestigationAreaData
-			);
+		if (runPart == RunPart.all || runPart == RunPart.smallScaleInputData) {
+			if (Files.exists(pathCommercialFacilities)) {
+				log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
+			} else {
+				new CreateDataDistributionOfStructureData(landuseDataConnectionCreator).execute(
+					"--outputFacilityFile", pathCommercialFacilities.toString(),
+					"--outputDataDistributionFile", pathDataDistributionFile.toString(),
+					"--landuseConfiguration", "useOSMBuildingsAndLanduse",
+					"--regionsShapeFileName", osmDataLocation.resolve("regions_25832.shp").toString(),
+					"--regionsShapeRegionColumn", "GEN",
+					"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
+					"--zoneShapeFileNameColumn", "schluessel",
+					"--buildingsShapeFileName", osmDataLocation.resolve("buildings_25832.shp").toString(),
+					"--shapeFileBuildingTypeColumn", "building",
+					"--landuseShapeFileName", osmDataLocation.resolve("landuse_v.1.0_25832.shp").toString(),
+					"--shapeFileLanduseTypeColumn", "landuse",
+					"--shapeCRS", shapeCRS,
+					"--pathToInvestigationAreaData", pathToInvestigationAreaData
+				);
+			}
+			if (runPart == RunPart.smallScaleInputData) {
+				return 0;
+			}
 		}
 		log.info("6th step - create small scale commercial traffic");
 		String smallScaleCommercialPopulationName = "ruhrSmallScaleCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
@@ -284,42 +326,48 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		IntegrateExistingTrafficToSmallScaleCommercial integrateExistingTrafficToSmallScaleCommercial = new IntegrationOfExistingCommercialTrafficRuhr(
 			output.resolve(LTLFreightPopulationName));
 
-		if (Files.exists(resolve)) {
-			log.warn("Small-scale Commercial demand already exists. Skipping generation.");
-		} else {
-			String[] args = {configPath.toString(),
-				"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
-				"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
-				"--sample", String.valueOf(sample),
-				"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
-				"--creationOption", smallScaleCommercialGenerationOption,
-				"--smallScaleCommercialTrafficType", smallScaleCommercialTrafficType,
-				"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
-				"--zoneShapeFileNameColumn", "schluessel",
-				"--shapeCRS", shapeCRS,
-				"--pathOutput", outputPathSmallScaleCommercial,
-				"--network", networkPath,
-				"--nameOutputPopulation", smallScaleCommercialPopulationName,
-				"--numberOfPlanVariantsPerAgent", "5",
-				"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
-				"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
-				"--maxNumberOfLoopsForVRPSolving", "100",
-				"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
-				"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)};
-			if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
-				args = Arrays.copyOf(args, args.length + 2);
-				args[args.length - 2] = "--carrierFilePath";
-				args[args.length - 1] = configPath.getParent().relativize(
-					Path.of(outputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
-			}
-			else {
-				args = Arrays.copyOf(args, args.length + 1);
-				args[args.length - 1] = "--includeExistingModels";
-			}
-			new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
-				args);
+		if (runPart == RunPart.all || runPart == RunPart.smallScaleCommercial) {
+			if (Files.exists(resolve)) {
+				log.warn("Small-scale Commercial demand already exists. Skipping generation.");
+			} else {
+				String[] args = {configPath.toString(),
+					"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
+					"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
+					"--sample", String.valueOf(sample),
+					"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
+					"--creationOption", smallScaleCommercialGenerationOption,
+					"--smallScaleCommercialTrafficType", smallScaleCommercialTrafficType,
+					"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
+					"--zoneShapeFileNameColumn", "schluessel",
+					"--shapeCRS", shapeCRS,
+					"--pathOutput", outputPathSmallScaleCommercial,
+					"--network", networkPath,
+					"--nameOutputPopulation", smallScaleCommercialPopulationName,
+					"--numberOfPlanVariantsPerAgent", "5",
+					"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
+					"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
+					"--maxNumberOfLoopsForVRPSolving", "100",
+					"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
+					"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic),
+					"--MATSimIterationsAfterDemandGeneration", MATSimIterationsKWM > 0 ? String.valueOf(MATSimIterationsKWM) : null};
+				if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
+					args = Arrays.copyOf(args, args.length + 2);
+					args[args.length - 2] = "--carrierFilePath";
+					args[args.length - 1] = configPath.getParent().relativize(
+						Path.of(outputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
+				}
+				else {
+					args = Arrays.copyOf(args, args.length + 1);
+					args[args.length - 1] = "--includeExistingModels";
+				}
+				new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
+					args);
 
-			// TODO filter relevant agents for the small scale commercial traffic
+				// TODO filter relevant agents for the small scale commercial traffic
+			}
+			if (runPart == RunPart.smallScaleCommercial) {
+				return 0;
+			}
 		}
 		log.info("7th step - Merge freight and commercial populations");
 		String pathMergedPopulation;
@@ -329,19 +377,24 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			pathMergedPopulation = output.resolve(LTLFreightPopulationName).toString().replace("_LTL", "").replace(".plans.xml.gz",
 				"") + "_merged.plans.xml.gz";
 		}
-		if (Files.exists(Path.of(pathMergedPopulation))) {
-			log.info("Merged demand already exists. Skipping generation.");
-		} else {
-			new MergePopulations().execute(
-				output.resolve(LTLFreightPopulationName).toString(),
-				output.resolve(FTLFreightPopulationName).toString(),
-				outputPathSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
-				longDistanceFreightPopulationName,
-				"--output", pathMergedPopulation
-			);
+		if (runPart == RunPart.all || runPart == RunPart.merge) {
+			if (Files.exists(Path.of(pathMergedPopulation))) {
+				log.info("Merged demand already exists. Skipping generation.");
+			} else {
+				new MergePopulations().execute(
+					output.resolve(LTLFreightPopulationName).toString(),
+					output.resolve(FTLFreightPopulationName).toString(),
+					outputPathSmallScaleCommercial + "/" + smallScaleCommercialPopulationName,
+					longDistanceFreightPopulationName,
+					"--output", pathMergedPopulation
+				);
+			}
+			if (runPart == RunPart.merge) {
+				return 0;
+			}
 		}
 
-		if (alsoRunCompleteCommercialTraffic) {
+		if (alsoRunCompleteCommercialTraffic || runPart == RunPart.matsim) {
 			//TODO perhaps check if this can be moved to RunMetropoleRuhrScenario
 			Config config = ConfigUtils.loadConfig(configPath.toString());
 			config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
