@@ -126,7 +126,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 										Population outputPopulation,
 										int jspritIterationsForLTL) throws ExecutionException, InterruptedException, IOException {
 
-		enum CarrierType {
+		enum LTL_GoodsType {
 			REST, WASTE, PARCEL
 		}
 
@@ -149,13 +149,13 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		Path carrierFile_noSolution;
 		Path carrierFile_withSolution;
 
-		for (CarrierType carrierType : CarrierType.values()) {
-			carrierFile_noSolution = switch (carrierType) {
+		for (LTL_GoodsType LTLGoodsType : LTL_GoodsType.values()) {
+			carrierFile_noSolution = switch (LTLGoodsType) {
 				case REST -> carrierVRPFileLTL_Rest;
 				case WASTE -> carrierVRPFileLTL_Waste;
 				case PARCEL -> carrierVRPFileLTL_Parcel;
 			};
-			carrierFile_withSolution = switch (carrierType) {
+			carrierFile_withSolution = switch (LTLGoodsType) {
 				case REST -> carrierVRPFile_Rest_Solution;
 				case WASTE -> carrierVRPFile_Waste_Solution;
 				case PARCEL -> carrierVRPFile_Rest_Parcel;
@@ -184,7 +184,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 					CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getOrAddCarrierVehicleTypes(scenario);
 					new CarrierVehicleTypeReader(carrierVehicleTypes).readURL(
 						IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
-					switch (carrierType) {
+					switch (LTLGoodsType) {
 						case REST -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL,
 							Integer.MIN_VALUE);
 						case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
