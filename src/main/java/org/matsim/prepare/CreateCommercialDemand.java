@@ -190,7 +190,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 
 		String shapeCRS = "EPSG:25832";
-		log.info("1st step - create freight data from BUW data");
 
 		String LTLFreightPopulationName = "ruhr_LTL_freightPlans_" + (int) (sample * 100) + "pct.plans.xml.gz";
 		String FTLFreightPopulationName = LTLFreightPopulationName.replace("LTL", "FTL");
@@ -201,6 +200,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		String freightDataName = "ruhr_freightData_100pct.xml.gz";
 
 		if (runPart == RunPart.all || runPart == RunPart.freightData) {
+			log.info("1st step - create freight data from BUW data");
 			if (Files.exists(generatedInputDataPath.resolve(freightDataName)) || Files.exists(freightData)) {
 				log.warn("Freight data already exists. Skipping generation.");
 			} else {
@@ -217,8 +217,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
-		log.info("2rd step - create FTL freight plans from generated data");
 		if (runPart == RunPart.all || runPart == RunPart.ftl) {
+			log.info("2rd step - create FTL freight plans from generated data");
 			if (Files.exists(output.resolve(FTLFreightPopulationName))) {
 				log.warn("Freight population already exists. Skipping generation.");
 			} else {
@@ -237,8 +237,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
-		log.info("3rd step - create LTL freight plans from generated data");
 		if (runPart == RunPart.all || runPart == RunPart.ltl || runPart == RunPart.ltlRest || runPart == RunPart.ltlWaste || runPart == RunPart.ltlParcel) {
+			log.info("3rd step - create LTL freight plans from generated data");
 			String nameOutputPopulation = LTLFreightPopulationName;
 			String selectedLTLGoodsType = null;
 
@@ -278,8 +278,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
-		log.info("3b step - merge LTL freight plan parts");
 		if (runPart == RunPart.ltlMerge) {
+			log.info("3b step - merge LTL freight plan parts");
 			if (Files.exists(output.resolve(LTLFreightPopulationName))) {
 				log.warn("Freight population already exists. Skipping generation.");
 			} else {
@@ -292,10 +292,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 			return 0;
 		}
-		log.info("4rd step - create transit long distance freight traffic");
 		String longDistanceFreightPopulationName = output.resolve(
 			"ruhr_longDistanceFreight." + (int) (sample * 100) + "pct.plans.xml.gz").toString();
 		if (runPart == RunPart.all || runPart == RunPart.longDistanceFreight) {
+			log.info("4rd step - create transit long distance freight traffic");
 			if (Files.exists(Path.of(longDistanceFreightPopulationName))) {
 				log.warn("Long distance freight population already exists. Skipping generation.");
 			} else {
@@ -335,13 +335,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				return 0;
 			}
 		}
-		log.info("5rd step - create input data for small scale commercial traffic");
 
 		Path pathCommercialFacilities = generatedInputDataPath.resolve("commercialFacilities.xml.gz");
 		//here possible to create an implementation for ruhrAGIS data
 		LanduseDataConnectionCreator landuseDataConnectionCreator = new LanduseDataConnectionCreatorForOSM_Data();
 		Path pathDataDistributionFile = generatedInputDataPath.resolve("dataDistributionPerZone.csv");
 		if (runPart == RunPart.all || runPart == RunPart.smallScaleInputData) {
+			log.info("5rd step - create input data for small scale commercial traffic");
 			if (Files.exists(pathCommercialFacilities)) {
 				log.warn("Commercial facilities for small-scale commercial generation already exists. Skipping generation.");
 			} else {
@@ -365,7 +365,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				return 0;
 			}
 		}
-		log.info("6th step - create small scale commercial traffic");
 		String smallScaleCommercialPopulationName = "ruhrSmallScaleCommercial." + (int) (sample * 100) + "pct.plans.xml.gz";
 		String smallScaleCommercialPersonPopulationName = smallScaleCommercialPopulationName.replace(".plans.xml.gz", "_commercialPersonTraffic.plans.xml.gz");
 		String smallScaleCommercialGoodsPopulationName = smallScaleCommercialPopulationName.replace(".plans.xml.gz", "_goodsTraffic.plans.xml.gz");
@@ -377,6 +376,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			output.resolve(LTLFreightPopulationName));
 
 		if (runPart == RunPart.all || runPart == RunPart.smallScaleCommercial || runPart == RunPart.smallScaleCommercialPerson || runPart == RunPart.smallScaleCommercialGoods) {
+			log.info("6th step - create small scale commercial traffic");
 			String selectedSmallScaleCommercialTrafficType = smallScaleCommercialTrafficType;
 			String selectedOutputPathSmallScaleCommercial = outputPathSmallScaleCommercial;
 			String selectedSmallScaleCommercialPopulationName = smallScaleCommercialPopulationName;
@@ -435,8 +435,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
-		log.info("6b step - merge small scale commercial traffic segments");
 		if (runPart == RunPart.smallScaleCommercialMerge) {
+			log.info("6b step - merge small scale commercial traffic segments");
 			if (Files.exists(resolve)) {
 				log.warn("Small-scale Commercial demand already exists. Skipping generation.");
 			} else {
@@ -448,7 +448,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 			return 0;
 		}
-		log.info("7th step - Merge freight and commercial populations");
 		String pathMergedPopulation;
 		if (outputPlansPath != null) {
 			pathMergedPopulation = outputPlansPath;
@@ -457,6 +456,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"") + "_merged.plans.xml.gz";
 		}
 		if (runPart == RunPart.all || runPart == RunPart.merge) {
+			log.info("7th step - Merge freight and commercial populations");
 			if (Files.exists(Path.of(pathMergedPopulation))) {
 				log.info("Merged demand already exists. Skipping generation.");
 			} else {
