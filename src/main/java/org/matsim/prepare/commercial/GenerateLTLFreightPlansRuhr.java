@@ -162,6 +162,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 			};
 
 			Scenario scenario;
+			Path carrierAnalysisOutputPath = outputFolderCarriers.resolve("Carriers_Analysis_" + LTLGoodsType);
+
 			if (Files.exists(carrierFile_withSolution)) {
 				log.warn("Using existing carrier VRP file with solution: {}", carrierFile_withSolution);
 				freightCarriersConfigGroup.setCarriersFile(carrierFile_withSolution.toString());
@@ -191,16 +193,14 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 					CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_noSolution.toString());
 				}
 				filterRelevantVehicleTypesForTourPlanning(scenario);
-
+				scenario.getConfig().controller().setOutputDirectory(carrierAnalysisOutputPath.toString());
 				CarriersUtils.runJsprit(scenario);
 
 				CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_withSolution.toString());
 			}
-			if (!Files.exists(outputFolderCarriers.resolve("Carriers_Analysis_" + carrierType))) {
-				CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
-					outputFolderCarriers.resolve("Carriers_Analysis_" + carrierType).toString());
-				freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
-			}
+			CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
+				carrierAnalysisOutputPath.toString());
+			freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
 			LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
 		}
 	}
