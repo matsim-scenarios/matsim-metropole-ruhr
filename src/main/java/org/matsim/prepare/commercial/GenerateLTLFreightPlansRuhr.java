@@ -33,6 +33,10 @@ import java.util.concurrent.ExecutionException;
 public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	private static final Logger log = LogManager.getLogger(GenerateLTLFreightPlansRuhr.class);
 
+	private enum LTL_GoodsType {
+		REST, WASTE, PARCEL
+	}
+
 	@CommandLine.Option(names = "--data", description = "Path to generated freight data",
 		defaultValue = "scenarios/metropole-ruhr-v2.0/input/commercialTraffic/ruhr_freightData_100pct.xml.gz")
 	private String dataPath;
@@ -53,13 +57,15 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--working-days", defaultValue = "260", description = "Number of working days per year")
 	private int workingDays;
-	//TODO discuss if 260 is a good value
 
 	@CommandLine.Option(names = "--sample", defaultValue = "0.01", description = "Scaling factor of the freight traffic (0, 1)")
 	private double sample;
 
 	@CommandLine.Option(names = "--jsprit-iterations-for-LTL", defaultValue = "100", description = "Number of iterations for jsprit for solving the LTL vehicle routing problems", required = true)
 	private int jspritIterationsForLTL;
+
+	@CommandLine.Option(names = "--LTL-goods-type-thresholds", description = "Option to select a single LTL goods type: REST, WASTE, PARCEL. If this is selected only this type will run.")
+	private LTL_GoodsType selected_LTL_GoodsType;
 
 	@Override
 	public Integer call() throws Exception {
@@ -126,10 +132,6 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 										Population outputPopulation,
 										int jspritIterationsForLTL) throws ExecutionException, InterruptedException, IOException {
 
-		enum LTL_GoodsType {
-			REST, WASTE, PARCEL
-		}
-
 		Config config = ConfigUtils.createConfig();
 		config.network().setInputFile(networkPath);
 		config.global().setCoordinateSystem("EPSG:25832");
@@ -160,6 +162,11 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 				case WASTE -> carrierVRPFile_Waste_Solution;
 				case PARCEL -> carrierVRPFile_Rest_Parcel;
 			};
+
+			if (selected_LTL_GoodsType != null && selected_LTL_GoodsType != LTLGoodsType) {
+				log.info("Skipping LTL goods type {} as the selected LTL goods type is {}", LTLGoodsType, selected_LTL_GoodsType);
+				continue;
+			}
 
 			Scenario scenario;
 			Path carrierAnalysisOutputPath = outputFolderCarriers.resolve("Carriers_Analysis_" + LTLGoodsType);
