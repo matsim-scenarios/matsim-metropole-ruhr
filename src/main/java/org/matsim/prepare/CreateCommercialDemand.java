@@ -497,6 +497,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
 			config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
 			config.network().setInputFile(networkPath);
+
+			if (networkChangeEventsFile != null) {
+				config.network().setChangeEventsInputFile(configPath.getParent().relativize(networkChangeEventsFile).toString());
+				config.network().setTimeVariantNetwork(true);
+				log.info("Using network change events for complete MATSim run from file: {}", networkChangeEventsFile.toString());
+			}
 			config.controller().setOutputDirectory(output.resolve("commercialTraffic_Run" + (int) (sample * 100) + "pct").toString());
 			config.controller().setLastIteration(MATSimIterations);
 			config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
