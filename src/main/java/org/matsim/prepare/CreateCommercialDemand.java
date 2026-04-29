@@ -162,6 +162,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkChangeEventsFile", description = "Path to the network change events file. If no file is set, no networkChangeEvents are used.")
 	private Path networkChangeEventsFile;
 
+	@CommandLine.Option(names = "--useRangeConstraintForJspritTourPlanning", description = "Option to use range constraint for jsprit tour planning. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
+	private boolean useRangeConstraintForJspritTourPlanning;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -271,6 +274,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			if (networkChangeEventsFile != null) {
 				argumentsForLTL.add("--networkChangeEvents");
 				argumentsForLTL.add(networkChangeEventsFile.toString());
+			}
+			if (useRangeConstraintForJspritTourPlanning) {
+				argumentsForLTL.add("--useRangeConstraintForLTL");
 			}
 
 			if (Files.exists(output.resolve(nameOutputPopulation))) {
@@ -438,6 +444,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					configArgs.add(configPath.getParent().relativize(networkChangeEventsFile).toString());
 					configArgs.add("--config:network.timeVariantNetwork");
 					configArgs.add("true");
+				}
+				if (useRangeConstraintForJspritTourPlanning) {
+					configArgs.add("--useRangeConstraintForTourPlanning");
 				}
 				new GenerateSmallScaleCommercialTrafficDemand(configArgs.toArray(new String[0]), integrateExistingTrafficToSmallScaleCommercial, null,
 					null, vehicleTypeSelection, null).execute(

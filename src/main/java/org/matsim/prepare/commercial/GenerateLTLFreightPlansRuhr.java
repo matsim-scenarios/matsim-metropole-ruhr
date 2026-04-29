@@ -70,6 +70,9 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--LTL-goods-type", description = "Option to select a single LTL goods type: REST, WASTE, PARCEL. If this is selected only this type will run.")
 	private LTL_GoodsType selected_LTL_GoodsType;
 
+	@CommandLine.Option(names = "--useRangeConstraintForLTL", description = "Option to use range constraint for LTL tours. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
+	private boolean useRangeConstraintForLTL;
+
 	@Override
 	public Integer call() throws Exception {
 
@@ -140,6 +143,10 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		config.global().setCoordinateSystem("EPSG:25832");
 		FreightCarriersConfigGroup freightCarriersConfigGroup = ConfigUtils.addOrGetModule(config, FreightCarriersConfigGroup.class);
 		freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
+		if (useRangeConstraintForLTL) {
+			freightCarriersConfigGroup.setUseDistanceConstraintForTourPlanning(FreightCarriersConfigGroup.UseDistanceConstraintForTourPlanning.basedOnEnergyConsumption);
+			log.info("Using range constraint for LTL tours based on consumption information in the vehicle types file.");
+		}
 		if (networkChangeEventsPath != null) {
 			config.network().setChangeEventsInputFile(networkChangeEventsPath.toString());
 			config.network().setTimeVariantNetwork(true);
