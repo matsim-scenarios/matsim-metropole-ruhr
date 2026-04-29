@@ -223,7 +223,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 					Path.of(outputPathSmallScaleCommercial_person).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
 			}
 			// TODO filter relevant agents for the small scale commercial traffic
-			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null).execute(
+			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null, null).execute(
 				args);
 		}
 
@@ -258,7 +258,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 					Path.of(outputPathSmallScaleCommercialFreight).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString();
 			}
 			// TODO filter relevant agents for the small scale commercial traffic
-			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null).execute(
+			new GenerateSmallScaleCommercialTrafficDemand(null, null, null, null, null).execute(
 				args);
 		}
 
