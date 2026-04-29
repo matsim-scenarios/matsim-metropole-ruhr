@@ -34,7 +34,7 @@ public class LTLFreightAgentGeneratorRuhr {
 										DemandPerDayCalculator demandPerDayCalculator, CommercialVehicleSelector commercialVehicleSelector,
 										CommercialServiceTimeCalculator commercialServiceTimeCalculator) {
 		this.departureTimeCalculator = Objects.requireNonNullElseGet(departureTimeCalculator, DefaultDepartureTimeCalculator::new);
-		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, DefaultCommercialVehicleSelector::new);
+		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, CommercialVehicleSelectorRuhr::new);
 		this.commercialServiceTimeCalculator = Objects.requireNonNullElseGet(commercialServiceTimeCalculator, DefaultCommercialServiceTimeCalculator::new);
 		this.demandPerDayCalculator = Objects.requireNonNullElseGet(demandPerDayCalculator, () -> new DefaultDemandPerDayCalculator(workingDays, sample));
 		this.sample = sample;

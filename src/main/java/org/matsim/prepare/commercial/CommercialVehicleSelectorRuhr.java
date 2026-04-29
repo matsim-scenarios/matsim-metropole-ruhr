@@ -6,11 +6,13 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.Pair;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.freight.carriers.CarrierCapabilities;
+import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
+import org.matsim.smallScaleCommercialTrafficGeneration.VehicleTypeSelection;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class DefaultCommercialVehicleSelector implements CommercialVehicleSelector {
+public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector, VehicleTypeSelection {
 	private final RandomGenerator rnd = new MersenneTwister(4711);
 	EnumeratedDistribution<VehicleSelection> vehicleDistributionFTL;
 	EnumeratedDistribution<VehicleSelection> vehicleDistributionWaste;
@@ -18,7 +20,7 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 	EnumeratedDistribution<VehicleSelection> vehicleDistributionParcel_truck;
 	EnumeratedDistribution<VehicleSelection> vehicleDistributionRest;
 
-	public DefaultCommercialVehicleSelector() {
+	public CommercialVehicleSelectorRuhr() {
 		createVehicleTypeDistribution();
 	}
 
@@ -114,6 +116,36 @@ public class DefaultCommercialVehicleSelector implements CommercialVehicleSelect
 		if (CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals("FTL") || CommercialTrafficUtils.getTransportType(freightDemandDataRelation).equals(
 			CommercialTrafficUtils.TransportType.FTL_kv.toString()))
 			return "truck40t";
+		return null;
+	}
+
+	@Override
+	public VehicleTypeInformation getVehicleTypeInformation(int purpose, String modeOrVehType,
+	                                                        GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType smallScaleCommercialTrafficType) {
+		if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic)) {
+			if (purpose == 1) {
+				return new VehicleTypeInformation(new String[]{"vwCaddy", "e_SpaceTourer"}, 1.5);
+			} else if (purpose == 2) {
+				return new VehicleTypeInformation(new String[]{"vwCaddy", "e_SpaceTourer"}, 1.6);
+			} else if (purpose == 3) {
+				return new VehicleTypeInformation(new String[]{"golf1.4", "c_zero"}, 1.2);
+			} else if (purpose == 4) {
+				return new VehicleTypeInformation(new String[]{"golf1.4", "c_zero"}, 1.2);
+			} else if (purpose == 5) {
+				return new VehicleTypeInformation(new String[]{"mercedes313", "e_SpaceTourer"}, 1.7);
+			}
+		} else if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.goodsTraffic)) {
+			return switch (modeOrVehType) {
+				case "vehTyp1" -> new VehicleTypeInformation(
+					new String[]{"vwCaddy", "e_SpaceTourer"}, 1.); // possible to add more types, see source
+				case "vehTyp2" -> new VehicleTypeInformation(new String[]{"mercedes313", "e_SpaceTourer"}, 1.);
+				case "vehTyp3", "vehTyp4" -> new VehicleTypeInformation(
+					new String[]{"light8t", "truck8t", "light8t_electro", "truck8t_electro"}, 1.);
+				case "vehTyp5" -> new VehicleTypeInformation(
+					new String[]{"medium18t", "medium18t_electro", "truck18t", "truck18t_electro"}, 1.);
+				default -> null;
+			};
+		}
 		return null;
 	}
 

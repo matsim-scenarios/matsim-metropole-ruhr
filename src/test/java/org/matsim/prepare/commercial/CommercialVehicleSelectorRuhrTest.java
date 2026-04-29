@@ -11,9 +11,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DefaultCommercialVehicleSelectorTest {
+class CommercialVehicleSelectorRuhrTest {
 
-	private DefaultCommercialVehicleSelector selector;
+	private CommercialVehicleSelectorRuhr selector;
 	private Person freightDemandDataRelationFTL;
 	private Person freightDemandDataRelationWaste;
 	private Person freightDemandDataRelationParcel;
@@ -22,7 +22,7 @@ class DefaultCommercialVehicleSelectorTest {
 
 	@BeforeEach
 	void setUp() {
-		selector = new DefaultCommercialVehicleSelector();
+		selector = new CommercialVehicleSelectorRuhr();
 
 		freightDemandDataRelationFTL = createFreightDemandDataRelation("FTL", 100);
 		freightDemandDataRelationWaste = createFreightDemandDataRelation("other", 140);
