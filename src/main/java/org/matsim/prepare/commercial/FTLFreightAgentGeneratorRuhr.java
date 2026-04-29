@@ -39,7 +39,7 @@ public class FTLFreightAgentGeneratorRuhr {
     public FTLFreightAgentGeneratorRuhr(double averageLoad, int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator, NumberOfTripsCalculator numOfTripsCalculator, CommercialVehicleSelector commercialVehicleSelector) {
 		this.departureTimeCalculator = Objects.requireNonNullElseGet(departureTimeCalculator, DefaultDepartureTimeCalculator::new);
 		this.numOfTripsCalculator = Objects.requireNonNullElseGet(numOfTripsCalculator, () -> new DefaultNumberOfTripsCalculator(averageLoad, workingDays, sample));
-		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, DefaultCommercialVehicleSelector::new);
+		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, CommercialVehicleSelectorRuhr::new);
 		this.populationFactory = PopulationUtils.getFactory();
     }
 
