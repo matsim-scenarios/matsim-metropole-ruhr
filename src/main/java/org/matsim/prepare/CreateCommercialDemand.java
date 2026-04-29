@@ -161,6 +161,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--resistanceFactorForKWM_commercialPersonTraffic", defaultValue = "0.1", description = "ResistanceFactor of the commercialPersonTraffic for the trip distribution in the small scale commercial model.")
 	private double resistanceFactorForKWM_commercialPersonTraffic;
 
+	@CommandLine.Option(names = "--networkChangeEventsFile", description = "Path to the network change events file. If no file is set, no networkChangeEvents are used.")
+	private Path networkChangeEventsFile;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -266,6 +269,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			if (selectedLTLGoodsType != null) {
 				argumentsForLTL.add("--LTL-goods-type");
 				argumentsForLTL.add(selectedLTLGoodsType);
+			}
+			if (networkChangeEventsFile != null) {
+				argumentsForLTL.add("--networkChangeEvents");
+				argumentsForLTL.add(networkChangeEventsFile.toString());
 			}
 
 			if (Files.exists(output.resolve(nameOutputPopulation))) {
@@ -425,8 +432,16 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					args = Arrays.copyOf(args, args.length + 1);
 					args[args.length - 1] = "--includeExistingModels";
 				}
-				new GenerateSmallScaleCommercialTrafficDemand(integrateExistingTrafficToSmallScaleCommercial, null, null, null).execute(
-					args);
+				List<String> configArgs = new ArrayList<>(List.of("--config:vehicles.vehiclesFile", configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString()));
+				if (networkChangeEventsFile != null) {
+					configArgs.add("--config:network.inputChangeEventsFile");
+					configArgs.add(configPath.getParent().relativize(networkChangeEventsFile).toString());
+					configArgs.add("--config:network.timeVariantNetwork");
+					configArgs.add("true");
+				}
+				new GenerateSmallScaleCommercialTrafficDemand(configArgs.toArray(new String[0]), integrateExistingTrafficToSmallScaleCommercial, null,
+					null, vehicleTypeSelection, null).execute(
+					args.toArray(new String[0]));
 
 				// TODO filter relevant agents for the small scale commercial traffic
 			}

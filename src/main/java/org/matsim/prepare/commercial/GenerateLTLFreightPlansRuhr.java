@@ -45,6 +45,9 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0_network.xml.gz")
 	private String networkPath;
 
+	@CommandLine.Option(names = "--networkChangeEvents", description = "Path to network change events file. If provided, the network change events will be considered in the tour planning.")
+	private Path networkChangeEventsPath;
+
 	@CommandLine.Option(names = "--vehicleTypesFilePath", description = "Path to vehicle types file",
 		defaultValue = "scenarios/metropole-ruhr-v2.0/input/metropole-ruhr-v2.0.mode-vehicles.xml")
 	private String vehicleTypesFilePath;
@@ -137,6 +140,12 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		config.global().setCoordinateSystem("EPSG:25832");
 		FreightCarriersConfigGroup freightCarriersConfigGroup = ConfigUtils.addOrGetModule(config, FreightCarriersConfigGroup.class);
 		freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
+		if (networkChangeEventsPath != null) {
+			config.network().setChangeEventsInputFile(networkChangeEventsPath.toString());
+			config.network().setTimeVariantNetwork(true);
+			freightCarriersConfigGroup.setTravelTimeSliceWidth(3600);
+			log.info("Network change events file provided. Network change events will be considered in the tour planning.");
+		}
 		Path outputFolderCarriers = Path.of(dataPath).getParent().resolve("carriersLTL");
 		if (!Files.exists(outputFolderCarriers)) {
 			Files.createDirectory(outputFolderCarriers);
