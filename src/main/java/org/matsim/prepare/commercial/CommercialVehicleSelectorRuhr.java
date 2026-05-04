@@ -37,15 +37,18 @@ public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector,
 		vehicleDistributionWaste = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionWaste);
 
 		List<Pair<VehicleSelection, Double>> vehicleSelectionProbabilityDistributionParcel = new ArrayList<>();
-		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedes313_parcel"), 1.0));
+		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedes316"), 1.0)); //TODO so anpassen, dass es auch bei Szenarien ohne diese Type passt
+		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedesESprinter"), 1.0));
 		vehicleDistributionParcel = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionParcel);
 
 		List<Pair<VehicleSelection, Double>> vehicleSelectionProbabilityDistributionParcel_truck = new ArrayList<>();
 		vehicleSelectionProbabilityDistributionParcel_truck.add(new Pair<>(new VehicleSelection("medium18t_parcel"), 1.0));
+		vehicleSelectionProbabilityDistributionParcel_truck.add(new Pair<>(new VehicleSelection("medium18t_parcel_EV"), 1.0));
 		vehicleDistributionParcel_truck = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionParcel_truck);
 
 		List<Pair<VehicleSelection, Double>> vehicleSelectionProbabilityDistributionRest = new ArrayList<>();
 		vehicleSelectionProbabilityDistributionRest.add(new Pair<>(new VehicleSelection("medium18t"), 1.0));
+		vehicleSelectionProbabilityDistributionRest.add(new Pair<>(new VehicleSelection("medium18t_EV"), 1.0));
 		vehicleDistributionRest = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionRest);
 	}
 
@@ -124,25 +127,25 @@ public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector,
 	                                                        GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType smallScaleCommercialTrafficType) {
 		if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic)) {
 			if (purpose == 1) {
-				return new VehicleTypeInformation(new String[]{"vwCaddy", "e_SpaceTourer"}, 1.5);
+				return new VehicleTypeInformation(new String[]{"golf1.0", "ID.3"}, 1.5);
 			} else if (purpose == 2) {
-				return new VehicleTypeInformation(new String[]{"vwCaddy", "e_SpaceTourer"}, 1.6);
+				return new VehicleTypeInformation(new String[]{"golf1.0", "ID.3"}, 1.6);
 			} else if (purpose == 3) {
-				return new VehicleTypeInformation(new String[]{"golf1.4", "c_zero"}, 1.2);
+				return new VehicleTypeInformation(new String[]{"golf1.0", "ID.3"}, 1.2);
 			} else if (purpose == 4) {
-				return new VehicleTypeInformation(new String[]{"golf1.4", "c_zero"}, 1.2);
+				return new VehicleTypeInformation(new String[]{"golf1.0", "ID.3"}, 1.2);
 			} else if (purpose == 5) {
-				return new VehicleTypeInformation(new String[]{"mercedes313", "e_SpaceTourer"}, 1.7);
+				return new VehicleTypeInformation(new String[]{"VW_T6", "ID.Buzz"}, 1.7); //TODO Kosten hier anpassen, wenn mehr Personal im Auto?
 			}
 		} else if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.goodsTraffic)) {
 			return switch (modeOrVehType) {
 				case "vehTyp1" -> new VehicleTypeInformation(
-					new String[]{"vwCaddy", "e_SpaceTourer"}, 1.); // possible to add more types, see source
-				case "vehTyp2" -> new VehicleTypeInformation(new String[]{"mercedes313", "e_SpaceTourer"}, 1.);
+					new String[]{"VW_T6", "ID.Buzz"}, 1.); // possible to add more types, see source
+				case "vehTyp2" -> new VehicleTypeInformation(new String[]{"mercedes316", "mercedesESprinter"}, 1.);
 				case "vehTyp3", "vehTyp4" -> new VehicleTypeInformation(
-					new String[]{"light8t", "truck8t", "light8t_electro", "truck8t_electro"}, 1.);
+					new String[]{"light8t", "light8t_EV"}, 1.);
 				case "vehTyp5" -> new VehicleTypeInformation(
-					new String[]{"medium18t", "medium18t_electro", "truck18t", "truck18t_electro"}, 1.);
+					new String[]{"medium18t", "medium18t_EV"}, 1.);
 				default -> null;
 			};
 		}
