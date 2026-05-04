@@ -426,7 +426,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					"--maxNumberOfLoopsForVRPSolving", "100",
 					"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
 					"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)));
-				if (MATSimIterationsKWM > 0) {
+				if (MATSimIterationsKWM >= 0) {
 					args.add("--MATSimIterationsAfterDemandGeneration");
 					args.add(String.valueOf(MATSimIterationsKWM));
 				}
