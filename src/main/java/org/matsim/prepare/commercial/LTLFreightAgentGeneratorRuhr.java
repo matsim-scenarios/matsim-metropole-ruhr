@@ -359,12 +359,29 @@ public class LTLFreightAgentGeneratorRuhr {
 				TimeWindow pickupTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
 				TimeWindow deliveryTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
 
+				if (numberOfJobsForDemand == 1) {
+					// combines shipments from/to the same locations to one shipment
+					List<CarrierShipment> existingShipments = existingCarrier.getShipments().values().stream().filter(
+						carrierShipment -> carrierShipment.getDeliveryLinkId().equals(toLink.getId()) && carrierShipment.getPickupLinkId().equals(
+							fromLinkId) &&
+							pickupTimeWindow.equals(carrierShipment.getPickupStartingTimeWindow()) && deliveryTimeWindow.equals(
+							carrierShipment.getDeliveryStartingTimeWindow())).toList();
+					if (!existingShipments.isEmpty()) {
+						CarrierShipment existingShipment = existingCarrier.getShipments().get(existingShipments.getFirst().getId());
+						// checks if the shipment can be combined with the existing shipment and will not exceed the vehicle capacity
+						if (demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier,
+							demandThisJob + existingShipment.getCapacityDemand()) == 1) {
+							pickupTime = pickupTime + existingShipment.getPickupDuration();
+							deliveryTime = deliveryTime + existingShipment.getDeliveryDuration();
+							demandThisJob = demandThisJob + existingShipment.getCapacityDemand();
+							existingCarrier.getShipments().remove(existingShipment.getId());
+						}
+					}
+				}
 				newCarrierShipment = CarrierShipment.Builder.newInstance(
-					Id.create(freightDemandDataRelation.getId().toString(), CarrierShipment.class),
-					fromLinkId,
-					toLink.getId(),
-					demandThisJob).setPickupStartingTimeWindow(pickupTimeWindow).setDeliveryStartingTimeWindow(
-					deliveryTimeWindow).setPickupDuration(
+					Id.create(freightDemandDataRelation.getId().toString() + "_" + i, CarrierShipment.class),
+					fromLinkId,	toLink.getId(),
+					demandThisJob).setPickupStartingTimeWindow(pickupTimeWindow).setDeliveryStartingTimeWindow(deliveryTimeWindow).setPickupDuration(
 					pickupTime).setDeliveryDuration(deliveryTime).build();
 				existingCarrier.getShipments().put(newCarrierShipment.getId(), newCarrierShipment);
 			}
