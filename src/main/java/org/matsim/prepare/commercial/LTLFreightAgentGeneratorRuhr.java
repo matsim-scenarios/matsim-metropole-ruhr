@@ -352,10 +352,12 @@ public class LTLFreightAgentGeneratorRuhr {
             if (demand == 0) return;
             int numberOfJobsForDemand = demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, demand);
 
+			int baseDemandThisJob = demand / numberOfJobsForDemand;
+			int remainingDemand = demand % numberOfJobsForDemand;
 			for (int i = 0; i < numberOfJobsForDemand; i++) {
-				int demandThisJob = demand / numberOfJobsForDemand;
-				int pickupTime = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, demandThisJob);
-				int deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, demandThisJob);
+				int demandThisJob = baseDemandThisJob + (i < remainingDemand ? 1 : 0);
+				double pickupTime = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, demandThisJob);
+				double deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, demandThisJob);
 				TimeWindow pickupTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
 				TimeWindow deliveryTimeWindow = TimeWindow.newInstance(8 * 3600, 18 * 3600); //TODO
 
@@ -393,8 +395,10 @@ public class LTLFreightAgentGeneratorRuhr {
             if (volumeWaste == 0) return;
             int numberOfJobsForDemand = demandPerDayCalculator.calculateNumberOfJobsForDemand(existingCarrier, volumeWaste);
 
+            int baseWasteThisJob = volumeWaste / numberOfJobsForDemand;
+            int remainingWaste = volumeWaste % numberOfJobsForDemand;
             for (int i = 0; i < numberOfJobsForDemand; i++) {
-                int wasteThisJob = volumeWaste / numberOfJobsForDemand;
+                int wasteThisJob = baseWasteThisJob + (i < remainingWaste ? 1 : 0);
                 double collectionTimeForBins = commercialServiceTimeCalculator.calculatePickupTime(freightDemandDataRelation, wasteThisJob);
                 int deliveryTime = commercialServiceTimeCalculator.calculateDeliveryTime(freightDemandDataRelation, wasteThisJob);
                 TimeWindow timeWindow = TimeWindow.newInstance(6 * 3600, 16 * 3600);
