@@ -59,7 +59,10 @@ public class LTLFreightAgentGeneratorRuhr {
         List<String> possibleVehicleTypeIds = commercialVehicleSelector.getPossibleVehicleTypes(freightDemandDataRelation,
                 newCarrier.getId().toString(), carrierCapabilities.getFleetSize());
         possibleVehicleTypeIds.forEach(vehicleTypeId -> {
-            VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(Id.create(vehicleTypeId, VehicleType.class));
+			Id<VehicleType> typeId = Id.create(vehicleTypeId, VehicleType.class);
+			if (!carrierVehicleTypes.getVehicleTypes().containsKey(typeId))
+				return;
+	        VehicleType vehicleType = carrierVehicleTypes.getVehicleTypes().get(typeId);
             // Waste collection and parcel delivery tours we will not sample. That's why we adjust the pcu equivalents
             if (CommercialTrafficUtils.getGoodsType(freightDemandDataRelation) == 140 || CommercialTrafficUtils.getGoodsType(
                     freightDemandDataRelation) == 150)
