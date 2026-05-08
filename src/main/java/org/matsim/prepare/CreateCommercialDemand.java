@@ -467,12 +467,11 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					args.add("--MATSimIterationsAfterDemandGeneration");
 					args.add(String.valueOf(MATSimIterationsKWM));
 				}
-				if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution")) {
+				if (smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithoutSolution") || smallScaleCommercialGenerationOption.equals("useExistingCarrierFileWithSolution")) {
 					args.add("--carrierFilePath");
 					args.add(configPath.getParent().relativize(
 						Path.of(selectedOutputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)).toString());
-				}
-				else {
+				} else {
 					args.add("--includeExistingModels");
 				}
 				List<String> configArgs = new ArrayList<>(List.of("--config:vehicles.vehiclesFile", configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString()));
