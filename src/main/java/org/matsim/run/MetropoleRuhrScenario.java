@@ -209,6 +209,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			scoringParameters.addModeParams(walk);
 		});
 		ScoringConfigGroup.ScoringParameterSet defaultScoringParameters = config.scoring().getOrCreateScoringParameters(ScoringConfigGroup.DEFAULT_SUBPOPULATION);
+		modes.forEach(mode -> {
+				defaultScoringParameters.addModeParams(new ScoringConfigGroup.ModeParams(mode));
+			});
+		defaultScoringParameters.setMarginalUtlOfWaitingPt_utils_hr(0.);
 		config.scoring().addParameterSet(defaultScoringParameters); //TODO this should be not necessary at the end
 	}
 
