@@ -182,10 +182,10 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			ScoringConfigGroup.ScoringParameterSet scoringParameters = config.scoring().getOrCreateScoringParameters(subpopulation);
 			double timeCosts;
 
-			if (subpopulations.contains("commercialPersonTraffic")) {
-				timeCosts = -37.27;
+			if (subpopulation.contains("commercialPersonTraffic")) {
+				timeCosts = -34.86;
 			} else {
-				timeCosts = -25.81;
+				timeCosts = -28.55;
 			}
 			scoringParameters.setMarginalUtlOfWaiting_utils_hr(timeCosts);
 			scoringParameters.setPerforming_utils_hr(timeCosts);
