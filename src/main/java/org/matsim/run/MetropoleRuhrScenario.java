@@ -159,10 +159,11 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	 */
 	public static void prepareCommercialTrafficConfig(Scenario scenario) {
 
-		Set<String> modes = NetworkUtils.getModes(scenario.getNetwork());
-		Set<String> subpopulations = PopulationUtils.getSubpopulationsOfPopulation(scenario.getPopulation());
-		Config config = scenario.getConfig();
+		Set<String> modes = Set.of("car","truck8t", "truck18t", "truck26t", "truck40t");
+		Set<String> subpopulations = Set.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
+			"FTL_trip", "FTL_kv_trip", "goodsTraffic");
 
+		Config config = scenario.getConfig();
 		subpopulations.forEach(subpopulation -> {
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta).setWeight(
