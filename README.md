@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/339039142.svg)](https://doi.org/10.5281/zenodo.10959018)
+ 
 # The MATSim 'Metropole Ruhr' Scenario
 
 <!--
