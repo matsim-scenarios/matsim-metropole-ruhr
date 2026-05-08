@@ -24,7 +24,6 @@ import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.RaptorParameters;
-import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import org.apache.commons.math3.util.Pair;
@@ -61,7 +60,6 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
@@ -90,7 +88,6 @@ import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 import java.util.*;
 import java.io.*;
 import java.nio.file.Path;
-import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
 
@@ -368,7 +365,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
-		prepareCommercialTrafficConfig(scenario);
+		prepareCommercialTrafficReplanningAndScoringParams(scenario);
 		List<CapacityChange> capacityChanges = new ArrayList<>();
 
 		if(adjustCapacitiesToDtvCounts){

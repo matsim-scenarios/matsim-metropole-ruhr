@@ -1,5 +1,6 @@
 package org.matsim.prepare;
 
+import com.google.common.collect.Sets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
@@ -265,7 +266,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				nameOutputPopulation = LTLFreightPopulationNameParcel;
 				selectedLTLGoodsType = "PARCEL";
 			}
-
 			List<String> argumentsForLTL = new ArrayList<>(List.of(
 				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
 				"--network", configPath.getParent().resolve(networkPath).toString(),
@@ -541,9 +541,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			//TODO perhaps check if this can be moved to RunMetropoleRuhrScenario
 			Config config = ConfigUtils.loadConfig(configPath.toString());
 			config.plans().setInputFile(configPath.getParent().relativize(Path.of(pathMergedPopulation)).toString());
-			config.plans().setActivityDurationInterpretation(PlansConfigGroup.ActivityDurationInterpretation.tryEndTimeThenDuration);
 			config.network().setInputFile(networkPath);
-
 			if (networkChangeEventsFile != null) {
 				config.network().setChangeEventsInputFile(configPath.getParent().relativize(networkChangeEventsFile).toString());
 				config.network().setTimeVariantNetwork(true);
@@ -562,7 +560,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.qsim().setTrafficDynamics(QSimConfigGroup.TrafficDynamics.kinematicWaves);
 			config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 			config.qsim().setUsePersonIdForMissingVehicleId(false);
-			//to get no traffic jam for the 1 iteration
 			config.qsim().setFlowCapFactor(sample);
 			config.qsim().setStorageCapFactor(sample);
 			config.replanning().setFractionOfIterationsToDisableInnovation(0.8);
