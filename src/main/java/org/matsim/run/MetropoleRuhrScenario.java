@@ -193,6 +193,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			scoringParameters.setMarginalUtlOfWaitingPt_utils_hr(timeCosts);
 			activityTypesPerSubpopulation.forEach(activityType -> {
 				ScoringConfigGroup.ActivityParams actParams = new ScoringConfigGroup.ActivityParams(activityType).setTypicalDuration(30 * 60);
+				// because we dont not score the time after and before the working hours we dont not score these activities
+				if (activityType.contains("start") || activityType.contains("end"))
+					actParams.setScoringThisActivityAtAll(false);
 				scoringParameters.addActivityParams(actParams);
 			});
 			modes.forEach(mode -> {
