@@ -581,6 +581,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
 			config.vehicles().setVehiclesFile(configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString());
 			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
+			config.scoring().setExplainScores(true);
+
+			Set<String> modes = Set.of("car","truck8t", "truck18t", "truck26t", "truck40t");
+			Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
+			config.qsim().setMainModes(Sets.union(qsimModes, modes));
+			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
+			config.routing().setNetworkModes(modes);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 

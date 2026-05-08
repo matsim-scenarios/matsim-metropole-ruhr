@@ -208,15 +208,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			walk.setMarginalUtilityOfTraveling(timeCosts);
 			scoringParameters.addModeParams(walk);
 		});
-		config.scoring().setExplainScores(true);
 		ScoringConfigGroup.ScoringParameterSet defaultScoringParameters = config.scoring().getOrCreateScoringParameters(ScoringConfigGroup.DEFAULT_SUBPOPULATION);
 		config.scoring().addParameterSet(defaultScoringParameters); //TODO this should be not necessary at the end
-
-		Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
-		config.qsim().setMainModes(Sets.union(qsimModes, modes));
-
-		Set<String> networkModes = new HashSet<>(config.routing().getNetworkModes());
-		config.routing().setNetworkModes(Sets.union(networkModes, modes));
 	}
 
 	@Override
