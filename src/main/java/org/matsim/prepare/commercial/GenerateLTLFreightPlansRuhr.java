@@ -169,7 +169,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		if (networkChangeEventsPath != null) {
 			config.network().setChangeEventsInputFile(networkChangeEventsPath.toString());
 			config.network().setTimeVariantNetwork(true);
-			freightCarriersConfigGroup.setTravelTimeSliceWidth(3600);
+			freightCarriersConfigGroup.setTravelTimeSliceWidth(4 * 1800); // this was a result of a testing with a trade off between computation time and result changes compared to 1800s
 			log.info("Network change events file provided. Network change events will be considered in the tour planning.");
 		}
 		Path outputFolderCarriers = Path.of(dataPath).getParent().resolve("carriersLTL");
