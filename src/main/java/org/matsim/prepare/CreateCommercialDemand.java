@@ -61,6 +61,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		ltlRest,
 		ltlWaste,
 		ltlParcel,
+		ltlWasteMerge,
+		ltlParcelMerge,
 		ltlMerge,
 		longDistanceFreight,
 		smallScaleInputData,
@@ -165,6 +167,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--useRangeConstraintForJspritTourPlanning", description = "Option to use range constraint for jsprit tour planning. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
 	private boolean useRangeConstraintForJspritTourPlanning;
 
+	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for Waste/Parcel LTL tour planning.")
+	private int ltlCarrierPartCount;
+
+	@CommandLine.Option(names = "--ltlCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent Waste/Parcel LTL carrier part to solve.")
+	private int ltlCarrierPartIndex;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -175,6 +183,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		if (runPart == RunPart.all) {
 			alsoRunCompleteCommercialTraffic = true;
 		}
+		validateLtlCarrierPartOptions();
 
 		if (!Files.exists(output)) {
 			try {
@@ -278,6 +287,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			if (useRangeConstraintForJspritTourPlanning) {
 				argumentsForLTL.add("--useRangeConstraintForLTL");
 			}
+			if (ltlCarrierPartCount > 1) {
+				argumentsForLTL.add("--ltlCarrierPartCount");
+				argumentsForLTL.add(String.valueOf(ltlCarrierPartCount));
+				argumentsForLTL.add("--ltlCarrierPartIndex");
+				argumentsForLTL.add(String.valueOf(ltlCarrierPartIndex));
+			}
 
 			if (Files.exists(output.resolve(nameOutputPopulation))) {
 				log.warn("Freight population already exists. Skipping generation.");
@@ -287,6 +302,28 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			if (runPart == RunPart.ltl || runPart == RunPart.ltlRest || runPart == RunPart.ltlWaste || runPart == RunPart.ltlParcel) {
 				return 0;
 			}
+		}
+
+		if (runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) {
+			log.info("3a step - merge LTL {} carrier parts", runPart == RunPart.ltlWasteMerge ? "WASTE" : "PARCEL");
+			String outputPopulation = runPart == RunPart.ltlWasteMerge ? LTLFreightPopulationNameWaste : LTLFreightPopulationNameParcel;
+			String ltlGoodsType = runPart == RunPart.ltlWasteMerge ? "WASTE" : "PARCEL";
+			List<String> mergeCarrierArguments = new ArrayList<>(List.of(
+				"--carrierParts", generatedInputDataPath.resolve("carriersLTL_parts").toString(),
+				"--carrierOutput", generatedInputDataPath.resolve("carriersLTL").toString(),
+				"--network", configPath.getParent().resolve(networkPath).toString(),
+				"--vehicleTypesFilePath", vehicleTypesFilePath,
+				"--output", output.toString(),
+				"--nameOutputPopulation", outputPopulation,
+				"--LTL-goods-type", ltlGoodsType,
+				"--ltlCarrierPartCount", String.valueOf(ltlCarrierPartCount)
+			));
+			if (networkChangeEventsFile != null) {
+				mergeCarrierArguments.add("--networkChangeEvents");
+				mergeCarrierArguments.add(networkChangeEventsFile.toString());
+			}
+			new MergeLTLCarrierPartsRuhr().execute(mergeCarrierArguments.toArray(new String[0]));
+			return 0;
 		}
 
 		if (runPart == RunPart.ltlMerge) {
@@ -562,4 +599,20 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 		return 0;
 	}
+
+	/**
+	 * Validates the options for running or merging independent LTL carrier parts.
+	 */
+	private void validateLtlCarrierPartOptions() {
+		if (ltlCarrierPartCount < 1) {
+			throw new IllegalArgumentException("--ltlCarrierPartCount must be at least 1.");
+		}
+		if (ltlCarrierPartIndex < 0 || ltlCarrierPartIndex >= ltlCarrierPartCount) {
+			throw new IllegalArgumentException("--ltlCarrierPartIndex must be between 0 and --ltlCarrierPartCount - 1.");
+		}
+		if ((runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) && ltlCarrierPartCount == 1) {
+			throw new IllegalArgumentException("--ltlCarrierPartCount must be greater than 1 when merging LTL carrier parts.");
+		}
+	}
+
 }

@@ -16,6 +16,8 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.io.IOUtils;
 import org.matsim.freight.carriers.CarrierVehicleTypeReader;
 import org.matsim.freight.carriers.CarrierVehicleTypes;
+import org.matsim.freight.carriers.Carrier;
+import org.matsim.freight.carriers.Carriers;
 import org.matsim.freight.carriers.CarriersUtils;
 import org.matsim.freight.carriers.FreightCarriersConfigGroup;
 import org.matsim.freight.carriers.analysis.CarriersAnalysis;
@@ -26,9 +28,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	private static final Logger log = LogManager.getLogger(GenerateLTLFreightPlansRuhr.class);
@@ -73,8 +79,15 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--useRangeConstraintForLTL", description = "Option to use range constraint for LTL tours. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
 	private boolean useRangeConstraintForLTL;
 
+	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for LTL tour planning. Use with --ltlCarrierPartIndex.")
+	private int ltlCarrierPartCount;
+
+	@CommandLine.Option(names = "--ltlCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent carrier part to solve.")
+	private int ltlCarrierPartIndex;
+
 	@Override
 	public Integer call() throws Exception {
+		validateLtlCarrierPartOptions();
 
 		log.info("preparing freight agent generator for FTL trips...");
 		LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL = new LTLFreightAgentGeneratorRuhr(workingDays, sample, null, null, null, null);
@@ -89,6 +102,12 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 
 		createPLansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
+
+		if (isSolvingOnlyCarrierPart()) {
+			log.info("Solved LTL carrier part {}/{}. Population and carrier analysis will be created by the merge step.",
+				ltlCarrierPartIndex + 1, ltlCarrierPartCount);
+			return 0;
+		}
 
 		if (!Files.exists(output)) {
 			Files.createDirectory(output);
@@ -157,6 +176,10 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		if (!Files.exists(outputFolderCarriers)) {
 			Files.createDirectory(outputFolderCarriers);
 		}
+		Path outputFolderCarrierParts = outputFolderCarriers.resolveSibling("carriersLTL_parts");
+		if (ltlCarrierPartCount > 1 && !Files.exists(outputFolderCarrierParts)) {
+			Files.createDirectory(outputFolderCarrierParts);
+		}
 		Path carrierVRPFileLTL_Rest = outputFolderCarriers.resolve("output_LTL_Rest_carriersNoSolution.xml.gz");
 		Path carrierVRPFile_Rest_Solution = outputFolderCarriers.resolve("output_LTL_Rest_carriersWithSolution.xml.gz");
 		Path carrierVRPFileLTL_Waste = outputFolderCarriers.resolve("output_LTL_Waste_carriersNoSolution.xml.gz");
@@ -178,6 +201,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 				case WASTE -> carrierVRPFile_Waste_Solution;
 				case PARCEL -> carrierVRPFile_Rest_Parcel;
 			};
+			carrierFile_noSolution = getCarrierFileForCurrentPart(carrierFile_noSolution, outputFolderCarrierParts);
+			carrierFile_withSolution = getCarrierFileForCurrentPart(carrierFile_withSolution, outputFolderCarrierParts);
 
 			if (selected_LTL_GoodsType != null && selected_LTL_GoodsType != LTLGoodsType) {
 				log.info("Skipping LTL goods type {} as the selected LTL goods type is {}", LTLGoodsType, selected_LTL_GoodsType);
@@ -185,7 +210,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 			}
 
 			Scenario scenario;
-			Path carrierAnalysisOutputPath = outputFolderCarriers.resolve("Carriers_Analysis_" + LTLGoodsType);
+			Path carrierAnalysisOutputPath = getCarrierAnalysisOutputPath(outputFolderCarriers, LTLGoodsType);
 
 			if (Files.exists(carrierFile_withSolution)) {
 				log.warn("Using existing carrier VRP file with solution: {}", carrierFile_withSolution);
@@ -213,6 +238,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 						case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
 						case PARCEL -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 150);
 					};
+					filterCarriersForSelectedPart(scenario);
 					CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_noSolution.toString());
 				}
 				filterRelevantVehicleTypesForTourPlanning(scenario);
@@ -221,11 +247,111 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 				CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_withSolution.toString());
 			}
-			CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
-				carrierAnalysisOutputPath.resolve("analysis").resolve("freight").toString());
-			freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
-			LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+			if (!isSolvingOnlyCarrierPart()) {
+				CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
+					carrierAnalysisOutputPath.resolve("analysis").resolve("freight").toString());
+				freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
+				LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+			}
 		}
+	}
+
+	/**
+	 * Checks whether this run solves only one carrier part instead of a complete LTL goods type.
+	 *
+	 * @return {@code true} if this run is a carrier part run
+	 */
+	private boolean isSolvingOnlyCarrierPart() {
+		return ltlCarrierPartCount > 1;
+	}
+
+	/**
+	 * Validates the carrier part options before creating or loading LTL carriers.
+	 */
+	private void validateLtlCarrierPartOptions() {
+		if (ltlCarrierPartCount < 1) {
+			throw new IllegalArgumentException("--ltlCarrierPartCount must be at least 1.");
+		}
+		if (ltlCarrierPartIndex < 0 || ltlCarrierPartIndex >= ltlCarrierPartCount) {
+			throw new IllegalArgumentException("--ltlCarrierPartIndex must be between 0 and --ltlCarrierPartCount - 1.");
+		}
+	}
+
+	/**
+	 * Resolves the carrier file path for the current run.
+	 * Complete runs use the final carrier folder, while carrier part runs use the temporary part folder.
+	 *
+	 * @param carrierFile final carrier file path
+	 * @param outputFolderCarrierParts folder for temporary carrier part files
+	 * @return carrier file path for the current complete or part run
+	 */
+	private Path getCarrierFileForCurrentPart(Path carrierFile, Path outputFolderCarrierParts) {
+		if (ltlCarrierPartCount == 1) {
+			return carrierFile;
+		}
+		return outputFolderCarrierParts.resolve(addPartSuffix(carrierFile.getFileName().toString()));
+	}
+
+	/**
+	 * Resolves the carrier analysis output path for the selected goods type.
+	 * Complete runs write directly to the goods type analysis folder; part runs use a part subfolder.
+	 *
+	 * @param outputFolderCarriers folder containing LTL carrier output
+	 * @param goodsType selected LTL goods type
+	 * @return analysis output path for the current run
+	 */
+	private Path getCarrierAnalysisOutputPath(Path outputFolderCarriers, LTL_GoodsType goodsType) {
+		Path carrierAnalysisOutputPath = outputFolderCarriers.resolve("Carriers_Analysis_" + goodsType);
+		if (ltlCarrierPartCount == 1) {
+			return carrierAnalysisOutputPath;
+		}
+		return carrierAnalysisOutputPath.resolve(partSuffix());
+	}
+
+	/**
+	 * Adds the current part suffix to a file name.
+	 *
+	 * @param fileName file name to update
+	 * @return file name with current part suffix
+	 */
+	private String addPartSuffix(String fileName) {
+		String suffix = "_" + partSuffix();
+		if (fileName.endsWith(".xml.gz")) {
+			return fileName.replace(".xml.gz", suffix + ".xml.gz");
+		}
+		return fileName + suffix;
+	}
+
+	/**
+	 * Builds the deterministic suffix for the current carrier part.
+	 *
+	 * @return suffix describing current part index and total part count
+	 */
+	private String partSuffix() {
+		return "part-" + String.format("%03d", ltlCarrierPartIndex + 1) + "-of-" + String.format("%03d", ltlCarrierPartCount);
+	}
+
+	/**
+	 * Filters the loaded carriers to the carrier subset assigned to the current part.
+	 * The assignment is deterministic based on sorted carrier ids and modulo partitioning.
+	 *
+	 * @param scenario scenario containing all carriers before filtering
+	 */
+	private void filterCarriersForSelectedPart(Scenario scenario) {
+		if (ltlCarrierPartCount == 1) {
+			return;
+		}
+		Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
+		List<Id<Carrier>> sortedCarrierIds = carriers.getCarriers().keySet().stream()
+			.sorted(Comparator.comparing(Id::toString))
+			.toList();
+		Set<Id<Carrier>> selectedCarrierIds = IntStream.range(0, sortedCarrierIds.size())
+			.filter(carrierIndex -> carrierIndex % ltlCarrierPartCount == ltlCarrierPartIndex)
+			.mapToObj(sortedCarrierIds::get)
+			.collect(Collectors.toSet());
+		carriers.getCarriers().keySet().removeIf(carrierId -> !selectedCarrierIds.contains(carrierId));
+		log.info("Selected LTL carrier part {}/{} with {} carriers.", ltlCarrierPartIndex + 1, ltlCarrierPartCount,
+			carriers.getCarriers().size());
 	}
 
 	/**
