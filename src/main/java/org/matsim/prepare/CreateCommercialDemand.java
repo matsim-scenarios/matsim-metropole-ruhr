@@ -584,7 +584,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
-			MetropoleRuhrScenario.prepareCommercialTrafficConfig(scenario);
+			MetropoleRuhrScenario.prepareCommercialTrafficReplanningAndScoringParams(scenario);
 
 			Controller controller = ControllerUtils.createController(scenario);
 

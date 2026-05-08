@@ -313,7 +313,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			simWrapperConfigGroup.setSampleSize(sample);
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
-			MetropoleRuhrScenario.prepareCommercialTrafficConfig(scenario);
+			MetropoleRuhrScenario.prepareCommercialTrafficReplanningAndScoringParams(scenario);
 
 			Controler controller = new Controler(scenario);
 

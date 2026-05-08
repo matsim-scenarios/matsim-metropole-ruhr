@@ -157,7 +157,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	/**
 	 * Prepare the config for commercial traffic.
 	 */
-	public static void prepareCommercialTrafficConfig(Scenario scenario) {
+	public static void prepareCommercialTrafficReplanningAndScoringParams(Scenario scenario) {
 
 		Set<String> modes = Set.of("car","truck8t", "truck18t", "truck26t", "truck40t");
 		Set<String> subpopulations = Set.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
