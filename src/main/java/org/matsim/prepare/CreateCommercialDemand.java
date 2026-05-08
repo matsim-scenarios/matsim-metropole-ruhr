@@ -475,6 +475,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					args.add("--includeExistingModels");
 				}
 				List<String> configArgs = new ArrayList<>(List.of("--config:vehicles.vehiclesFile", configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString()));
+				configArgs.add("--config:transit.useTransit");
+				configArgs.add("false");
+				configArgs.add("--config:routing.networkModes");
+				configArgs.add("truck8t,truck40t,truck18t,car,truck26t");
 				if (networkChangeEventsFile != null) {
 					configArgs.add("--config:network.inputChangeEventsFile");
 					configArgs.add(configPath.getParent().relativize(networkChangeEventsFile).toString());
