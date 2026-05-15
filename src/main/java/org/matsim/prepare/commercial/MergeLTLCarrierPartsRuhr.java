@@ -52,11 +52,14 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts to merge.")
 	private int ltlCarrierPartCount;
 
-	@CommandLine.Option(names = "--networkChangeEvents", description = "Path to network change events file. If provided, the network change events will be configured for analysis.")
-	private Path networkChangeEventsPath;
+	@CommandLine.Option(names = "--sample", description = "Scaling factor of the freight traffic (0, 1)", required = true)
+	private double sample;
 
 	@Override
 	public Integer call() throws Exception {
+
+		log.info("Starting to merge LTL carrier parts for goods type {} with solution state {}. Number of parts: {}.",
+			selectedLTLGoodsType, "withSolution", ltlCarrierPartCount);
 		validateOptions();
 
 		if (!Files.exists(carrierOutput)) {
@@ -77,11 +80,11 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 		freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
 
 		Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
-		LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+		LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation, sample);
 		new PopulationWriter(outputPopulation).write(output.resolve(nameOutputPopulation).toString());
 
-		log.info("Merged LTL {} carrier parts into {} and {} and wrote population {}.",
-			selectedLTLGoodsType, mergedCarrierFileNoSolution, mergedCarrierFileWithSolution, output.resolve(nameOutputPopulation));
+		log.info("Merged LTL {} carrier parts into {} and {} and wrote population {} with sampleSize {}.",
+			selectedLTLGoodsType, mergedCarrierFileNoSolution, mergedCarrierFileWithSolution, output.resolve(nameOutputPopulation), sample);
 		return 0;
 	}
 
@@ -136,6 +139,7 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	 */
 	private Scenario loadScenarioWithMergedCarriers(Path carrierFile) {
 		Config config = createConfigWithCarrierFile(carrierFile);
+		config.network().setInputFile(networkPath);
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		CarriersUtils.loadCarriersAccordingToFreightConfig(scenario);
 		return scenario;
@@ -162,12 +166,7 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	 */
 	private Config createConfigWithCarrierFile(Path carrierFile) {
 		Config config = ConfigUtils.createConfig();
-		config.network().setInputFile(networkPath);
 		config.global().setCoordinateSystem("EPSG:25832");
-		if (networkChangeEventsPath != null) {
-			config.network().setChangeEventsInputFile(networkChangeEventsPath.toString());
-			config.network().setTimeVariantNetwork(true);
-		}
 		FreightCarriersConfigGroup freightCarriersConfigGroup = ConfigUtils.addOrGetModule(config, FreightCarriersConfigGroup.class);
 		freightCarriersConfigGroup.setCarriersFile(carrierFile.toString());
 		freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
