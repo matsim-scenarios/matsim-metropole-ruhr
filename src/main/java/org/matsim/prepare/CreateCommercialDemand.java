@@ -316,12 +316,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				"--output", output.toString(),
 				"--nameOutputPopulation", outputPopulation,
 				"--LTL-goods-type", ltlGoodsType,
-				"--ltlCarrierPartCount", String.valueOf(ltlCarrierPartCount)
+				"--ltlCarrierPartCount", String.valueOf(ltlCarrierPartCount),
+				"--sample", String.valueOf(sample)
 			));
-			if (networkChangeEventsFile != null) {
-				mergeCarrierArguments.add("--networkChangeEvents");
-				mergeCarrierArguments.add(networkChangeEventsFile.toString());
-			}
 			new MergeLTLCarrierPartsRuhr().execute(mergeCarrierArguments.toArray(new String[0]));
 			return 0;
 		}
