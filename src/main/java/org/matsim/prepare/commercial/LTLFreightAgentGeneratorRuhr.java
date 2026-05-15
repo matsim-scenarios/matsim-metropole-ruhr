@@ -28,7 +28,6 @@ public class LTLFreightAgentGeneratorRuhr {
     private final DemandPerDayCalculator demandPerDayCalculator;
     private final CommercialVehicleSelector commercialVehicleSelector;
     private final CommercialServiceTimeCalculator commercialServiceTimeCalculator;
-    private static double sample;
 
 	public LTLFreightAgentGeneratorRuhr(int workingDays, double sample, DepartureTimeCalculator departureTimeCalculator,
 										DemandPerDayCalculator demandPerDayCalculator, CommercialVehicleSelector commercialVehicleSelector,
@@ -37,7 +36,6 @@ public class LTLFreightAgentGeneratorRuhr {
 		this.commercialVehicleSelector = Objects.requireNonNullElseGet(commercialVehicleSelector, CommercialVehicleSelectorRuhr::new);
 		this.commercialServiceTimeCalculator = Objects.requireNonNullElseGet(commercialServiceTimeCalculator, DefaultCommercialServiceTimeCalculator::new);
 		this.demandPerDayCalculator = Objects.requireNonNullElseGet(demandPerDayCalculator, () -> new DefaultDemandPerDayCalculator(workingDays, sample));
-		this.sample = sample;
 	}
 
     /**
@@ -80,7 +78,7 @@ public class LTLFreightAgentGeneratorRuhr {
      * Creates a population including the plans based on the scheduled tours of the carriers.
      * If a tour has multiple similar activities (e.g., multiple pickups at the same location), the activities are merged tp one activity.
      */
-    static void createPlansBasedOnCarrierPlans(Scenario scenario, Population outputPopulation) {
+    static void createPlansBasedOnCarrierPlans(Scenario scenario, Population outputPopulation, double sample) {
 
         Population population = scenario.getPopulation();
         PopulationFactory popFactory = population.getFactory();

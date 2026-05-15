@@ -250,7 +250,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 				CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
 					carrierAnalysisOutputPath.resolve("analysis").resolve("freight").toString());
 				freightAnalysis.runCarrierAnalysis(CarriersAnalysis.CarrierAnalysisType.carriersStatsAndDetailedTourAnalysisBasedOnCarrierPlans);
-				LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation);
+				LTLFreightAgentGeneratorRuhr.createPlansBasedOnCarrierPlans(scenario, outputPopulation, sample);
 			}
 		}
 	}
