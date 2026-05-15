@@ -101,7 +101,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		log.info("Start generating population...");
 		Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 
-		createPLansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
+		createPlansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
 
 		if (isSolvingOnlyCarrierPart()) {
 			log.info("Solved LTL carrier part {}/{}. Population and carrier analysis will be created by the merge step.",
@@ -153,9 +153,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	/**
 	 * Creates plans for LTL trips. Therefore, multiple carriers are created to solve the resulted vehicle routing problem.
 	 */
-	private void createPLansForLTLTrips(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL,
-										Population outputPopulation,
-										int jspritIterationsForLTL) throws ExecutionException, InterruptedException, IOException {
+	private void createPlansForLTLTrips(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL,
+	                                    Population outputPopulation, int jspritIterationsForLTL) throws ExecutionException, InterruptedException, IOException {
 
 		Config config = ConfigUtils.createConfig();
 		config.network().setInputFile(networkPath);
