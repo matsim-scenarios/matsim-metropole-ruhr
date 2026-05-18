@@ -245,6 +245,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 				CarriersUtils.runJsprit(scenario);
 
 				CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_withSolution.toString());
+				CarriersUtils.writeCarrierVehicleTypes(scenario, carrierFile_withSolution.toString().replace("carriersWithSolution", "carrierVehicleTypes"));
 			}
 			if (!isSolvingOnlyCarrierPart()) {
 				CarriersAnalysis freightAnalysis = new CarriersAnalysis(scenario,
