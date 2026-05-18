@@ -34,10 +34,12 @@ public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector,
 
 		List<Pair<VehicleSelection, Double>> vehicleSelectionProbabilityDistributionWaste = new ArrayList<>();
 		vehicleSelectionProbabilityDistributionWaste.add(new Pair<>(new VehicleSelection("waste_collection_diesel"), 1.0));
+		vehicleSelectionProbabilityDistributionWaste.add(new Pair<>(new VehicleSelection("waste_collection_EV1"), 1.0));
+		vehicleSelectionProbabilityDistributionWaste.add(new Pair<>(new VehicleSelection("waste_collection_EV2"), 1.0));
 		vehicleDistributionWaste = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionWaste);
 
 		List<Pair<VehicleSelection, Double>> vehicleSelectionProbabilityDistributionParcel = new ArrayList<>();
-		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedes316"), 1.0)); //TODO so anpassen, dass es auch bei Szenarien ohne diese Type passt
+		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedes316"), 1.0));
 		vehicleSelectionProbabilityDistributionParcel.add(new Pair<>(new VehicleSelection("mercedesESprinter"), 1.0));
 		vehicleDistributionParcel = new EnumeratedDistribution<>(rnd, vehicleSelectionProbabilityDistributionParcel);
 
