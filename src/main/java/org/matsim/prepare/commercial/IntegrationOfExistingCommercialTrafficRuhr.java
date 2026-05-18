@@ -99,7 +99,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 	 * Get the vehicle type which is used for the small scale commercial traffic.
 	 *
 	 * @param vehicleTypeMode the vehicle type mode
-	 * @return the vehicle type which is used for the small scale commercial traffic
+	 * @return the vehicle type that is used for the small scale commercial traffic
 	 */
 	private static List<String> getVehTyp(String vehicleTypeMode) {
 		return switch (vehicleTypeMode) {
