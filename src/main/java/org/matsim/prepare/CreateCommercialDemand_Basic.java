@@ -104,7 +104,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--nameOfExistingCarriersSmallScaleCommercial", description = "Path to the existing carriers file")
 	private String nameOfExistingCarriersSmallScaleCommercial;
 
-	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "30")
+	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "60")
 	private int additionalTravelBufferPerIterationInMinutes;
 
 	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services. If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.2")
