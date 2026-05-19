@@ -1,0 +1,73 @@
+{
+  "title": "The MATSim Metropole Ruhr Scenario",
+  "description": "The MATSim Metropole Ruhr scenario provides a transport simulation model for the Metropole Ruhr using the Multi-Agent Transport Simulation (MATSim) framework.",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "AGPL-3.0-only",
+  "creators": [
+    {
+      "name": "Rybczak, Gregor",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0009-0007-6486-6224"
+    },
+    {
+      "name": "Heinrich, Paul",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0001-9068-3260"
+    },
+    {
+      "name": "Leich, Gregor",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0001-9068-3260"
+    },
+    {
+      "name": "Ewert, Ricardo",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0002-6973-3099"
+    },
+    {
+      "name": "Rakow, Christian",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0003-3760-2243"
+    },
+    {
+      "name": "Gast, Kathrin",
+      "affiliation": "Regionalverband Ruhr"
+    },
+    {
+      "name": "Welter, Sebastian",
+      "affiliation": "Regionalverband Ruhr"
+    },
+    {
+      "name": "Pfahl, Jochen",
+      "affiliation": "Regionalverband Ruhr"
+    },
+    {
+      "name": "Schlenther, Tilmann",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0001-6781-6918"
+    },
+    {
+      "name": "Laudan, Janek",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0003-2443-9475"
+    },
+    {
+      "name": "Kaddoura, Ihab",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0002-0940-2255"
+    },
+    {
+      "name": "Nagel, Kai",
+      "affiliation": "Technische Universität Berlin",
+      "orcid": "0000-0003-2775-6898"
+    }
+  ],
+  "communities": [
+    {
+      "identifier": ""
+    }
+  ],
+  "related_identifiers": [
+  ]
+}
