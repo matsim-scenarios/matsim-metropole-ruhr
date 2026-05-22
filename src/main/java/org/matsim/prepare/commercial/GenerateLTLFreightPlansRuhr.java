@@ -190,23 +190,34 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		Path carrierFile_withSolution;
 
 		for (LTL_GoodsType LTLGoodsType : LTL_GoodsType.values()) {
-			carrierFile_noSolution = switch (LTLGoodsType) {
+			Path finalCarrierFile_noSolution = switch (LTLGoodsType) {
 				case REST -> carrierVRPFileLTL_Rest;
 				case WASTE -> carrierVRPFileLTL_Waste;
 				case PARCEL -> carrierVRPFileLTL_Parcel;
 			};
-			carrierFile_withSolution = switch (LTLGoodsType) {
+			Path finalCarrierFile_withSolution = switch (LTLGoodsType) {
 				case REST -> carrierVRPFile_Rest_Solution;
 				case WASTE -> carrierVRPFile_Waste_Solution;
 				case PARCEL -> carrierVRPFile_Rest_Parcel;
 			};
-			carrierFile_noSolution = getCarrierFileForCurrentPart(carrierFile_noSolution, outputFolderCarrierParts);
-			carrierFile_withSolution = getCarrierFileForCurrentPart(carrierFile_withSolution, outputFolderCarrierParts);
 
 			if (selected_LTL_GoodsType != null && selected_LTL_GoodsType != LTLGoodsType) {
 				log.info("Skipping LTL goods type {} as the selected LTL goods type is {}", LTLGoodsType, selected_LTL_GoodsType);
 				continue;
 			}
+
+			// Part runs are only needed while the final merged solution is missing. If the final file exists,
+			// all parts for this goods type were already solved and merged in an earlier run.
+			if (isSolvingOnlyCarrierPart() && Files.exists(finalCarrierFile_withSolution)) {
+				log.warn("Skipping LTL carrier part {}/{} for goods type {} because final carrier VRP file with solution already exists: {}",
+					ltlCarrierPartIndex + 1, ltlCarrierPartCount, LTLGoodsType, finalCarrierFile_withSolution);
+				continue;
+			}
+
+			// Only after the final-file check do we switch to part-specific files, otherwise part runs would
+			// ignore an existing final solution and solve the same goods type again.
+			carrierFile_noSolution = getCarrierFileForCurrentPart(finalCarrierFile_noSolution, outputFolderCarrierParts);
+			carrierFile_withSolution = getCarrierFileForCurrentPart(finalCarrierFile_withSolution, outputFolderCarrierParts);
 
 			Scenario scenario;
 			Path carrierAnalysisOutputPath = getCarrierAnalysisOutputPath(outputFolderCarriers, LTLGoodsType);
