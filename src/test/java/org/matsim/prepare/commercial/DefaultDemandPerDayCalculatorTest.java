@@ -23,7 +23,7 @@ class DefaultDemandPerDayCalculatorTest {
 
 	@BeforeEach
 	void setUp() {
-		calculator = new DefaultDemandPerDayCalculator(250, 1.0);
+		calculator = new DefaultDemandPerDayCalculator(250);
 
 		freightDemandDataRelation = createFreightDemandDataRelation();
 

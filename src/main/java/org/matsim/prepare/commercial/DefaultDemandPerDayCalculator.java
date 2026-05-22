@@ -16,29 +16,26 @@ import java.util.*;
 public class DefaultDemandPerDayCalculator implements DemandPerDayCalculator {
     private final Random rnd = new Random(1234L);
     private final int workingDays;
-    private final double sample;
     private final Map<String, List<String>> countZonesForWasteCollections;
     private final Map<String, List<String>> zonesWithWasteCollectionsOnThisDay;
     private static final Logger log = LogManager.getLogger(DefaultDemandPerDayCalculator.class);
 
 
-    public DefaultDemandPerDayCalculator(int workingDays, double sample) {
+    public DefaultDemandPerDayCalculator(int workingDays) {
         this.workingDays = workingDays;
-        this.sample = sample;
         this.countZonesForWasteCollections = new HashMap<>();
         this.zonesWithWasteCollectionsOnThisDay = new HashMap<>();
     }
 
 	/**
 	 * Calculate the kilograms per day.
-	 * //TODO also move sampling behind jsprit to get more realistic tours
 	 *
 	 * @param tonsPerYear the tons per year
 	 * @return the kilograms per day
 	 */
     @Override
     public int calculateKilogramsPerDay(double tonsPerYear) {
-        double kilogramsPerDay = this.sample * tonsPerYear * 1000 / ((double) this.workingDays);
+        double kilogramsPerDay = tonsPerYear * 1000 / ((double) this.workingDays);
         kilogramsPerDay = Math.floor(kilogramsPerDay + this.rnd.nextDouble());
         return (int) kilogramsPerDay;
     }
