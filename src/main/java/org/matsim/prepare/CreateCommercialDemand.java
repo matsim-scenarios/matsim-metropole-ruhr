@@ -11,7 +11,6 @@ import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.Extr
 import org.matsim.application.prepare.population.MergePopulations;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.ControllerConfigGroup;
 import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.*;
@@ -21,6 +20,7 @@ import org.matsim.core.scoring.ScoringFunctionFactory;
 import org.matsim.core.scoring.functions.VehicleTypeBasedScoringFunctionFactory;
 import org.matsim.prepare.commercial.*;
 import org.matsim.run.MetropoleRuhrScenario;
+import org.matsim.freight.carriers.splitter.CarrierSplitter;
 import org.matsim.simwrapper.SimWrapper;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
@@ -628,6 +628,24 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			throw new IllegalArgumentException("--maxJobsPerCarrier must be greater than or equal to 0.");
 		}
 	}
+
+	private void validateSmallScaleCommercialCarrierPartOptions() {
+		if (smallScaleCommercialCarrierPartCount < 1) {
+			throw new IllegalArgumentException("--smallScaleCommercialCarrierPartCount must be at least 1.");
+		}
+		if (smallScaleCommercialCarrierPartIndex < 0 || smallScaleCommercialCarrierPartIndex >= smallScaleCommercialCarrierPartCount) {
+			throw new IllegalArgumentException("--smallScaleCommercialCarrierPartIndex must be between 0 and --smallScaleCommercialCarrierPartCount - 1.");
+		}
+		if ((runPart == RunPart.smallScaleCommercialPersonCarrierMerge || runPart == RunPart.smallScaleCommercialGoodsCarrierMerge)
+			&& smallScaleCommercialCarrierPartCount == 1) {
+			throw new IllegalArgumentException("--smallScaleCommercialCarrierPartCount must be greater than 1 when merging small scale commercial carrier parts.");
+		}
+		if (smallScaleCommercialCarrierPartCount > 1
+			&& (runPart == RunPart.all || runPart == RunPart.smallScaleCommercial || runPart == RunPart.smallScaleCommercialMerge)) {
+			throw new IllegalArgumentException("Small scale commercial carrier parts must be run separately for commercialPersonTraffic and goodsTraffic.");
+		}
+	}
+
 	private List<String> createArgumentsForLTL(String freightDataName, String nameOutputPopulation, String selectedLTLGoodsType) {
 		List<String> argumentsForLTL = new ArrayList<>(List.of(
 			"--data", generatedInputDataPath.resolve(freightDataName).toString(),
@@ -653,6 +671,84 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			argumentsForLTL.add("--useRangeConstraintForLTL");
 		}
 		return argumentsForLTL;
+	}
+
+	private List<String> createArgumentsForSmallScaleCommercial(Path pathDataDistributionFile, Path pathCommercialFacilities, String shapeCRS,
+	                                                            String selectedSmallScaleCommercialTrafficType, String selectedOutputPathSmallScaleCommercial,
+	                                                            String selectedSmallScaleCommercialPopulationName, String selectedGenerationOption,
+	                                                            String selectedCarrierFile) {
+		List<String> args = new ArrayList<>(List.of(configPath.toString(),
+			"--pathToDataDistributionToZones", pathDataDistributionFile.toString(),
+			"--pathToCommercialFacilities", configPath.getParent().relativize(pathCommercialFacilities).toString(),
+			"--sample", String.valueOf(sample),
+			"--jspritIterations", String.valueOf(jspritIterationsForSmallScaleCommercial),
+			"--creationOption", selectedGenerationOption,
+			"--smallScaleCommercialTrafficType", selectedSmallScaleCommercialTrafficType,
+			"--zoneShapeFileName", osmDataLocation.resolve("zones_v2.0_25832.shp").toString(),
+			"--zoneShapeFileNameColumn", "schluessel",
+			"--shapeCRS", shapeCRS,
+			"--pathOutput", selectedOutputPathSmallScaleCommercial,
+			"--network", networkPath,
+			"--nameOutputPopulation", selectedSmallScaleCommercialPopulationName,
+			"--numberOfPlanVariantsPerAgent", "5",
+			"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
+			"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
+			"--maxNumberOfLoopsForVRPSolving", selectedGenerationOption.equals("useExistingCarrierFileWithSolution") ? "0" : "100",
+			"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
+			"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)));
+		if (MATSimIterationsKWM >= 0 && smallScaleCommercialCarrierPartCount == 1
+			&& !selectedGenerationOption.equals("useExistingCarrierFileWithSolution")) {
+			args.add("--MATSimIterationsAfterDemandGeneration");
+			args.add(String.valueOf(MATSimIterationsKWM));
+		}
+		if (selectedGenerationOption.equals("useExistingCarrierFileWithoutSolution") || selectedGenerationOption.equals("useExistingCarrierFileWithSolution")) {
+			args.add("--carrierFilePath");
+			Path carrierFilePath = selectedCarrierFile == null
+				? Path.of(selectedOutputPathSmallScaleCommercial).resolve(nameOfExistingCarriersSmallScaleCommercial)
+				: Path.of(selectedCarrierFile);
+			args.add(configPath.getParent().relativize(carrierFilePath).toString());
+		}
+		return args;
+	}
+
+	private void addCreateNewCarrierSpecificArguments(List<String> args, String selectedSmallScaleCommercialTrafficType) {
+		if (selectedSmallScaleCommercialTrafficType.equals("goodsTraffic")
+			|| selectedSmallScaleCommercialTrafficType.equals("completeSmallScaleCommercialTraffic")) {
+			args.add("--includeExistingModels");
+		}
+	}
+
+	private void addSmallScaleCommercialCarrierPartArguments(List<String> args) {
+		args.add("--smallScaleCommercialCarrierPartCount");
+		args.add(String.valueOf(smallScaleCommercialCarrierPartCount));
+		args.add("--smallScaleCommercialCarrierPartIndex");
+		args.add(String.valueOf(smallScaleCommercialCarrierPartIndex));
+	}
+
+	private List<String> createConfigArgumentsForSmallScaleCommercial() {
+		List<String> configArgs = new ArrayList<>(List.of("--config:vehicles.vehiclesFile", configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString()));
+		configArgs.add("--config:transit.useTransit");
+		configArgs.add("false");
+		configArgs.add("--config:routing.networkModes");
+		configArgs.add("truck8t,truck40t,truck18t,car,truck26t");
+		if (networkChangeEventsFile != null) {
+			configArgs.add("--config:network.inputChangeEventsFile");
+			configArgs.add(configPath.getParent().relativize(networkChangeEventsFile).toString());
+			configArgs.add("--config:network.timeVariantNetwork");
+			configArgs.add("true");
+		}
+		if (useRangeConstraintForJspritTourPlanning) {
+			configArgs.add("--useRangeConstraintForTourPlanning");
+		}
+		return configArgs;
+	}
+
+	private static IntegrateExistingTrafficToSmallScaleCommercial createIntegrationForSmallScaleCommercial(String selectedSmallScaleCommercialTrafficType,
+	                                                                                                       Path ltlPopulationPathForSmallScaleGoods) {
+		if (selectedSmallScaleCommercialTrafficType.equals("commercialPersonTraffic")) {
+			return null;
+		}
+		return new IntegrationOfExistingCommercialTrafficRuhr(ltlPopulationPathForSmallScaleGoods);
 	}
 
 	private static String getLtlGoodsTypeForInitOrMerge(RunPart runPart) {
