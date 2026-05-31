@@ -62,6 +62,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		ltlRest,
 		ltlWaste,
 		ltlParcel,
+		ltlRestInit,
+		ltlWasteInit,
+		ltlParcelInit,
+		ltlRestMerge,
 		ltlWasteMerge,
 		ltlParcelMerge,
 		ltlMerge,
@@ -174,6 +178,18 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--ltlCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent Waste/Parcel LTL carrier part to solve.")
 	private int ltlCarrierPartIndex;
 
+	@CommandLine.Option(names = "--maxJobsPerCarrier", defaultValue = "0", description = "Maximum number of jobs per LTL carrier after splitting. Values <= 0 disable carrier splitting.")
+	private int maxJobsPerCarrier;
+
+	@CommandLine.Option(names = "--carrierSplittingStrategy", defaultValue = "GREEDY", description = "Carrier splitting strategy for LTL carrier splitting: ${COMPLETION-CANDIDATES}.")
+	private CarrierSplitter.ClusteringStrategy carrierSplittingStrategy;
+
+	@CommandLine.Option(names = "--smallScaleCommercialCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for small scale commercial tour planning.")
+	private int smallScaleCommercialCarrierPartCount;
+
+	@CommandLine.Option(names = "--smallScaleCommercialCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent small scale commercial carrier part to solve.")
+	private int smallScaleCommercialCarrierPartIndex;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
 	}
@@ -251,6 +267,17 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
+		if (runPart == RunPart.ltlRestInit || runPart == RunPart.ltlWasteInit || runPart == RunPart.ltlParcelInit) {
+			String selectedLTLGoodsType = getLtlGoodsTypeForInitOrMerge(runPart);
+			log.info("3rd step init - create shared unsolved LTL {} carriers", selectedLTLGoodsType);
+			List<String> argumentsForLTL = createArgumentsForLTL(freightDataName,
+				getLtlPopulationNameForGoodsType(selectedLTLGoodsType, LTLFreightPopulationNameRest, LTLFreightPopulationNameWaste, LTLFreightPopulationNameParcel),
+				selectedLTLGoodsType);
+			argumentsForLTL.add("--createLtlCarrierFileOnly");
+			new GenerateLTLFreightPlansRuhr().execute(argumentsForLTL.toArray(new String[0]));
+			return 0;
+		}
+
 		if (runPart == RunPart.all || runPart == RunPart.ltl || runPart == RunPart.ltlRest || runPart == RunPart.ltlWaste || runPart == RunPart.ltlParcel) {
 			log.info("3rd step - create LTL freight plans from generated data");
 			String nameOutputPopulation = LTLFreightPopulationName;
@@ -266,27 +293,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				nameOutputPopulation = LTLFreightPopulationNameParcel;
 				selectedLTLGoodsType = "PARCEL";
 			}
-			List<String> argumentsForLTL = new ArrayList<>(List.of(
-				"--data", generatedInputDataPath.resolve(freightDataName).toString(),
-				"--network", configPath.getParent().resolve(networkPath).toString(),
-				"--output", output.toString(),
-				"--nameOutputPopulation", nameOutputPopulation,
-				"--working-days", "260",
-				"--sample", String.valueOf(sample),
-				"--vehicleTypesFilePath", vehicleTypesFilePath,
-				"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL)
-			));
-			if (selectedLTLGoodsType != null) {
-				argumentsForLTL.add("--LTL-goods-type");
-				argumentsForLTL.add(selectedLTLGoodsType);
-			}
-			if (networkChangeEventsFile != null) {
-				argumentsForLTL.add("--networkChangeEvents");
-				argumentsForLTL.add(networkChangeEventsFile.toString());
-			}
-			if (useRangeConstraintForJspritTourPlanning) {
-				argumentsForLTL.add("--useRangeConstraintForLTL");
-			}
+			List<String> argumentsForLTL = createArgumentsForLTL(freightDataName, nameOutputPopulation, selectedLTLGoodsType);
 			if (ltlCarrierPartCount > 1) {
 				argumentsForLTL.add("--ltlCarrierPartCount");
 				argumentsForLTL.add(String.valueOf(ltlCarrierPartCount));
@@ -304,10 +311,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 
-		if (runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) {
-			log.info("3a step - merge LTL {} carrier parts", runPart == RunPart.ltlWasteMerge ? "WASTE" : "PARCEL");
-			String outputPopulation = runPart == RunPart.ltlWasteMerge ? LTLFreightPopulationNameWaste : LTLFreightPopulationNameParcel;
-			String ltlGoodsType = runPart == RunPart.ltlWasteMerge ? "WASTE" : "PARCEL";
+		if (runPart == RunPart.ltlRestMerge || runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) {
+			String ltlGoodsType = getLtlGoodsTypeForInitOrMerge(runPart);
+			log.info("3a step - merge LTL {} carrier parts", ltlGoodsType);
+			String outputPopulation = getLtlPopulationNameForGoodsType(ltlGoodsType, LTLFreightPopulationNameRest, LTLFreightPopulationNameWaste, LTLFreightPopulationNameParcel);
 			List<String> mergeCarrierArguments = new ArrayList<>(List.of(
 				"--carrierParts", generatedInputDataPath.resolve("carriersLTL_parts").toString(),
 				"--carrierOutput", generatedInputDataPath.resolve("carriersLTL").toString(),
@@ -614,9 +621,56 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		if (ltlCarrierPartIndex < 0 || ltlCarrierPartIndex >= ltlCarrierPartCount) {
 			throw new IllegalArgumentException("--ltlCarrierPartIndex must be between 0 and --ltlCarrierPartCount - 1.");
 		}
-		if ((runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) && ltlCarrierPartCount == 1) {
+		if ((runPart == RunPart.ltlRestMerge || runPart == RunPart.ltlWasteMerge || runPart == RunPart.ltlParcelMerge) && ltlCarrierPartCount == 1) {
 			throw new IllegalArgumentException("--ltlCarrierPartCount must be greater than 1 when merging LTL carrier parts.");
 		}
+		if (maxJobsPerCarrier < 0) {
+			throw new IllegalArgumentException("--maxJobsPerCarrier must be greater than or equal to 0.");
+		}
+	}
+	private List<String> createArgumentsForLTL(String freightDataName, String nameOutputPopulation, String selectedLTLGoodsType) {
+		List<String> argumentsForLTL = new ArrayList<>(List.of(
+			"--data", generatedInputDataPath.resolve(freightDataName).toString(),
+			"--network", configPath.getParent().resolve(networkPath).toString(),
+			"--output", output.toString(),
+			"--nameOutputPopulation", nameOutputPopulation,
+			"--working-days", "260",
+			"--sample", String.valueOf(sample),
+			"--vehicleTypesFilePath", vehicleTypesFilePath,
+			"--jsprit-iterations-for-LTL", String.valueOf(jspritIterationsForLTL),
+			"--maxJobsPerCarrier", String.valueOf(maxJobsPerCarrier),
+			"--carrierSplittingStrategy", carrierSplittingStrategy.toString()
+		));
+		if (selectedLTLGoodsType != null) {
+			argumentsForLTL.add("--LTL-goods-type");
+			argumentsForLTL.add(selectedLTLGoodsType);
+		}
+		if (networkChangeEventsFile != null) {
+			argumentsForLTL.add("--networkChangeEvents");
+			argumentsForLTL.add(networkChangeEventsFile.toString());
+		}
+		if (useRangeConstraintForJspritTourPlanning) {
+			argumentsForLTL.add("--useRangeConstraintForLTL");
+		}
+		return argumentsForLTL;
+	}
+
+	private static String getLtlGoodsTypeForInitOrMerge(RunPart runPart) {
+		return switch (runPart) {
+			case ltlRestInit, ltlRestMerge -> "REST";
+			case ltlWasteInit, ltlWasteMerge -> "WASTE";
+			case ltlParcelInit, ltlParcelMerge -> "PARCEL";
+			default -> throw new IllegalArgumentException("Unsupported LTL init or merge run part: " + runPart);
+		};
+	}
+
+	private static String getLtlPopulationNameForGoodsType(String ltlGoodsType, String restPopulationName, String wastePopulationName, String parcelPopulationName) {
+		return switch (ltlGoodsType) {
+			case "REST" -> restPopulationName;
+			case "WASTE" -> wastePopulationName;
+			case "PARCEL" -> parcelPopulationName;
+			default -> throw new IllegalArgumentException("Unsupported LTL goods type: " + ltlGoodsType);
+		};
 	}
 
 }

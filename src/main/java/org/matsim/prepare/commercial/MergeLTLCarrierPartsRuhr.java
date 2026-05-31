@@ -25,7 +25,7 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	private static final Logger log = LogManager.getLogger(MergeLTLCarrierPartsRuhr.class);
 
 	private enum LTL_GoodsType {
-		WASTE, PARCEL
+		REST, WASTE, PARCEL
 	}
 
 	@CommandLine.Option(names = "--carrierParts", description = "Folder containing the solved LTL carrier part files.", required = true)
@@ -46,7 +46,7 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--nameOutputPopulation", description = "Name of the output population file.", required = true)
 	private String nameOutputPopulation;
 
-	@CommandLine.Option(names = "--LTL-goods-type", description = "LTL goods type to merge: WASTE or PARCEL.", required = true)
+	@CommandLine.Option(names = "--LTL-goods-type", description = "LTL goods type to merge: REST, WASTE or PARCEL.", required = true)
 	private LTL_GoodsType selectedLTLGoodsType;
 
 	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts to merge.")
@@ -181,6 +181,7 @@ public class MergeLTLCarrierPartsRuhr implements MATSimAppCommand {
 	 */
 	private static String getCarrierGoodsTypeName(LTL_GoodsType goodsType) {
 		return switch (goodsType) {
+			case REST -> "Rest";
 			case WASTE -> "Waste";
 			case PARCEL -> "Parcel";
 		};

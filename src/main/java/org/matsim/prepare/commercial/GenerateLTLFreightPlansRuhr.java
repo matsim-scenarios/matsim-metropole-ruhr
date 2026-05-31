@@ -14,13 +14,9 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.io.IOUtils;
-import org.matsim.freight.carriers.CarrierVehicleTypeReader;
-import org.matsim.freight.carriers.CarrierVehicleTypes;
-import org.matsim.freight.carriers.Carrier;
-import org.matsim.freight.carriers.Carriers;
-import org.matsim.freight.carriers.CarriersUtils;
-import org.matsim.freight.carriers.FreightCarriersConfigGroup;
+import org.matsim.freight.carriers.*;
 import org.matsim.freight.carriers.analysis.CarriersAnalysis;
+import org.matsim.freight.carriers.splitter.CarrierSplitter;
 import org.matsim.vehicles.VehicleType;
 import picocli.CommandLine;
 
@@ -28,10 +24,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -85,6 +78,15 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--ltlCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent carrier part to solve.")
 	private int ltlCarrierPartIndex;
 
+	@CommandLine.Option(names = "--createLtlCarrierFileOnly", description = "Create the shared unsolved LTL carrier file and stop before tour planning.")
+	private boolean createLtlCarrierFileOnly;
+
+	@CommandLine.Option(names = "--maxJobsPerCarrier", defaultValue = "0", description = "Maximum number of jobs per LTL carrier after splitting. Values <= 0 disable carrier splitting.")
+	private int maxJobsPerCarrier;
+
+	@CommandLine.Option(names = "--carrierSplittingStrategy", defaultValue = "GREEDY", description = "Carrier splitting strategy: ${COMPLETION-CANDIDATES}.")
+	private CarrierSplitter.ClusteringStrategy carrierSplittingStrategy;
+
 	@Override
 	public Integer call() throws Exception {
 		validateLtlCarrierPartOptions();
@@ -102,6 +104,11 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		Population outputPopulation = PopulationUtils.createPopulation(ConfigUtils.createConfig());
 
 		createPlansForLTLTrips(inputFreightDemandData, freightAgentGeneratorLTL, outputPopulation, jspritIterationsForLTL);
+
+		if (createLtlCarrierFileOnly) {
+			log.info("Created shared LTL carrier file without solution. Skipping jsprit and population generation.");
+			return 0;
+		}
 
 		if (isSolvingOnlyCarrierPart()) {
 			log.info("Solved LTL carrier part {}/{}. Population and carrier analysis will be created by the merge step.",
@@ -186,9 +193,6 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		Path carrierVRPFileLTL_Parcel = outputFolderCarriers.resolve("output_LTL_Parcel_carriersNoSolution.xml.gz");
 		Path carrierVRPFile_Rest_Parcel = outputFolderCarriers.resolve("output_LTL_Parcel_carriersWithSolution.xml.gz");
 
-		Path carrierFile_noSolution;
-		Path carrierFile_withSolution;
-
 		for (LTL_GoodsType LTLGoodsType : LTL_GoodsType.values()) {
 			Path finalCarrierFile_noSolution = switch (LTLGoodsType) {
 				case REST -> carrierVRPFileLTL_Rest;
@@ -216,11 +220,17 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 			// Only after the final-file check do we switch to part-specific files, otherwise part runs would
 			// ignore an existing final solution and solve the same goods type again.
-			carrierFile_noSolution = getCarrierFileForCurrentPart(finalCarrierFile_noSolution, outputFolderCarrierParts);
-			carrierFile_withSolution = getCarrierFileForCurrentPart(finalCarrierFile_withSolution, outputFolderCarrierParts);
+			Path carrierFile_noSolution = getCarrierFileForCurrentPart(finalCarrierFile_noSolution, outputFolderCarrierParts);
+			Path carrierFile_withSolution = getCarrierFileForCurrentPart(finalCarrierFile_withSolution, outputFolderCarrierParts);
 
 			Scenario scenario;
 			Path carrierAnalysisOutputPath = getCarrierAnalysisOutputPath(outputFolderCarriers, LTLGoodsType);
+
+			if (createLtlCarrierFileOnly) {
+				loadOrCreateSharedCarrierFileWithoutSolution(inputFreightDemandData, freightAgentGeneratorLTL,
+					jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution);
+				continue;
+			}
 
 			if (Files.exists(carrierFile_withSolution)) {
 				log.warn("Using existing carrier VRP file with solution: {}", carrierFile_withSolution);
@@ -236,18 +246,12 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 					CarriersUtils.loadCarriersAccordingToFreightConfig(scenario);
 
 				} else {
-					scenario = ScenarioUtils.loadScenario(config);
-
-					log.info("Read carrier vehicle types");
-					CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getOrAddCarrierVehicleTypes(scenario);
-					new CarrierVehicleTypeReader(carrierVehicleTypes).readURL(
-						IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
-					switch (LTLGoodsType) {
-						case REST -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL,
-							Integer.MIN_VALUE);
-						case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
-						case PARCEL -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 150);
-					};
+					if (isSolvingOnlyCarrierPart() && !Files.exists(finalCarrierFile_noSolution)) {
+						throw new IllegalStateException("Missing shared LTL carrier file without solution: " + finalCarrierFile_noSolution
+							+ ". Run the matching init job before starting carrier part jobs.");
+					}
+					scenario = loadOrCreateSharedCarrierFileWithoutSolution(inputFreightDemandData, freightAgentGeneratorLTL,
+						jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution);
 					filterCarriersForSelectedPart(scenario);
 					CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_noSolution.toString());
 				}
@@ -268,6 +272,62 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	}
 
 	/**
+	 * Loads or creates the shared unsolved carrier file before part-specific filtering is applied.
+	 * This keeps all carrier part runs based on the same carrier input and avoids relying on repeated
+	 * demand generation to reproduce the same full carrier set.
+	 */
+	private Scenario loadOrCreateSharedCarrierFileWithoutSolution(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL, int jspritIterationsForLTL, Config config,
+	                                                              FreightCarriersConfigGroup freightCarriersConfigGroup, LTL_GoodsType LTLGoodsType, Path finalCarrierFile_noSolution) {
+		if (Files.exists(finalCarrierFile_noSolution)) {
+			log.warn("Using shared carrier VRP file without solution: {}", finalCarrierFile_noSolution);
+			freightCarriersConfigGroup.setCarriersFile(finalCarrierFile_noSolution.toString());
+			Scenario scenario = ScenarioUtils.loadScenario(config);
+			CarriersUtils.loadCarriersAccordingToFreightConfig(scenario);
+			return scenario;
+		}
+
+		Scenario scenario = ScenarioUtils.loadScenario(config);
+
+		log.info("Read carrier vehicle types");
+		CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getOrAddCarrierVehicleTypes(scenario);
+		new CarrierVehicleTypeReader(carrierVehicleTypes).readURL(
+			IOUtils.extendUrl(scenario.getConfig().getContext(), freightCarriersConfigGroup.getCarriersVehicleTypesFile()));
+		switch (LTLGoodsType) {
+			case REST -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL,
+				Integer.MIN_VALUE);
+			case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
+			case PARCEL -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 150);
+		};
+		splitCarriersByMaxJobs(scenario, LTLGoodsType);
+		CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), finalCarrierFile_noSolution.toString());
+		return scenario;
+	}
+
+	/**
+	 * Splits large carriers into deterministic chunks with at most {@code maxJobsPerCarrier} shipments.
+	 * The algorithm is intentionally isolated so it can be replaced by the freight contrib implementation
+	 * once the desired splitting algorithm is selected.
+	 */
+	private void splitCarriersByMaxJobs(Scenario scenario, LTL_GoodsType ltlGoodsType) {
+		if (maxJobsPerCarrier <= 0) {
+			return;
+		}
+
+		CarrierSplitter.ShipmentClusteringLocation shipmentClusteringLocation = getShipmentClusteringLocation(ltlGoodsType);
+		CarriersUtils.splitCarriers(scenario, carrierSplittingStrategy, shipmentClusteringLocation, maxJobsPerCarrier);
+		Carriers carriers = CarriersUtils.addOrGetCarriers(scenario);
+		log.info("Split LTL carriers with strategy={}, shipmentClusteringLocation={}, maxJobsPerCarrier={}. Resulting carriers: {}",
+			carrierSplittingStrategy, shipmentClusteringLocation, maxJobsPerCarrier, carriers.getCarriers().size());
+	}
+
+	private static CarrierSplitter.ShipmentClusteringLocation getShipmentClusteringLocation(LTL_GoodsType ltlGoodsType) {
+		return switch (ltlGoodsType) {
+			case WASTE -> CarrierSplitter.ShipmentClusteringLocation.PICKUP;
+			case REST, PARCEL -> CarrierSplitter.ShipmentClusteringLocation.DELIVERY;
+		};
+	}
+
+	/**
 	 * Checks whether this run solves only one carrier part instead of a complete LTL goods type.
 	 *
 	 * @return {@code true} if this run is a carrier part run
@@ -285,6 +345,9 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		}
 		if (ltlCarrierPartIndex < 0 || ltlCarrierPartIndex >= ltlCarrierPartCount) {
 			throw new IllegalArgumentException("--ltlCarrierPartIndex must be between 0 and --ltlCarrierPartCount - 1.");
+		}
+		if (maxJobsPerCarrier < 0) {
+			throw new IllegalArgumentException("--maxJobsPerCarrier must be greater than or equal to 0.");
 		}
 	}
 

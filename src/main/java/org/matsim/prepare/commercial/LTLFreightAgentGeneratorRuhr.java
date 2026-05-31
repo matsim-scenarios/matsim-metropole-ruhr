@@ -217,10 +217,9 @@ public class LTLFreightAgentGeneratorRuhr {
 
         // waste collection, assuming that the collection teams have service areas based on the vpp2040 cells -> per collection cell a separate carrier
         if (goodsType == 140) {
-            String collectionZone = CommercialTrafficUtils.getOriginCell(freightDemandDataRelation);
-            return Id.create(
-                    "WasteCollection_Zone_" + collectionZone + "_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
-                    Carrier.class);
+			return Id.create(
+				"WasteCollection_depot_" + CommercialTrafficUtils.getDestinationLocationId(freightDemandDataRelation),
+				Carrier.class);
         }
         // parcel delivery, assuming that the delivery teams have service areas based on the vpp2040 cells -> per delivery cell a separate carrier
         if (goodsType == 150) {
@@ -231,8 +230,8 @@ public class LTLFreightAgentGeneratorRuhr {
             if (demandPerDayCalculator.calculateParcelsPerDay(CommercialTrafficUtils.getParcelsPerYear(freightDemandDataRelation)) >= 200)
                 return Id.create(key + "_truck18t", Carrier.class);
             else
-                return Id.create(key + "_zone_" + deliveryZone, Carrier.class);
-        }
+				return Id.create(key , Carrier.class);
+		}
         return Id.create("GoodsType_" + goodsType + "_facility_" + CommercialTrafficUtils.getOriginLocationId(freightDemandDataRelation),
                 Carrier.class);
     }
