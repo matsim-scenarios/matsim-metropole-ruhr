@@ -125,9 +125,6 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
 	private Path networkForLongDistanceFreight;
 
-	@CommandLine.Option(names = "--cutFreightTransitAtBoundary", description = "Cut freight transit at boundary")
-	private boolean cutFreightTransitAtBoundary;
-
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
@@ -198,9 +195,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 				argumentsForFreightTransitTraffic.add("ALL");
 				argumentsForFreightTransitTraffic.add("--legMode");
 				argumentsForFreightTransitTraffic.add("truck40t");
-				if (cutFreightTransitAtBoundary) {
-					argumentsForFreightTransitTraffic.add("--cut-on-boundary");
-				}
+				argumentsForFreightTransitTraffic.add("--cut-on-boundary");
 
 				new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
 
