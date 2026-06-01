@@ -228,7 +228,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 
 			if (createLtlCarrierFileOnly) {
 				loadOrCreateSharedCarrierFileWithoutSolution(inputFreightDemandData, freightAgentGeneratorLTL,
-					jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution);
+					jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution, carrierAnalysisOutputPath);
 				continue;
 			}
 
@@ -251,7 +251,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 							+ ". Run the matching init job before starting carrier part jobs.");
 					}
 					scenario = loadOrCreateSharedCarrierFileWithoutSolution(inputFreightDemandData, freightAgentGeneratorLTL,
-						jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution);
+						jspritIterationsForLTL, config, freightCarriersConfigGroup, LTLGoodsType, finalCarrierFile_noSolution, carrierAnalysisOutputPath);
 					filterCarriersForSelectedPart(scenario);
 					CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), carrierFile_noSolution.toString());
 				}
@@ -277,7 +277,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	 * demand generation to reproduce the same full carrier set.
 	 */
 	private Scenario loadOrCreateSharedCarrierFileWithoutSolution(Population inputFreightDemandData, LTLFreightAgentGeneratorRuhr freightAgentGeneratorLTL, int jspritIterationsForLTL, Config config,
-	                                                              FreightCarriersConfigGroup freightCarriersConfigGroup, LTL_GoodsType LTLGoodsType, Path finalCarrierFile_noSolution) {
+	                                                              FreightCarriersConfigGroup freightCarriersConfigGroup, LTL_GoodsType LTLGoodsType, Path finalCarrierFile_noSolution,
+	                                                              Path carrierAnalysisOutputPath) {
 		if (Files.exists(finalCarrierFile_noSolution)) {
 			log.warn("Using shared carrier VRP file without solution: {}", finalCarrierFile_noSolution);
 			freightCarriersConfigGroup.setCarriersFile(finalCarrierFile_noSolution.toString());
@@ -298,6 +299,7 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 			case WASTE -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 140);
 			case PARCEL -> freightAgentGeneratorLTL.createCarriersForLTL(inputFreightDemandData, scenario, jspritIterationsForLTL, 150);
 		};
+		scenario.getConfig().controller().setOutputDirectory(carrierAnalysisOutputPath.toString());
 		splitCarriersByMaxJobs(scenario, LTLGoodsType);
 		CarriersUtils.writeCarriers(CarriersUtils.addOrGetCarriers(scenario), finalCarrierFile_noSolution.toString());
 		return scenario;
