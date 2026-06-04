@@ -8,6 +8,7 @@ import org.matsim.core.population.PopulationUtils;
 import org.matsim.freight.carriers.CarrierCapabilities;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,9 +44,9 @@ class CommercialVehicleSelectorRuhrTest {
 	void testGetVehicleTypeForPlan() {
 		assertEquals("heavy40t", selector.getVehicleTypeForPlan(freightDemandDataRelationFTL, ""));
 		assertEquals("waste_collection_diesel", selector.getVehicleTypeForPlan(freightDemandDataRelationWaste, ""));
-		assertEquals("mercedes313_parcel", selector.getVehicleTypeForPlan(freightDemandDataRelationParcel, ""));
-		assertEquals("medium18t_parcel", selector.getVehicleTypeForPlan(freightDemandDataRelationParcelTruck18t, "parcel_truck18t"));
-		assertEquals("medium18t", selector.getVehicleTypeForPlan(freightDemandDataRelationRest, ""));
+		assertTrue(Set.of("mercedes316", "mercedesESprinter").contains(selector.getVehicleTypeForPlan(freightDemandDataRelationParcel, "")));
+		assertTrue(Set.of("medium18t_parcel", "medium18t_parcel_EV").contains(selector.getVehicleTypeForPlan(freightDemandDataRelationParcelTruck18t, "parcel_truck18t")));
+		assertTrue(Set.of("medium18t", "medium18t_EV").contains(selector.getVehicleTypeForPlan(freightDemandDataRelationRest, "")));
 	}
 
 	@Test
@@ -59,38 +60,43 @@ class CommercialVehicleSelectorRuhrTest {
 		assertTrue(vehicleTypesFTL.contains("heavy40t"));
 
 		List<String> vehicleTypesWaste = selector.getPossibleVehicleTypes(freightDemandDataRelationWaste, "", CarrierCapabilities.FleetSize.INFINITE);
-		assertEquals(1, vehicleTypesWaste.size());
+		assertEquals(3, vehicleTypesWaste.size());
 		assertTrue(vehicleTypesWaste.contains("waste_collection_diesel"));
+		assertTrue(vehicleTypesWaste.contains("waste_collection_EV1"));
+		assertTrue(vehicleTypesWaste.contains("waste_collection_EV2"));
 
 		vehicleTypesWaste = selector.getPossibleVehicleTypes(freightDemandDataRelationWaste, "", CarrierCapabilities.FleetSize.FINITE);
 		assertEquals(1, vehicleTypesWaste.size());
-		assertTrue(vehicleTypesWaste.contains("waste_collection_diesel"));
+		assertTrue(Set.of("waste_collection_diesel", "waste_collection_EV1", "waste_collection_EV2").contains(vehicleTypesWaste.getFirst()));
 
 		List<String> vehicleTypesParcel = selector.getPossibleVehicleTypes(freightDemandDataRelationParcel, "", CarrierCapabilities.FleetSize.INFINITE);
-		assertEquals(1, vehicleTypesParcel.size());
-		assertTrue(vehicleTypesParcel.contains("mercedes313_parcel"));
+		assertEquals(2, vehicleTypesParcel.size());
+		assertTrue(vehicleTypesParcel.contains("mercedes316"));
+		assertTrue(vehicleTypesParcel.contains("mercedesESprinter"));
 
 		vehicleTypesParcel = selector.getPossibleVehicleTypes(freightDemandDataRelationParcel, "", CarrierCapabilities.FleetSize.FINITE);
 		assertEquals(1, vehicleTypesParcel.size());
-		assertTrue(vehicleTypesParcel.contains("mercedes313_parcel"));
+		assertTrue(Set.of("mercedes316", "mercedesESprinter").contains(vehicleTypesParcel.getFirst()));
 
 		List<String> vehicleTypesParcelTruck18t = selector.getPossibleVehicleTypes(freightDemandDataRelationParcelTruck18t, "_truck18t",
 			CarrierCapabilities.FleetSize.INFINITE);
-		assertEquals(1, vehicleTypesParcelTruck18t.size());
+		assertEquals(2, vehicleTypesParcelTruck18t.size());
 		assertTrue(vehicleTypesParcelTruck18t.contains("medium18t_parcel"));
+		assertTrue(vehicleTypesParcelTruck18t.contains("medium18t_parcel_EV"));
 
 		vehicleTypesParcelTruck18t = selector.getPossibleVehicleTypes(freightDemandDataRelationParcelTruck18t, "_truck18t",
 			CarrierCapabilities.FleetSize.FINITE);
 		assertEquals(1, vehicleTypesParcelTruck18t.size());
-		assertTrue(vehicleTypesParcelTruck18t.contains("medium18t_parcel"));
+		assertTrue(Set.of("medium18t_parcel", "medium18t_parcel_EV").contains(vehicleTypesParcelTruck18t.getFirst()));
 
 		List<String> vehicleTypesRest = selector.getPossibleVehicleTypes(freightDemandDataRelationRest, "", CarrierCapabilities.FleetSize.INFINITE);
-		assertEquals(1, vehicleTypesRest.size());
+		assertEquals(2, vehicleTypesRest.size());
 		assertTrue(vehicleTypesRest.contains("medium18t"));
+		assertTrue(vehicleTypesRest.contains("medium18t_EV"));
 
 		vehicleTypesRest = selector.getPossibleVehicleTypes(freightDemandDataRelationRest, "", CarrierCapabilities.FleetSize.FINITE);
 		assertEquals(1, vehicleTypesRest.size());
-		assertTrue(vehicleTypesRest.contains("medium18t"));
+		assertTrue(Set.of("medium18t", "medium18t_EV").contains(vehicleTypesRest.getFirst()));
 	}
 
 	@Test
