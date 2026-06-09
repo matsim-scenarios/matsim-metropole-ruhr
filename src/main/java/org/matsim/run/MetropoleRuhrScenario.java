@@ -157,11 +157,14 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	public static void prepareCommercialTrafficReplanningAndScoringParams(Scenario scenario) {
 
 		Set<String> modes = Set.of("car","truck8t", "truck18t", "truck26t", "truck40t");
-		Set<String> subpopulations = Set.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
+		Set<String> knownCommercialSubpopulations = Set.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
 			"FTL_trip", "FTL_kv_trip", "goodsTraffic");
 
+		Set<String> subpopulations = PopulationUtils.getSubpopulationsOfPopulation(scenario.getPopulation());
 		Config config = scenario.getConfig();
 		subpopulations.forEach(subpopulation -> {
+			if (!knownCommercialSubpopulations.contains(subpopulation))
+				return;
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta).setWeight(
 					0.85).setSubpopulation(subpopulation));
