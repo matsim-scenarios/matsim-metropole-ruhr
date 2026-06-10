@@ -714,8 +714,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			"--maxNumberOfLoopsForVRPSolving", selectedGenerationOption.equals("useExistingCarrierFileWithSolution") ? "0" : "100",
 			"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
 			"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)));
-		if (MATSimIterationsKWM >= 0 && smallScaleCommercialCarrierPartCount == 1
-			&& !selectedGenerationOption.equals("useExistingCarrierFileWithSolution")) {
+		if (shouldRunKwmMatsimAfterDemandGeneration(selectedGenerationOption)) {
 			args.add("--MATSimIterationsAfterDemandGeneration");
 			args.add(String.valueOf(MATSimIterationsKWM));
 		}
@@ -734,6 +733,15 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			}
 		}
 		return args;
+	}
+
+	private boolean shouldRunKwmMatsimAfterDemandGeneration(String selectedGenerationOption) {
+		boolean isSmallScaleCommercialCarrierMergeRun = runPart == RunPart.smallScaleCommercialPersonCarrierMerge
+			|| runPart == RunPart.smallScaleCommercialGoodsCarrierMerge;
+
+		return MATSimIterationsKWM >= 0
+			&& (isSmallScaleCommercialCarrierMergeRun
+			|| (smallScaleCommercialCarrierPartCount == 1 && !selectedGenerationOption.equals("useExistingCarrierFileWithSolution")));
 	}
 
 	private void addCreateNewCarrierSpecificArguments(List<String> args, String selectedSmallScaleCommercialTrafficType) {
