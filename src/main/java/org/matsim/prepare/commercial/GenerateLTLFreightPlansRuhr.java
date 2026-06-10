@@ -72,8 +72,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 	@CommandLine.Option(names = "--useRangeConstraintForLTL", description = "Option to use range constraint for LTL tours. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
 	private boolean useRangeConstraintForLTL;
 
-	@CommandLine.Option(names = "--distanceConstraintSafetyMargin", defaultValue = "0", description = "Safety margin in percent applied to the vehicle range for LTL tour planning. Must be in [0, 100).")
-	private double distanceConstraintSafetyMargin;
+	@CommandLine.Option(names = "--distanceConstraintUsableRange", defaultValue = "100", description = "Usable vehicle range in percent for LTL tour planning. Must be in (0, 100].")
+	private double distanceConstraintUsableRange;
 
 	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for LTL tour planning. Use with --ltlCarrierPartIndex.")
 	private int ltlCarrierPartCount;
@@ -173,9 +173,9 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		freightCarriersConfigGroup.setCarriersVehicleTypesFile(vehicleTypesFilePath);
 		if (useRangeConstraintForLTL) {
 			freightCarriersConfigGroup.setUseDistanceConstraintForTourPlanning(FreightCarriersConfigGroup.UseDistanceConstraintForTourPlanning.basedOnEnergyConsumption);
-			freightCarriersConfigGroup.setDistanceConstraintSafetyMargin(distanceConstraintSafetyMargin);
-			log.info("Using range constraint for LTL tours based on consumption information in the vehicle types file with {} percent safety margin.",
-				distanceConstraintSafetyMargin);
+			freightCarriersConfigGroup.setDistanceConstraintUsableRange(distanceConstraintUsableRange);
+			log.info("Using range constraint for LTL tours based on consumption information in the vehicle types file with {} percent usable range.",
+				distanceConstraintUsableRange);
 		}
 		if (networkChangeEventsPath != null) {
 			config.network().setChangeEventsInputFile(networkChangeEventsPath.toString());
@@ -356,8 +356,8 @@ public class GenerateLTLFreightPlansRuhr implements MATSimAppCommand {
 		if (maxJobsPerCarrier < 0) {
 			throw new IllegalArgumentException("--maxJobsPerCarrier must be greater than or equal to 0.");
 		}
-		if (!Double.isFinite(distanceConstraintSafetyMargin) || distanceConstraintSafetyMargin < 0. || distanceConstraintSafetyMargin >= 100.) {
-			throw new IllegalArgumentException("--distanceConstraintSafetyMargin must be in the range [0, 100).");
+		if (!Double.isFinite(distanceConstraintUsableRange) || distanceConstraintUsableRange <= 0. || distanceConstraintUsableRange > 100.) {
+			throw new IllegalArgumentException("--distanceConstraintUsableRange must be in the range (0, 100].");
 		}
 	}
 

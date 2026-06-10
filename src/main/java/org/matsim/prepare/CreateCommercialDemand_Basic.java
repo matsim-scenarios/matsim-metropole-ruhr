@@ -144,8 +144,8 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--useRangeConstraintForJspritTourPlanning", description = "Option to use range constraint for jsprit tour planning. If this is selected, the range is restricted based on consumption information in the vehicle types file.")
 	private boolean useRangeConstraintForJspritTourPlanning;
 
-	@CommandLine.Option(names = "--distanceConstraintSafetyMargin", defaultValue = "0", description = "Safety margin in percent applied to the vehicle range during small scale commercial tour planning. Must be in [0, 100).")
-	private double distanceConstraintSafetyMargin;
+	@CommandLine.Option(names = "--distanceConstraintUsableRange", defaultValue = "100", description = "Usable vehicle range in percent during small scale commercial tour planning. Must be in (0, 100].")
+	private double distanceConstraintUsableRange;
 
 	@CommandLine.Option(names = "--smallScaleCommercialCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for small scale commercial tour planning.")
 	private int smallScaleCommercialCarrierPartCount;
@@ -165,10 +165,10 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 		}
 
 		validateSmallScaleCommercialCarrierPartOptions();
-		validateDistanceConstraintSafetyMargin();
-		if (distanceConstraintSafetyMargin > 0. && !useRangeConstraintForJspritTourPlanning) {
-			log.warn("--distanceConstraintSafetyMargin is set to {}, but --useRangeConstraintForJspritTourPlanning is disabled.",
-				distanceConstraintSafetyMargin);
+		validateDistanceConstraintUsableRange();
+		if (distanceConstraintUsableRange < 100. && !useRangeConstraintForJspritTourPlanning) {
+			log.warn("--distanceConstraintUsableRange is set to {}, but --useRangeConstraintForJspritTourPlanning is disabled.",
+				distanceConstraintUsableRange);
 		}
 
 		if (!Files.exists(output)) {
@@ -496,9 +496,9 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 		}
 		if (useRangeConstraintForJspritTourPlanning) {
 			args.add("--useRangeConstraintForTourPlanning");
-			if (distanceConstraintSafetyMargin > 0) {
-				args.add("--distanceConstraintSafetyMargin");
-				args.add(String.valueOf(distanceConstraintSafetyMargin));
+			if (distanceConstraintUsableRange < 100.) {
+				args.add("--distanceConstraintUsableRange");
+				args.add(String.valueOf(distanceConstraintUsableRange));
 			}
 		}
 		return args;
@@ -526,9 +526,9 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 		return configArgs;
 	}
 
-	private void validateDistanceConstraintSafetyMargin() {
-		if (!Double.isFinite(distanceConstraintSafetyMargin) || distanceConstraintSafetyMargin < 0. || distanceConstraintSafetyMargin >= 100.) {
-			throw new IllegalArgumentException("--distanceConstraintSafetyMargin must be in the range [0, 100).");
+	private void validateDistanceConstraintUsableRange() {
+		if (!Double.isFinite(distanceConstraintUsableRange) || distanceConstraintUsableRange <= 0. || distanceConstraintUsableRange > 100.) {
+			throw new IllegalArgumentException("--distanceConstraintUsableRange must be in the range (0, 100].");
 		}
 	}
 
