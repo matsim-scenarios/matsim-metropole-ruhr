@@ -21,6 +21,7 @@ import org.matsim.core.scoring.functions.VehicleTypeBasedScoringFunctionFactory;
 import org.matsim.prepare.commercial.*;
 import org.matsim.run.MetropoleRuhrScenario;
 import org.matsim.freight.carriers.splitter.CarrierSplitter;
+import org.matsim.simwrapper.Dashboard;
 import org.matsim.simwrapper.SimWrapper;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
@@ -594,7 +595,11 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			sw.addDashboard(new CarrierDashboard("(*.)?output_carriers_solvedVRP.xml.gz"));
 			String subpopSetterForDashboards = "commercialPersonTraffic=commercialPersonTraffic,commercialPersonTraffic_service;smallScaleGoodsTraffic=goodsTraffic;LTL=LTL_trip;FTL=FTL_trip,FTL_kv_trip;longDistanceFreight=longDistanceFreight";
 			sw.addDashboard(new TripDashboard().setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards).setAnalysisArgs("--shp-filter", "none"));
-			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
+//			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
+			sw.addDashboard(Dashboard.customize(
+				new CommercialTrafficDashboard(config.global().getCoordinateSystem(), "commercialTourDurations_ref.csv",
+					"commercialTourDistances_ref.csv", "commercialActivityDurations_ref.csv").setGroupsOfSubpopulationsForCommercialAnalysis(
+					subpopSetterForDashboards)));
 			config.vehicles().setVehiclesFile(configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString());
 			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
 			config.scoring().setExplainScores(true);
