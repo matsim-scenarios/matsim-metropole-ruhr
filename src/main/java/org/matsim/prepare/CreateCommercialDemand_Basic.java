@@ -511,7 +511,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			"--numberOfPlanVariantsPerAgent", "5",
 			"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
 			"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
-			"--maxNumberOfLoopsForVRPSolving", selectedGenerationOption.equals("useExistingCarrierFileWithSolution") ? "0" : "100",
+			"--maxNumberOfLoopsForVRPSolving", selectedGenerationOption.equals("useExistingCarrierFileWithSolution") ? "0" : String.valueOf(maxNumberOfLoopsForVRPSolving),
 			"--resistanceFactor_commercialPersonTraffic", String.valueOf(resistanceFactorForKWM_commercialPersonTraffic),
 			"--resistanceFactor_goodsTraffic", String.valueOf(resistanceFactorForKWM_goodsTraffic)));
 		if (shouldRunKwmMatsimAfterDemandGeneration(selectedGenerationOption)) {
