@@ -537,6 +537,9 @@
 			</plugin>
 		</plugins>
 		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
 			<!-- git-changes.txt aus target ins JAR legen -->
 			<resource>
 				<directory>${project.build.directory}</directory>
