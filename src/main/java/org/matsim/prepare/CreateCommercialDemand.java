@@ -31,6 +31,7 @@ import org.matsim.simwrapper.dashboard.OverviewDashboard;
 import org.matsim.simwrapper.dashboard.TripDashboard;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.IntegrateExistingTrafficToSmallScaleCommercial;
+import org.matsim.smallScaleCommercialTrafficGeneration.RangeAwareUnhandledServicesSolution;
 import org.matsim.smallScaleCommercialTrafficGeneration.VehicleTypeSelection;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreator;
@@ -176,6 +177,12 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--distanceConstraintUsableRange", defaultValue = "100", description = "Usable vehicle range in percent during LTL and small scale commercial tour planning. Must be in (0, 100].")
 	private double distanceConstraintUsableRange;
+
+	@CommandLine.Option(names = "--smallScaleCommercialLongRangeVehicleRangeMultiplier", defaultValue = "2", description = "Range multiplier for high-cost small-scale commercial fallback vehicles that are added when unhandled services are outside the current electric vehicle range.")
+	private double smallScaleCommercialLongRangeVehicleRangeMultiplier;
+
+	@CommandLine.Option(names = "--smallScaleCommercialLongRangeVehicleFixedCostMultiplier", defaultValue = "10", description = "Fixed cost multiplier for high-cost small-scale commercial fallback vehicles.")
+	private double smallScaleCommercialLongRangeVehicleFixedCostMultiplier;
 
 	@CommandLine.Option(names = "--ltlCarrierPartCount", defaultValue = "1", description = "Number of independent carrier parts for Waste/Parcel LTL tour planning.")
 	private int ltlCarrierPartCount;
@@ -446,9 +453,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				smallScaleCommercialGenerationOption, null);
 			args.add("--createSmallScaleCommercialCarrierFileOnly");
 			addCreateNewCarrierSpecificArguments(args, selectedSmallScaleCommercialTrafficType);
-			new GenerateSmallScaleCommercialTrafficDemand(createConfigArgumentsForSmallScaleCommercial().toArray(new String[0]),
-				createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods),
-				null, null, vehicleTypeSelection, null).execute(args.toArray(new String[0]));
+			createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
+				ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
 			return 0;
 		}
 
@@ -487,10 +493,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				if (smallScaleCommercialCarrierPartCount == 1 && selectedGenerationOption.equals("createNewCarrierFile")) {
 					addCreateNewCarrierSpecificArguments(args, selectedSmallScaleCommercialTrafficType);
 				}
-				new GenerateSmallScaleCommercialTrafficDemand(createConfigArgumentsForSmallScaleCommercial().toArray(new String[0]),
-					createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods), null,
-					null, vehicleTypeSelection, null).execute(
-					args.toArray(new String[0]));
+				createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
+					ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
 
 				// TODO filter relevant agents for the small scale commercial traffic
 			}
@@ -510,9 +514,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			args.add("--mergeSmallScaleCommercialCarrierParts");
 			args.add("--smallScaleCommercialCarrierPartCount");
 			args.add(String.valueOf(smallScaleCommercialCarrierPartCount));
-			new GenerateSmallScaleCommercialTrafficDemand(createConfigArgumentsForSmallScaleCommercial().toArray(new String[0]),
-				createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods),
-				null, null, vehicleTypeSelection, null).execute(args.toArray(new String[0]));
+			createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
+				ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
 			return 0;
 		}
 
@@ -663,6 +666,29 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 	}
 
+	private GenerateSmallScaleCommercialTrafficDemand createSmallScaleCommercialTrafficDemand(
+		VehicleTypeSelection vehicleTypeSelection, String selectedSmallScaleCommercialTrafficType,
+		Path ltlPopulationPathForSmallScaleGoods) {
+		RangeAwareUnhandledServicesSolution unhandledServicesSolution = createRangeAwareUnhandledServicesSolution();
+		GenerateSmallScaleCommercialTrafficDemand generator = new GenerateSmallScaleCommercialTrafficDemand(
+			createConfigArgumentsForSmallScaleCommercial().toArray(new String[0]),
+			createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods),
+			null, null, vehicleTypeSelection, unhandledServicesSolution);
+		if (unhandledServicesSolution != null) {
+			unhandledServicesSolution.setGenerator(generator);
+		}
+		return generator;
+	}
+
+	private RangeAwareUnhandledServicesSolution createRangeAwareUnhandledServicesSolution() {
+		if (!useRangeConstraintForJspritTourPlanning) {
+			return null;
+		}
+		return new RangeAwareUnhandledServicesSolution(distanceConstraintUsableRange,
+			smallScaleCommercialLongRangeVehicleRangeMultiplier,
+			smallScaleCommercialLongRangeVehicleFixedCostMultiplier);
+	}
+
 	private List<String> createArgumentsForLTL(String freightDataName, String nameOutputPopulation, String selectedLTLGoodsType) {
 		List<String> argumentsForLTL = new ArrayList<>(List.of(
 			"--data", generatedInputDataPath.resolve(freightDataName).toString(),
@@ -776,6 +802,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	private void validateDistanceConstraintUsableRange() {
 		if (!Double.isFinite(distanceConstraintUsableRange) || distanceConstraintUsableRange <= 0. || distanceConstraintUsableRange > 100.) {
 			throw new IllegalArgumentException("--distanceConstraintUsableRange must be in the range (0, 100].");
+		}
+		if (!Double.isFinite(smallScaleCommercialLongRangeVehicleRangeMultiplier)
+			|| smallScaleCommercialLongRangeVehicleRangeMultiplier <= 1.) {
+			throw new IllegalArgumentException("--smallScaleCommercialLongRangeVehicleRangeMultiplier must be greater than 1.");
+		}
+		if (!Double.isFinite(smallScaleCommercialLongRangeVehicleFixedCostMultiplier)
+			|| smallScaleCommercialLongRangeVehicleFixedCostMultiplier < 1.) {
+			throw new IllegalArgumentException("--smallScaleCommercialLongRangeVehicleFixedCostMultiplier must be greater than or equal to 1.");
 		}
 	}
 
