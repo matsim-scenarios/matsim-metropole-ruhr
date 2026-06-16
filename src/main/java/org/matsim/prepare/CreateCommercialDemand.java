@@ -136,7 +136,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "60")
 	private int additionalTravelBufferPerIterationInMinutes;
 
-	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services. If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.2")
+	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services (for small-scale-commercial). If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.1")
 	private double factorForTravelBufferCalculation;
 
 	@CommandLine.Option(names = "--freightRawData", description = "Path to the freight raw data", required = true, defaultValue = "../shared-svn/projects/rvr-metropole-ruhr/data/commercialTraffic/buw/matrix_gesamt_V3.csv")
