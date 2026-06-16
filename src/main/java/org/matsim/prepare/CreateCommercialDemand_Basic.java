@@ -116,6 +116,9 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services (for small-scale-commercial). If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.1")
 	private double factorForTravelBufferCalculation;
 
+	@CommandLine.Option(names = "--maxNumberOfLoopsForVRPSolving", defaultValue = "5", description = "Maximum number of loops for VRP solving of the small acle commercial modell. If > 0, the VRP solving is repeated with additional vehicles added based on the factorForTravelBufferCalculation until either all carriers are solved or the maximum number of loops is reached.")
+	private int maxNumberOfLoopsForVRPSolving;
+
 	@CommandLine.Option(names = "--alsoRunCompleteCommercialTraffic", description = "Also run MATSim for the complete commercial traffic")
 	private boolean alsoRunCompleteCommercialTraffic;
 
