@@ -135,7 +135,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 //	}
 
 	public MetropoleRuhrScenario() {
-		super(ConfigUtils.loadConfig(CONFIG_PATH));
+		this.configPath = CONFIG_PATH;
 	}
 
 	/**
