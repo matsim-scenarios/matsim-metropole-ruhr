@@ -414,11 +414,18 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			config.getModules().remove("swissRailRaptor");
 			config.controller().setRunId("commercialTraffic_Run" + (int) (sample * 100) + "pct");
 			config.controller().setCompressionType(ControllerConfigGroup.CompressionType.gzip);
+			Set<String> modes = Set.of("car", "truck8t", "truck18t", "truck26t", "truck40t");
+			Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
+			config.qsim().setMainModes(Sets.union(qsimModes, modes));
+			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
+			config.routing().setNetworkModes(modes);
+
+
 			SimWrapper sw = SimWrapper.create(config);
 			sw.getConfigGroup().defaultParams().setShp(null);
 			sw.getConfigGroup().setDefaultDashboards(SimWrapperConfigGroup.DefaultDashboardsMode.disabled);
 			sw.getConfigGroup().setSampleSize(sample);
-			sw.addDashboard(new OverviewDashboard(Set.copyOf(config.qsim().getMainModes())));
+			sw.addDashboard(new OverviewDashboard(modes));
 			String subpopSetterForDashboards = "commercialPersonTraffic=commercialPersonTraffic,commercialPersonTraffic_service;smallScaleGoodsTraffic=goodsTraffic;longDistanceFreight=longDistanceFreight";
 			sw.addDashboard(new TripDashboard().setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards).setAnalysisArgs("--shp-filter", "none"));
 //			sw.addDashboard(new CommercialTrafficDashboard(config.global().getCoordinateSystem()).setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards));
@@ -426,15 +433,11 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 				new CommercialTrafficDashboard(config.global().getCoordinateSystem(), "commercialTourDurations_ref.csv",
 					"commercialTourDistances_ref.csv", "commercialActivityDurations_ref.csv").setGroupsOfSubpopulationsForCommercialAnalysis(
 					subpopSetterForDashboards)));
+			sw.addDashboard(new TrafficDashboard(modes));
+
 			config.vehicles().setVehiclesFile(configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString());
 			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
 			config.scoring().setExplainScores(true);
-
-			Set<String> modes = Set.of("car", "truck8t", "truck18t", "truck26t", "truck40t");
-			Set<String> qsimModes = new HashSet<>(config.qsim().getMainModes());
-			config.qsim().setMainModes(Sets.union(qsimModes, modes));
-			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
-			config.routing().setNetworkModes(modes);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
 
