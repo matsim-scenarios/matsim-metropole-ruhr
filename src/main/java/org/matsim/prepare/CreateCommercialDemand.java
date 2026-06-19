@@ -444,6 +444,13 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			String selectedSmallScaleCommercialTrafficType = runPart == RunPart.smallScaleCommercialPersonInit ? "commercialPersonTraffic" : "goodsTraffic";
 			String selectedOutputPathSmallScaleCommercial = runPart == RunPart.smallScaleCommercialPersonInit ? outputPathSmallScaleCommercialPerson : outputPathSmallScaleCommercialGoods;
 			String selectedSmallScaleCommercialPopulationName = runPart == RunPart.smallScaleCommercialPersonInit ? smallScaleCommercialPersonPopulationName : smallScaleCommercialGoodsPopulationName;
+			Path selectedSmallScaleCommercialCarrierPath = Path.of(selectedOutputPathSmallScaleCommercial).resolve(GenerateSmallScaleCommercialTrafficDemand.UNSOLVED_CARRIER_FILE);
+			// The init run only creates shared unsolved carriers; reuse the exact carrier output if it already exists.
+			if (Files.exists(selectedSmallScaleCommercialCarrierPath)) {
+				log.warn("Unsolved small-scale commercial carrier file already exists: {}. Skipping init generation.",
+					selectedSmallScaleCommercialCarrierPath);
+				return 0;
+			}
 			log.info("6th step init - create shared unsolved small scale commercial {} carriers", selectedSmallScaleCommercialTrafficType);
 			List<String> args = createArgumentsForSmallScaleCommercial(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
 				selectedSmallScaleCommercialTrafficType, selectedOutputPathSmallScaleCommercial, selectedSmallScaleCommercialPopulationName,
