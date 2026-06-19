@@ -605,7 +605,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			sw.getConfigGroup().setDefaultDashboards(SimWrapperConfigGroup.DefaultDashboardsMode.disabled);
 			sw.getConfigGroup().setSampleSize(sample);
 			sw.addDashboard(new OverviewDashboard(modes));
-			sw.addDashboard(new CarrierDashboard("(*.)?output_carriers_solvedVRP.xml.gz"));
 			String subpopSetterForDashboards = "commercialPersonTraffic=commercialPersonTraffic,commercialPersonTraffic_service;smallScaleGoodsTraffic=goodsTraffic;LTL=LTL_trip;FTL=FTL_trip,FTL_kv_trip;longDistanceFreight=longDistanceFreight";
 			sw.addDashboard(new TripDashboard().setGroupsOfSubpopulationsForCommercialAnalysis(subpopSetterForDashboards).setAnalysisArgs("--shp-filter", "none"));
 			sw.addDashboard(Dashboard.customize(
