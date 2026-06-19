@@ -4,7 +4,6 @@ import com.google.common.collect.Sets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
@@ -232,10 +231,6 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 				new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
 
 				Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
-				log.info("Set mode to truck40t for long distance freight");
-				for (Person person : population.getPersons().values()) {
-					PopulationUtils.putSubpopulation(person, "longDistanceFreight");
-				}
 				PopulationUtils.sampleDown(population, sample);
 				PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
 			}
