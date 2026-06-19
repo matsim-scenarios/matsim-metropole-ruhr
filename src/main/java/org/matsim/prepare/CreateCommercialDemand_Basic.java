@@ -30,6 +30,7 @@ import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.simwrapper.dashboard.CommercialTrafficDashboard;
 import org.matsim.simwrapper.dashboard.OverviewDashboard;
+import org.matsim.simwrapper.dashboard.TrafficDashboard;
 import org.matsim.simwrapper.dashboard.TripDashboard;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.RangeAwareUnhandledServicesSolution;
