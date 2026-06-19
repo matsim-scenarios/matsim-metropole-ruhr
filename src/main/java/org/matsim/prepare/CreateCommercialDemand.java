@@ -370,8 +370,10 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			} else {
 				List<String> argumentsForFreightTransitTraffic = new ArrayList<>();
 				argumentsForFreightTransitTraffic.add(germanyPlansFile.toString());
-				argumentsForFreightTransitTraffic.add("--network");
+				argumentsForFreightTransitTraffic.add("--long-distance-network");
 				argumentsForFreightTransitTraffic.add(networkForLongDistanceFreight.toString());
+				argumentsForFreightTransitTraffic.add("--scenario-network");
+				argumentsForFreightTransitTraffic.add(configPath.getParent().resolve(networkPath).toString());
 				argumentsForFreightTransitTraffic.add("--output");
 				argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
 				argumentsForFreightTransitTraffic.add("--shp");
