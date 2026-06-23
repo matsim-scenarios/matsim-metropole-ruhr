@@ -1,6 +1,7 @@
 package org.matsim.smallScaleCommercialTrafficGeneration;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -15,12 +16,19 @@ import org.matsim.freight.carriers.Carrier;
 import org.matsim.freight.carriers.CarrierCapabilities;
 import org.matsim.freight.carriers.CarrierService;
 import org.matsim.freight.carriers.CarrierVehicle;
+import org.matsim.freight.carriers.CarrierVehicleTypes;
 import org.matsim.freight.carriers.CarriersUtils;
+import org.matsim.vehicles.MatsimVehicleReader;
+import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+import org.matsim.vehicles.Vehicles;
 
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,12 +58,35 @@ class RangeAwareUnhandledServicesSolutionTest {
 		assertEquals(2, carrier.getCarrierCapabilities().getCarrierVehicles().size());
 
 		CarrierVehicle longRangeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
-			.get(Id.create("vehicle_oneRecharge", Vehicle.class));
+			.get(Id.create("vehicle_1Recharge", Vehicle.class));
 		assertNotNull(longRangeVehicle);
-		assertEquals("electric_oneRecharge", longRangeVehicle.getType().getId().toString());
+		assertEquals("electric_1Recharge", longRangeVehicle.getType().getId().toString());
 		assertEquals(180., VehicleUtils.getEnergyCapacity(longRangeVehicle.getType().getEngineInformation()));
 		assertEquals(1230., longRangeVehicle.getType().getCostInformation().getFixedCosts());
 		assertEquals(DEPOT_LINK_ID, longRangeVehicle.getLinkId());
+	}
+
+	@Test
+	void addsHigherRechargeVehicleWhenOneMultiplierApplicationIsNotEnough() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(40., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.rangeInfeasibleServices());
+		assertEquals(0, result.servicesBeyondOneRechargeRange());
+		assertEquals(1, result.addedVehicles());
+
+		CarrierVehicle longRangeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle_2Recharge", Vehicle.class));
+		assertNotNull(longRangeVehicle);
+		assertEquals("electric_2Recharge", longRangeVehicle.getType().getId().toString());
+		assertEquals(160., VehicleUtils.getEnergyCapacity(longRangeVehicle.getType().getEngineInformation()));
+		assertEquals(2460., longRangeVehicle.getType().getCostInformation().getFixedCosts());
 	}
 
 	@Test
@@ -97,7 +128,7 @@ class RangeAwareUnhandledServicesSolutionTest {
 		assertEquals(0, result.rangeInfeasibleServices());
 		assertEquals(0, result.addedVehicles());
 		assertEquals(2, carrier.getCarrierCapabilities().getCarrierVehicles().size());
-		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_oneRecharge", Vehicle.class)));
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
 	}
 
 	@Test
@@ -113,8 +144,114 @@ class RangeAwareUnhandledServicesSolutionTest {
 		RangeAwareUnhandledServicesSolution.Result result = solution.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
 
 		assertEquals(1, result.addedVehicles());
-		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_oneRecharge_1", Vehicle.class)));
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge_1", Vehicle.class)));
 		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void writesMainRunVehicleTypesWithOriginalFixedCosts(@TempDir Path tempDir) throws Exception {
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback, assumes one recharge)");
+		VehicleType unrestrictedType = createUnrestrictedVehicleType();
+		Vehicles inputVehicles = VehicleUtils.createVehiclesContainer();
+		inputVehicles.addVehicleType(electricType);
+		inputVehicles.addVehicleType(unrestrictedType);
+
+		Path inputVehicleTypes = tempDir.resolve("vehicles.xml.gz");
+		Path carrierVehicleTypes = tempDir.resolve("output_carriersVehicleTypes.xml.gz");
+		Path outputVehicleTypes = tempDir.resolve("vehicles_withFallbacks.xml.gz");
+		new MatsimVehicleWriter(inputVehicles).writeFile(inputVehicleTypes.toString());
+		writeCarrierVehicleTypes(carrierVehicleTypes, longRangeType);
+
+		int addedTypes = RechargeVehicleTypeUtils.writeMainRunVehicleTypesMergedWithCarrierVehicleTypes(inputVehicleTypes,
+			List.of(carrierVehicleTypes), outputVehicleTypes);
+
+		Vehicles outputVehicles = VehicleUtils.createVehiclesContainer();
+		new MatsimVehicleReader(outputVehicles).readFile(outputVehicleTypes.toString());
+		VehicleType normalizedLongRangeType = outputVehicles.getVehicleTypes().get(Id.create("electric_1Recharge", VehicleType.class));
+
+		assertEquals(1, addedTypes);
+		assertNotNull(normalizedLongRangeType);
+		assertEquals(90., VehicleUtils.getEnergyCapacity(normalizedLongRangeType.getEngineInformation()));
+		assertEquals(123., normalizedLongRangeType.getCostInformation().getFixedCosts());
+		assertEquals(1., normalizedLongRangeType.getCostInformation().getCostsPerMeter());
+		assertEquals(1., normalizedLongRangeType.getCostInformation().getCostsPerSecond());
+		assertEquals(TransportMode.car, normalizedLongRangeType.getNetworkMode());
+		assertNull(outputVehicles.getVehicleTypes().get(Id.create("unrestricted_1Recharge", VehicleType.class)));
+	}
+
+	@Test
+	void normalizesExistingMainRunFallbackCostsAndCapacity(@TempDir Path tempDir) throws Exception {
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback, assumes one recharge)");
+		Vehicles inputVehicles = VehicleUtils.createVehiclesContainer();
+		inputVehicles.addVehicleType(electricType);
+		inputVehicles.addVehicleType(longRangeType);
+
+		Path inputVehicleTypes = tempDir.resolve("vehicles.xml.gz");
+		Path outputVehicleTypes = tempDir.resolve("vehicles_withFallbacks.xml.gz");
+		new MatsimVehicleWriter(inputVehicles).writeFile(inputVehicleTypes.toString());
+
+		int addedTypes = RechargeVehicleTypeUtils.writeMainRunVehicleTypesMergedWithCarrierVehicleTypes(inputVehicleTypes,
+			List.of(), outputVehicleTypes);
+
+		Vehicles outputVehicles = VehicleUtils.createVehiclesContainer();
+		new MatsimVehicleReader(outputVehicles).readFile(outputVehicleTypes.toString());
+		VehicleType normalizedLongRangeType = outputVehicles.getVehicleTypes().get(Id.create("electric_1Recharge", VehicleType.class));
+
+		assertEquals(0, addedTypes);
+		assertEquals(90., VehicleUtils.getEnergyCapacity(normalizedLongRangeType.getEngineInformation()));
+		assertEquals(123., normalizedLongRangeType.getCostInformation().getFixedCosts());
+	}
+
+	@Test
+	void mergesTwoRechargeVehicleTypeByRechargeSuffix(@TempDir Path tempDir) throws Exception {
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		VehicleType twoRechargeType = createElectricVehicleType("electric_2Recharge", 270., 1., 1230.);
+		Vehicles inputVehicles = VehicleUtils.createVehiclesContainer();
+		inputVehicles.addVehicleType(electricType);
+
+		Path inputVehicleTypes = tempDir.resolve("vehicles.xml.gz");
+		Path carrierVehicleTypes = tempDir.resolve("output_carriersVehicleTypes.xml.gz");
+		Path outputVehicleTypes = tempDir.resolve("vehicles_withFallbacks.xml.gz");
+		new MatsimVehicleWriter(inputVehicles).writeFile(inputVehicleTypes.toString());
+		writeCarrierVehicleTypes(carrierVehicleTypes, twoRechargeType);
+
+		int addedTypes = RechargeVehicleTypeUtils.writeMainRunVehicleTypesMergedWithCarrierVehicleTypes(inputVehicleTypes,
+			List.of(carrierVehicleTypes), outputVehicleTypes);
+
+		Vehicles outputVehicles = VehicleUtils.createVehiclesContainer();
+		new MatsimVehicleReader(outputVehicles).readFile(outputVehicleTypes.toString());
+		VehicleType normalizedTwoRechargeType = outputVehicles.getVehicleTypes().get(Id.create("electric_2Recharge", VehicleType.class));
+
+		assertEquals(1, addedTypes);
+		assertNotNull(normalizedTwoRechargeType);
+		assertEquals(90., VehicleUtils.getEnergyCapacity(normalizedTwoRechargeType.getEngineInformation()));
+		assertEquals(123., normalizedTwoRechargeType.getCostInformation().getFixedCosts());
+	}
+
+	@Test
+	void restoresFallbackCostsAfterTourPlanning() {
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback, assumes one recharge)");
+		Map<Id<VehicleType>, VehicleType> vehicleTypes = new HashMap<>();
+		vehicleTypes.put(electricType.getId(), electricType);
+		vehicleTypes.put(longRangeType.getId(), longRangeType);
+
+		assertEquals(180., VehicleUtils.getEnergyCapacity(longRangeType.getEngineInformation()));
+		assertEquals(1230., longRangeType.getCostInformation().getFixedCosts());
+
+		int restoredTypes = RechargeVehicleTypeUtils.restoreRechargeCostsAndCapacity(vehicleTypes);
+
+		assertEquals(1, restoredTypes);
+		assertEquals(90., VehicleUtils.getEnergyCapacity(longRangeType.getEngineInformation()));
+		assertEquals(123., longRangeType.getCostInformation().getFixedCosts());
 	}
 
 	private static Scenario createScenario() {
@@ -131,7 +268,11 @@ class RangeAwareUnhandledServicesSolutionTest {
 	}
 
 	private static VehicleType createElectricVehicleType(double energyCapacity, double consumptionPerMeter, double fixedCost) {
-		VehicleType vehicleType = VehicleUtils.createVehicleType(Id.create("electric", VehicleType.class));
+		return createElectricVehicleType("electric", energyCapacity, consumptionPerMeter, fixedCost);
+	}
+
+	private static VehicleType createElectricVehicleType(String id, double energyCapacity, double consumptionPerMeter, double fixedCost) {
+		VehicleType vehicleType = VehicleUtils.createVehicleType(Id.create(id, VehicleType.class));
 		vehicleType.setNetworkMode(TransportMode.car);
 		vehicleType.setMaximumVelocity(10.);
 		vehicleType.getCostInformation().setCostsPerMeter(1.);
@@ -141,6 +282,14 @@ class RangeAwareUnhandledServicesSolutionTest {
 		VehicleUtils.setEnergyCapacity(vehicleType.getEngineInformation(), energyCapacity);
 		VehicleUtils.setEnergyConsumptionKWhPerMeter(vehicleType.getEngineInformation(), consumptionPerMeter);
 		return vehicleType;
+	}
+
+	private static void writeCarrierVehicleTypes(Path carrierVehicleTypesFile, VehicleType... vehicleTypes) {
+		CarrierVehicleTypes carrierVehicleTypes = new CarrierVehicleTypes();
+		for (VehicleType vehicleType : vehicleTypes) {
+			carrierVehicleTypes.getVehicleTypes().put(vehicleType.getId(), vehicleType);
+		}
+		CarriersUtils.writeCarrierVehicleTypes(carrierVehicleTypes, carrierVehicleTypesFile.toString());
 	}
 
 	private static VehicleType createUnrestrictedVehicleType() {

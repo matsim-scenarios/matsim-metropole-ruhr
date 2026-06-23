@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.population.Population;
+import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
 import org.matsim.application.prepare.population.MergePopulations;
@@ -33,12 +34,15 @@ import org.matsim.simwrapper.dashboard.TrafficDashboard;
 import org.matsim.simwrapper.dashboard.TripDashboard;
 import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
 import org.matsim.smallScaleCommercialTrafficGeneration.RangeAwareUnhandledServicesSolution;
+import org.matsim.smallScaleCommercialTrafficGeneration.RechargeVehicleTypeUtils;
 import org.matsim.smallScaleCommercialTrafficGeneration.VehicleTypeSelection;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.CreateDataDistributionOfStructureData;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreator;
 import org.matsim.smallScaleCommercialTrafficGeneration.prepare.LanduseDataConnectionCreatorForOSM_Data;
 import picocli.CommandLine;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -54,6 +58,8 @@ import java.util.*;
 public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 
 	private static final Logger log = LogManager.getLogger(CreateCommercialDemand_Basic.class);
+	private static final String KWM_CARRIER_VEHICLE_TYPES_FILE = "output_carriersVehicleTypes.xml.gz";
+	private static final String MAIN_RUN_VEHICLE_TYPES_FILE = "mode-vehicles_withKwmCarrierVehicleTypes.xml.gz";
 
 	private enum RunPart {
 		all,
@@ -382,6 +388,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 					"--output", pathMergedPopulation
 				);
 			}
+			writeVehicleTypesFileForMainRun();
 			if (runPart == RunPart.merge) {
 				return 0;
 			}
@@ -440,7 +447,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 					subpopSetterForDashboards)));
 			sw.addDashboard(new TrafficDashboard(modes));
 
-			config.vehicles().setVehiclesFile(configPath.getParent().relativize(Path.of(vehicleTypesFilePath)).toString());
+			config.vehicles().setVehiclesFile(toConfigRelativePath(getVehicleTypesFileForMainRun()));
 			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
 			config.scoring().setExplainScores(true);
 
@@ -497,6 +504,63 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 		return new RangeAwareUnhandledServicesSolution(distanceConstraintUsableRange,
 			smallScaleCommercialLongRangeVehicleRangeMultiplier,
 			smallScaleCommercialLongRangeVehicleFixedCostMultiplier);
+	}
+
+	/**
+	 * Checks if a specific main run vehcielTypes file is present and uses it or use the input files.
+	 *
+	 * @return
+	 */
+	private Path getVehicleTypesFileForMainRun() {
+		Path mainRunVehicleTypesFile = output.resolve(MAIN_RUN_VEHICLE_TYPES_FILE);
+		if (Files.exists(mainRunVehicleTypesFile)) {
+			return mainRunVehicleTypesFile;
+		}
+
+		Path inputVehicleTypesFile = Path.of(vehicleTypesFilePath);
+		log.warn("Merged main-run vehicle types file does not exist: {}. Run --runPart merge to create it. Falling back to {}.",
+			mainRunVehicleTypesFile, inputVehicleTypesFile);
+		return inputVehicleTypesFile;
+	}
+
+	private void writeVehicleTypesFileForMainRun() {
+		Path inputVehicleTypesFile = Path.of(vehicleTypesFilePath);
+		Path outputVehicleTypesFile = output.resolve(MAIN_RUN_VEHICLE_TYPES_FILE);
+		try {
+			RechargeVehicleTypeUtils.writeMainRunVehicleTypesMergedWithCarrierVehicleTypes(inputVehicleTypesFile,
+				getSmallScaleCommercialCarrierVehicleTypeFiles(), outputVehicleTypesFile);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not write merged main-run vehicle types.", e);
+		}
+	}
+
+	/**
+	 * Gets the path of the small-scale commercial vehicle type files.
+	 *
+	 * @return
+	 */
+	private List<Path> getSmallScaleCommercialCarrierVehicleTypeFiles() {
+		Set<Path> files = new LinkedHashSet<>();
+		for (Path directory : List.of(
+			output.resolve("smallScaleCommercial").resolve("commercialPersonTraffic"),
+			output.resolve("smallScaleCommercial").resolve("goodsTraffic"))) {
+			Path thisPath = ApplicationUtils.globFile(directory, "*" + KWM_CARRIER_VEHICLE_TYPES_FILE);
+			if (Files.exists(thisPath))
+				files.add(thisPath);
+		}
+		if (files.isEmpty()) {
+			log.warn("No KWM carrier vehicle type files ending with {} were found below {}. The main-run vehicle types file will contain only the configured base types.",
+				KWM_CARRIER_VEHICLE_TYPES_FILE, output.resolve("smallScaleCommercial"));
+		}
+		return List.copyOf(files);
+	}
+
+	private String toConfigRelativePath(Path path) {
+		Path configDirectory = configPath.toAbsolutePath().getParent();
+		if (configDirectory == null) {
+			return path.toString();
+		}
+		return configDirectory.relativize(path.toAbsolutePath()).toString();
 	}
 
 	private List<String> createArgumentsForSmallScaleCommercial(Path pathDataDistributionFile, Path pathCommercialFacilities, String shapeCRS,
