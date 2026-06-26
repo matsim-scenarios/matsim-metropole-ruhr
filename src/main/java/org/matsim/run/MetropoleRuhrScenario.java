@@ -34,6 +34,7 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -334,6 +335,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		if (removeBikeInfra) {
 			log.info("Removing bike infra");
 			removeDedicatedBikeNetwork(scenario.getNetwork());
+			PopulationUtils.checkRouteModeAndReset(scenario.getPopulation(), scenario.getNetwork());
 		}
 	}
 
@@ -423,12 +425,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			}
 		}
 
-		for (Link link: linksToRemove) {
-			network.removeLink(link.getId());
-			log.info("Removed link " + link.getId());
-		}
 		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
 		cleaner.run(Collections.singleton(TransportMode.bike));
+
+		//parse population if plans contains links that are removed reset the routes
+
+
 	}
 
 
