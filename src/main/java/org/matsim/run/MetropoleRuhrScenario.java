@@ -23,7 +23,6 @@ import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
-import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.analysis.ModeChoiceCoverageControlerListener;
@@ -34,11 +33,13 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
+import org.matsim.contrib.bicycle.BicycleUtils;
 import org.matsim.contrib.vsp.pt.fare.PtFareModule;
 import org.matsim.contrib.vsp.scenario.SnzActivities;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
@@ -48,7 +49,6 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
-import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -72,8 +72,6 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
-import java.io.*;
-import java.nio.file.Path;
 import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
@@ -85,7 +83,7 @@ import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.
 })
 @MATSimApplication.Prepare({AdjustDemand.class})
 public class MetropoleRuhrScenario extends MATSimApplication {
-	public static final String VERSION = "v2024.1";
+	public static final String VERSION = "v2024.2";
 	public static final String CONFIG_PATH = "./scenarios/metropole-ruhr-" + VERSION + "/input/metropole-ruhr-" + VERSION +"-3pct.config.xml";
 
 	private static final Logger log = LogManager.getLogger(MetropoleRuhrScenario.class);
@@ -95,6 +93,12 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
+
+	@CommandLine.Option(names = "--remove-bike-infra", defaultValue = "false", description = "Remove dedicated bike infra")
+	private boolean removeBikeInfra;
+
+	@CommandLine.Option(names = "--set-infraspeedfactor", defaultValue = "false", description = "Set bike infra speed factor consistently")
+	private boolean setInfraspeedFactor;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -319,6 +323,16 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	protected void prepareScenario(Scenario scenario) {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
+
+		if (setInfraspeedFactor) {
+			log.info("Setting infraspeed factor consistently");
+			homogeneousBikeSpeedFactor(scenario.getNetwork());
+		}
+
+		if (removeBikeInfra) {
+			log.info("Removing bike infra");
+			removeDedicatedBikeNetwork(scenario.getNetwork());
+		}
 	}
 
 	@Override
@@ -375,6 +389,39 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		controler.addOverridingModule(new ParkingCostModule());
 		// bicycle contrib
 		controler.addOverridingModule(new BicycleModule());
+	}
+
+
+	private static void homogeneousBikeSpeedFactor(Network network) {
+		int logged = 0;
+		for (Link link: network.getLinks().values()) {
+			double bicycleInfraSpeedFactor = (double) link.getAttributes().getAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR);
+			if (bicycleInfraSpeedFactor == 1.0) {
+				link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
+				if (logged < 50) {
+					log.info("BicycleInfraSpeedFactor is set to 1.0 on link {}", link.getId());
+					logged++;
+				}
+			}
+		}
+	}
+
+	private static void removeDedicatedBikeNetwork(Network network) {
+		int logged = 0;
+		List<Link> linksToRemove = new ArrayList<>();
+		for (Link link: network.getLinks().values()) {
+			if (link.getAllowedModes().equals(TransportMode.bike)) {
+				linksToRemove.add(link);
+				if (logged < 50) {
+					log.info("Removing bicycle links", link.getId());
+				}
+			}
+		}
+
+		for (Link link: linksToRemove) {
+			network.removeLink(link.getId());
+			log.info("Removed link " + link.getId());
+		}
 	}
 
 
