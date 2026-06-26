@@ -49,6 +49,8 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
@@ -97,8 +99,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--remove-bike-infra", defaultValue = "false", description = "Remove dedicated bike infra")
 	private boolean removeBikeInfra;
 
-	@CommandLine.Option(names = "--set-infraspeedfactor", defaultValue = "false", description = "Set bike infra speed factor consistently")
-	private boolean setInfraspeedFactor;
+	@CommandLine.Option(names = "--infra-speed-factor", defaultValue = "1.0", description = "Set bike infra speed factor consistently")
+	private double infraSpeedFactor;
 
 	/**
 	 * Constructor for extending scenarios.
@@ -324,9 +326,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
 
-		if (setInfraspeedFactor) {
+		if (infraSpeedFactor != 1.0) {
 			log.info("Setting infraspeed factor consistently");
-			homogeneousBikeSpeedFactor(scenario.getNetwork());
+			homogeneousBikeSpeedFactor(scenario.getNetwork(), infraSpeedFactor );
 		}
 
 		if (removeBikeInfra) {
@@ -392,15 +394,17 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	}
 
 
-	private static void homogeneousBikeSpeedFactor(Network network) {
+	private static void homogeneousBikeSpeedFactor(Network network, double setInfraspeedFactor) {
 		int logged = 0;
 		for (Link link: network.getLinks().values()) {
-			double bicycleInfraSpeedFactor = (double) link.getAttributes().getAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR);
-			if (bicycleInfraSpeedFactor == 1.0) {
-				link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, 1.0);
-				if (logged < 50) {
-					log.info("BicycleInfraSpeedFactor is set to 1.0 on link {}", link.getId());
-					logged++;
+			if (link.getAttributes().getAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR) != null) {
+				double bicycleInfraSpeedFactor = (double) link.getAttributes().getAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR);
+				if (bicycleInfraSpeedFactor == 1.0) {
+					link.getAttributes().putAttribute(BicycleUtils.BICYCLE_INFRASTRUCTURE_SPEED_FACTOR, setInfraspeedFactor);
+					if (logged < 50) {
+						log.info("BicycleInfraSpeedFactor is set to 1.0 on link {}", link.getId());
+						logged++;
+					}
 				}
 			}
 		}
@@ -410,7 +414,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		int logged = 0;
 		List<Link> linksToRemove = new ArrayList<>();
 		for (Link link: network.getLinks().values()) {
-			if (link.getAllowedModes().equals(TransportMode.bike)) {
+			if (link.getAllowedModes().size() == 1 &&
+				link.getAllowedModes().contains(TransportMode.bike)) {
 				linksToRemove.add(link);
 				if (logged < 50) {
 					log.info("Removing bicycle links", link.getId());
@@ -422,6 +427,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			network.removeLink(link.getId());
 			log.info("Removed link " + link.getId());
 		}
+		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
+		cleaner.run(Collections.singleton(TransportMode.bike));
 	}
 
 
