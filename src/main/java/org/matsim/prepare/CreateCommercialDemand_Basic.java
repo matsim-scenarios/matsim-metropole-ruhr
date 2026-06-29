@@ -20,6 +20,7 @@ import org.matsim.core.controler.ControllerUtils;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.scenario.checkers.VspScenarioCheckerImpl;
 import org.matsim.core.scoring.ScoringFunctionFactory;
 import org.matsim.core.scoring.functions.VehicleTypeBasedScoringFunctionFactory;
 import org.matsim.prepare.commercial.CommercialVehicleSelectorRuhr;
@@ -452,7 +453,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 			config.scoring().setExplainScores(true);
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
-
+			scenario.addScenarioChecker(new VspScenarioCheckerImpl());
 			MetropoleRuhrScenario.prepareCommercialTrafficReplanningAndScoringParams(scenario);
 
 			Controller controller = ControllerUtils.createController(scenario);

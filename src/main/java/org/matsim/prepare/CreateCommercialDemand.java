@@ -16,6 +16,7 @@ import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.*;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.scenario.checkers.VspScenarioCheckerImpl;
 import org.matsim.core.scoring.ScoringFunctionFactory;
 import org.matsim.core.scoring.functions.VehicleTypeBasedScoringFunctionFactory;
 import org.matsim.prepare.commercial.*;
@@ -624,6 +625,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			sw.addDashboard(new TrafficDashboard(modes));
 
 			Scenario scenario = ScenarioUtils.loadScenario(config);
+			scenario.addScenarioChecker(new VspScenarioCheckerImpl());
 
 			MetropoleRuhrScenario.prepareCommercialTrafficReplanningAndScoringParams(scenario);
 
