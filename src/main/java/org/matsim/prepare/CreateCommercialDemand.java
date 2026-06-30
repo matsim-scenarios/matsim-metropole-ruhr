@@ -491,21 +491,36 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			} else {
 				String selectedGenerationOption = smallScaleCommercialGenerationOption;
 				String selectedCarrierFile = null;
-				if (smallScaleCommercialCarrierPartCount > 1) {
-					log.info("Solving small scale commercial carrier part {}/{} for {}.",
-						smallScaleCommercialCarrierPartIndex + 1, smallScaleCommercialCarrierPartCount, selectedSmallScaleCommercialTrafficType);
+				if (selectedSmallScaleCommercialTrafficType.equals("completeSmallScaleCommercialTraffic")
+					&& selectedGenerationOption.equals("createNewCarrierFile")) {
+					createSmallScaleCommercialTrafficSegment(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
+						"commercialPersonTraffic", outputPathSmallScaleCommercialPerson, smallScaleCommercialPersonPopulationName,
+						selectedGenerationOption, selectedCarrierFile, vehicleTypeSelection, ltlPopulationPathForSmallScaleGoods);
+					createSmallScaleCommercialTrafficSegment(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
+						"goodsTraffic", outputPathSmallScaleCommercialGoods, smallScaleCommercialGoodsPopulationName,
+						selectedGenerationOption, selectedCarrierFile, vehicleTypeSelection, ltlPopulationPathForSmallScaleGoods);
+					new MergePopulations().execute(
+						Path.of(outputPathSmallScaleCommercialPerson).resolve(smallScaleCommercialPersonPopulationName).toString(),
+						Path.of(outputPathSmallScaleCommercialGoods).resolve(smallScaleCommercialGoodsPopulationName).toString(),
+						"--output", selectedSmallScaleCommercialPopulationPath.toString()
+					);
+				} else {
+					if (smallScaleCommercialCarrierPartCount > 1) {
+						log.info("Solving small scale commercial carrier part {}/{} for {}.",
+							smallScaleCommercialCarrierPartIndex + 1, smallScaleCommercialCarrierPartCount, selectedSmallScaleCommercialTrafficType);
+					}
+					List<String> args = createArgumentsForSmallScaleCommercial(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
+						selectedSmallScaleCommercialTrafficType, selectedOutputPathSmallScaleCommercial, selectedSmallScaleCommercialPopulationName,
+						selectedGenerationOption, selectedCarrierFile);
+					if (smallScaleCommercialCarrierPartCount > 1) {
+						addSmallScaleCommercialCarrierPartArguments(args);
+					}
+					if (smallScaleCommercialCarrierPartCount == 1 && selectedGenerationOption.equals("createNewCarrierFile")) {
+						addCreateNewCarrierSpecificArguments(args, selectedSmallScaleCommercialTrafficType);
+					}
+					createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
+						ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
 				}
-				List<String> args = createArgumentsForSmallScaleCommercial(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
-					selectedSmallScaleCommercialTrafficType, selectedOutputPathSmallScaleCommercial, selectedSmallScaleCommercialPopulationName,
-					selectedGenerationOption, selectedCarrierFile);
-				if (smallScaleCommercialCarrierPartCount > 1) {
-					addSmallScaleCommercialCarrierPartArguments(args);
-				}
-				if (smallScaleCommercialCarrierPartCount == 1 && selectedGenerationOption.equals("createNewCarrierFile")) {
-					addCreateNewCarrierSpecificArguments(args, selectedSmallScaleCommercialTrafficType);
-				}
-				createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
-					ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
 
 				// TODO filter relevant agents for the small scale commercial traffic
 			}
@@ -678,6 +693,29 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		}
 	}
 
+	private void createSmallScaleCommercialTrafficSegment(Path pathDataDistributionFile, Path pathCommercialFacilities, String shapeCRS,
+	                                                     String selectedSmallScaleCommercialTrafficType, String selectedOutputPathSmallScaleCommercial,
+	                                                     String selectedSmallScaleCommercialPopulationName, String selectedGenerationOption,
+	                                                     String selectedCarrierFile, VehicleTypeSelection vehicleTypeSelection,
+	                                                     Path ltlPopulationPathForSmallScaleGoods) {
+		Path selectedSmallScaleCommercialPopulationPath = Path.of(selectedOutputPathSmallScaleCommercial).resolve(selectedSmallScaleCommercialPopulationName);
+		if (Files.exists(selectedSmallScaleCommercialPopulationPath)) {
+			log.warn("Small-scale Commercial demand already exists. Skipping generation: {}", selectedSmallScaleCommercialPopulationPath);
+			return;
+		}
+		List<String> args = createArgumentsForSmallScaleCommercial(pathDataDistributionFile, pathCommercialFacilities, shapeCRS,
+			selectedSmallScaleCommercialTrafficType, selectedOutputPathSmallScaleCommercial, selectedSmallScaleCommercialPopulationName,
+			selectedGenerationOption, selectedCarrierFile);
+		if (smallScaleCommercialCarrierPartCount > 1) {
+			addSmallScaleCommercialCarrierPartArguments(args);
+		}
+		if (smallScaleCommercialCarrierPartCount == 1 && selectedGenerationOption.equals("createNewCarrierFile")) {
+			addCreateNewCarrierSpecificArguments(args, selectedSmallScaleCommercialTrafficType);
+		}
+		createSmallScaleCommercialTrafficDemand(vehicleTypeSelection, selectedSmallScaleCommercialTrafficType,
+			ltlPopulationPathForSmallScaleGoods).execute(args.toArray(new String[0]));
+	}
+
 	private GenerateSmallScaleCommercialTrafficDemand createSmallScaleCommercialTrafficDemand(
 		VehicleTypeSelection vehicleTypeSelection, String selectedSmallScaleCommercialTrafficType,
 		Path ltlPopulationPathForSmallScaleGoods) {
@@ -840,8 +878,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	}
 
 	private void addCreateNewCarrierSpecificArguments(List<String> args, String selectedSmallScaleCommercialTrafficType) {
-		if (selectedSmallScaleCommercialTrafficType.equals("goodsTraffic")
-			|| selectedSmallScaleCommercialTrafficType.equals("completeSmallScaleCommercialTraffic")) {
+		if (selectedSmallScaleCommercialTrafficType.equals("goodsTraffic")) {
 			args.add("--includeExistingModels");
 		}
 	}

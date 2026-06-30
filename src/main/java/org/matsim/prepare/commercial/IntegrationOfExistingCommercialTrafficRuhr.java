@@ -3,6 +3,7 @@ package org.matsim.prepare.commercial;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -58,23 +59,23 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 			// we only reduce the volume of LTL trips and not for waste collection
 			int goodsType = (int) freightPerson.getAttributes().getAttribute("goodsType");
 			String vehicleTypeMode = VehicleUtils.getVehicleTypes(freightPerson).keySet().iterator().next();
-			if (!PopulationUtils.getSubpopulation(freightPerson).equals("LTL_trips") || goodsType == 140)
+			if (!isLtlTripSubpopulation(PopulationUtils.getSubpopulation(freightPerson)) || goodsType == 140)
 				continue;
 			Plan selectedPlan = freightPerson.getSelectedPlan();
-			Id<Link> startLink = PopulationUtils.getFirstActivity(selectedPlan).getLinkId();
-			String startZone = findZoneOfLink(scenario, indexZones, startLink);
+			Activity startActivity = PopulationUtils.getFirstActivity(selectedPlan);
+			String startZone = findZoneOfActivity(scenario, indexZones, startActivity);
 
 			for (PlanElement planElement : freightPerson.getSelectedPlan().getPlanElements()) {
 				if (planElement instanceof Activity activity) {
 					if (activity.getType().equals("pickup")) {
-						if (!activity.getLinkId().equals(startLink)) {
+						if (!isSameLocation(scenario, activity, startActivity)) {
 							throw new RuntimeException(
 								"Current version: The pickup activity should be at the same location as the start location of the trip!");
 						}
 						continue;
 					}
 					if (activity.getType().equals("delivery")) {
-						String stopZone = findZoneOfLink(scenario, indexZones, activity.getLinkId());
+						String stopZone = findZoneOfActivity(scenario, indexZones, activity);
 						List<String> modeORvehTypeOptions = getVehTyp(vehicleTypeMode);
 						String modeORvehType = modeORvehTypeOptions.get(rnd.nextInt(modeORvehTypeOptions.size()));
 						Integer purpose = getPurpose(goodsType);
@@ -128,9 +129,34 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 		};
 	}
 
-	private String findZoneOfLink(Scenario scenario, ShpOptions.Index indexZones, Id<Link> linkId) {
-		Link link = scenario.getNetwork().getLinks().get(linkId);
-		return indexZones.query(link.getCoord());
+	static boolean isLtlTripSubpopulation(String subpopulation) {
+		return "LTL_trip".equals(subpopulation) || "LTL_trips".equals(subpopulation);
+	}
+
+	private static boolean isSameLocation(Scenario scenario, Activity first, Activity second) {
+		Coord firstCoord = getActivityCoord(scenario, first);
+		Coord secondCoord = getActivityCoord(scenario, second);
+		return firstCoord != null && firstCoord.equals(secondCoord);
+	}
+
+	static Coord getActivityCoord(Scenario scenario, Activity activity) {
+		Id<Link> linkId = activity.getLinkId();
+		if (linkId != null) {
+			Link link = scenario.getNetwork().getLinks().get(linkId);
+			if (link != null) {
+				return link.getCoord();
+			}
+			log.warn("Activity references unknown link {}. Falling back to activity coordinate.", linkId);
+		}
+		return activity.getCoord();
+	}
+
+	private static String findZoneOfActivity(Scenario scenario, ShpOptions.Index indexZones, Activity activity) {
+		Coord coord = getActivityCoord(scenario, activity);
+		if (coord == null) {
+			throw new IllegalArgumentException("Activity has neither a link id nor a coordinate: " + activity);
+		}
+		return indexZones.query(coord);
 	}
 }
 
