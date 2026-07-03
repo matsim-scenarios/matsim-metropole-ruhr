@@ -19,12 +19,16 @@ public class LinkPaxVol {
 	public static void main(String[] args) {
 
 		//set the path to the events file
-		String eventsFile = "/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_events.xml.gz";
+		String eventsFile = "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/004.output_events.xml.gz";
 		//set the path to the config file
-		Config config = ConfigUtils.loadConfig("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_config.xml");
+		Config config = ConfigUtils.loadConfig("/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/004.output_config.xml");
 		//load the scenario
-		config.network().setInputFile("/Users/gregorr/Documents/work/respos/runs-svn/rvr-ruhrgebiet/v2024.1/no-intermodal/002.output_network.xml.gz");
-		Scenario scenario = ScenarioUtils.createScenario(config);
+		config.network().setInputFile("/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/004.output_network.xml.gz");
+		config.plans().setInputFile(null);
+		config.transit().setTransitScheduleFile(null);
+		config.transit().setVehiclesFile(null);
+		config.vehicles().setVehiclesFile("/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/004.output_vehicles.xml.gz");
+		Scenario scenario = ScenarioUtils.loadScenario(config);
 		// event reader add event handler  for linkPaxVolumes
 		LinkPaxVolumesAnalysis linkPaxVolumesAnalysis = new LinkPaxVolumesAnalysis(scenario.getVehicles(), scenario.getTransitVehicles());
 
@@ -34,7 +38,7 @@ public class LinkPaxVol {
 		eventsReader.readFile(eventsFile);
 		// write the results
 		LinkPaxVolumesWriter linkPaxVolumesWriter = new LinkPaxVolumesWriter(linkPaxVolumesAnalysis, scenario.getNetwork(), scenario.getConfig().global().getDefaultDelimiter());
-		linkPaxVolumesWriter.writeLinkVehicleAndPaxVolumesAllPerDayCsv( "linkPaxVolumesAllPerDay.csv.gz");
-		linkPaxVolumesWriter.writeLinkVehicleAndPaxVolumesPerNetworkModePerHourCsv( "linkPaxVolumesPerNetworkModePerHour.csv.gz");
+		linkPaxVolumesWriter.writeLinkVehicleAndPaxVolumesAllPerDayCsv( "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/gr_analysis/linkPaxVolumesAllPerDay.csv.gz");
+		linkPaxVolumesWriter.writeLinkVehicleAndPaxVolumesPerNetworkModePerHourCsv( "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/gr_analysis/linkPaxVolumesPerNetworkModePerHour.csv.gz");
 	}
 }
