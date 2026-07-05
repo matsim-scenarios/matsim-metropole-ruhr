@@ -244,7 +244,7 @@
 				<attribute name="HbefaEmissionsConcept" class="java.lang.String">average</attribute>
 			</attributes>
 		</engineInformation>
-		<costInformation fixedCostsPerDay="208.20" costsPerMeter="0.000689" costsPerSecond="0.00776">
+		<costInformation fixedCostsPerDay="200.19" costsPerMeter="0.000689" costsPerSecond="0.00776">
 			<attributes>
 				<attribute name="costsPerSecondInService" class="java.lang.Double">0.00776</attribute>
 				<attribute name="costsPerSecondWaiting" class="java.lang.Double">0.00776</attribute>
