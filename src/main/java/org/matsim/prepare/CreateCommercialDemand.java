@@ -3,6 +3,7 @@ package org.matsim.prepare;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.ApplicationUtils;
@@ -401,6 +402,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 				Population population = PopulationUtils.readPopulation(longDistanceFreightPopulationName);
 				PopulationUtils.sampleDown(population, sample);
+				population.getPersons().values().forEach(person -> PopulationUtils.insertVehicleTypesIntoPersonAttributes(person,
+					Map.of("truck40t", Id.createVehicleTypeId("heavy40t")))); //TODO in ExtractionKLasse integrieren
 				PopulationUtils.writePopulation(population, longDistanceFreightPopulationName);
 			}
 			if (runPart == RunPart.longDistanceFreight) {
