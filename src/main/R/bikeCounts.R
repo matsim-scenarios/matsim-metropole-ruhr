@@ -7,7 +7,7 @@ library(tidyr)
 # Configuration
 #==================================================
 
-scale_factor <- 10   # 10 for 10% sample, 100 for 1% sample
+scale_factor <- 100   # 10 for 10% sample, 100 for 1% sample
 
 #==================================================
 # Read data
@@ -16,7 +16,7 @@ scale_factor <- 10   # 10 for 10% sample, 100 for 1% sample
 countsRVR <- st_read("/Users/gregorr/Downloads/20251002_Übersicht_Zählstellen_Rad_LinkIDs.gpkg")
 
 matsimLinkStats <- read_csv2(
-  "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-10pct/gr_analysis/linkPaxVolumesPerNetworkModePerHour.csv.gz"
+  "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-1pct/gr_analysis/linkPaxVolumesPerNetworkModePerHour.csv.gz"
 )
 
 #==================================================
@@ -95,16 +95,29 @@ countsRVR_matched <- countsRVR_matched %>%
   mutate(diffRVR_MATSim = countsRVR_matched$DTVw_RVRquer2024.2 - countsRVR_matched$vol_bike_sum)
 
 #==================================================
-# Optional checks
+# Scatter plot: Observed vs Simulated bike counts
 #==================================================
 
-# Show unmatched MATSim links
-matches %>%
-  filter(vehicles == 0)
+ggplot(
+  countsRVR_matched,
+  aes(x = countsRVR_matched$X24hcountDOquer, y = vol_bike_sum)
+) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed",
+    linewidth = 1,
+    colour = "red"
+  ) +
+  coord_equal() +
+  labs(
+    title = "Observed vs. simulated bicycle counts",
+    x = "Observed bicycle count (RVR)",
+    y = "Simulated bicycle count (MATSim)"
+  ) +
+  theme_minimal()
 
-##difference between match and RVR calculation
 
-
-view(matches)
 
 
