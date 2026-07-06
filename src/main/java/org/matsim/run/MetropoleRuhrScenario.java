@@ -34,7 +34,8 @@ import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.api.core.v01.population.Population;
+import org.matsim.api.core.v01.network.NetworkWriter;
+import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.analysis.traffic.LinkStats;
 import org.matsim.application.options.SampleOptions;
@@ -50,11 +51,18 @@ import org.matsim.core.config.groups.*;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.controler.PrepareForSimUtils;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.filter.NetworkFilterManager;
+import org.matsim.core.network.io.MatsimNetworkReader;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.core.router.TripStructureUtils;
+import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.extensions.pt.PtExtensionsConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorConfigGroup;
 import org.matsim.extensions.pt.fare.intermodalTripFareCompensator.IntermodalTripFareCompensatorsConfigGroup;
@@ -75,6 +83,9 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import playground.vsp.simpleParkingCostHandler.ParkingCostConfigGroup;
 import playground.vsp.simpleParkingCostHandler.ParkingCostModule;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static org.matsim.core.config.groups.RoutingConfigGroup.AccessEgressType.accessEgressModeToLinkPlusTimeConstant;
@@ -285,6 +296,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		preparePtFareConfig(config);
 
+		if (removeBikeInfra) {
+
+			// create filtered network once
+
+			removeDedicatedBikeNetwork(config);
+		}
+
 		return config;
 	}
 
@@ -327,15 +345,17 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
 
+
 		if (infraSpeedFactor != 1.0) {
 			log.info("Setting infraspeed factor consistently");
 			homogeneousBikeSpeedFactor(scenario.getNetwork(), infraSpeedFactor );
 		}
 
 		if (removeBikeInfra) {
-			log.info("Removing bike infra");
-			removeDedicatedBikeNetwork(scenario.getNetwork());
-			PopulationUtils.checkRouteModeAndReset(scenario.getPopulation(), scenario.getNetwork());
+			log.info("Repairing activity links after removing bike infrastructure");
+			repairActivityLinksAndResetRoutes(
+				scenario.getPopulation(),
+				scenario.getNetwork());
 		}
 	}
 
@@ -412,25 +432,114 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		}
 	}
 
-	private static void removeDedicatedBikeNetwork(Network network) {
-		int logged = 0;
-		List<Link> linksToRemove = new ArrayList<>();
-		for (Link link: network.getLinks().values()) {
-			if (link.getAllowedModes().size() == 1 &&
-				link.getAllowedModes().contains(TransportMode.bike)) {
-				linksToRemove.add(link);
-				if (logged < 50) {
-					log.info("Removing bicycle links", link.getId());
+	private static void removeDedicatedBikeNetwork(Config config) {
+
+		// Load original network
+		Network network = NetworkUtils.createNetwork();
+		new MatsimNetworkReader(network).readFile(config.network().getInputFile());
+
+		log.info("Removing bike infra network");
+		log.info("Number of links before removing bike infra network: {}", network.getLinks().size());
+
+		// Filter the network
+		NetworkFilterManager manager =
+			new NetworkFilterManager(network, new NetworkConfigGroup());
+
+		manager.addLinkFilter(link -> {
+			boolean dedicatedBike =
+				link.getAllowedModes().size() == 1 &&
+					link.getAllowedModes().contains(TransportMode.bike);
+
+			if (dedicatedBike) {
+				log.info("Removing bike-only link {}", link.getId());
+			}
+
+			return !dedicatedBike;
+		});
+
+		Network filtered = manager.applyFilters();
+
+
+		// Clean remaining bike network
+		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(filtered);
+		cleaner.run(Collections.singleton(TransportMode.bike));
+
+		log.info("Number of links after removing bike network: {}", filtered.getLinks().size());
+
+		try {
+			Path tmpNetwork = Files.createTempFile("network-no-bike-infra-", ".xml.gz");
+
+			new NetworkWriter(filtered).write(tmpNetwork.toString());
+
+			config.network().setInputFile(tmpNetwork.toString());
+
+			log.info("Using filtered network {}", tmpNetwork);
+
+		} catch (IOException e) {
+			throw new RuntimeException("Could not write filtered network.", e);
+		}
+	}
+
+	private static void repairActivityLinksAndResetRoutes(Population population, Network network) {
+
+		int relocatedActivities = 0;
+		int resetPlans = 0;
+
+		for (Person person : population.getPersons().values()) {
+
+			for (Plan plan : person.getPlans()) {
+
+				boolean relocated = false;
+				boolean hasBikeLeg = false;
+
+				for (PlanElement pe : plan.getPlanElements()) {
+
+					if (pe instanceof Activity activity) {
+
+						if (activity.getLinkId() == null) {
+							continue;
+						}
+
+						if (network.getLinks().containsKey(activity.getLinkId())) {
+							continue;
+						}
+
+						Link replacement = network.getLinks().values().stream()
+							.filter(l -> l.getAllowedModes().contains(TransportMode.bike))
+							.min(Comparator.comparingDouble(l ->
+								CoordUtils.calcEuclideanDistance(activity.getCoord(), l.getCoord())))
+							.orElseThrow();
+
+						if (replacement == null) {
+							throw new IllegalStateException(
+								"No replacement link found for activity of person "
+									+ person.getId() + " at " + activity.getCoord());
+						}
+
+						log.info("Relocating activity of person {} from removed link {} to {}",
+							person.getId(), activity.getLinkId(), replacement.getId());
+
+						activity.setLinkId(replacement.getId());
+						relocatedActivities++;
+						relocated = true;
+					}
+
+					if (pe instanceof Leg leg) {
+						if (TransportMode.bike.equals(leg.getMode())) {
+							hasBikeLeg = true;
+						}
+					}
+				}
+
+				if (relocated || hasBikeLeg) {
+					PopulationUtils.resetRoutes(plan);
+					resetPlans++;
 				}
 			}
 		}
 
-		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(network);
-		cleaner.run(Collections.singleton(TransportMode.bike));
-
-		//parse population if plans contains links that are removed reset the routes
-
-
+		log.info("Relocated {} activities and reset {} plans.",
+			relocatedActivities, resetPlans);
 	}
 
 
