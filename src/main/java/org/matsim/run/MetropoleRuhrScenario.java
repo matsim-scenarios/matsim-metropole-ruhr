@@ -108,10 +108,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--no-intermodal", defaultValue = "true", description = "Enable or disable intermodal routing", negatable = true)
 	protected boolean intermodal;
 
-	@CommandLine.Option(names = "--remove-bike-infra", defaultValue = "false", description = "Remove dedicated bike infra")
-	private boolean removeBikeInfra;
-
-	@CommandLine.Option(names = "--faciltiy-file", defaultValue = "false", description = "Provide facility file")
+	@CommandLine.Option(names = "--facility-file", defaultValue = "false", description = "Provide facility file")
 	private String facilityFile;
 
 	@CommandLine.Option(names = "--infra-speed-factor", defaultValue = "1.0", description = "Set bike infra speed factor consistently")
@@ -301,10 +298,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		preparePtFareConfig(config);
 
-		if (removeBikeInfra) {
-			config.facilities().setInputFile(facilityFile);
-		}
-
 		return config;
 	}
 
@@ -347,14 +340,9 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		VehicleType bike = scenario.getVehicles().getVehicleTypes().get(Id.create("bike", VehicleType.class));
 		bike.setNetworkMode(TransportMode.bike);
 
-
 		if (infraSpeedFactor != 1.0) {
 			log.info("Setting infraspeed factor consistently");
 			homogeneousBikeSpeedFactor(scenario.getNetwork(), infraSpeedFactor );
-		}
-
-		if (removeBikeInfra) {
-			log.info("Repairing activity links after removing bike infrastructure");
 		}
 	}
 
@@ -429,68 +417,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 				}
 			}
 		}
-	}
-
-	private static void repairActivityLinksAndResetRoutes(Population population, Network network) {
-
-		int relocatedActivities = 0;
-		int resetPlans = 0;
-
-		for (Person person : population.getPersons().values()) {
-
-			for (Plan plan : person.getPlans()) {
-
-				boolean relocated = false;
-				boolean hasBikeLeg = false;
-
-				for (PlanElement pe : plan.getPlanElements()) {
-
-					if (pe instanceof Activity activity) {
-
-						if (activity.getLinkId() == null) {
-							continue;
-						}
-
-						if (network.getLinks().containsKey(activity.getLinkId())) {
-							continue;
-						}
-
-						Link replacement = network.getLinks().values().stream()
-							.filter(l -> l.getAllowedModes().contains(TransportMode.bike))
-							.min(Comparator.comparingDouble(l ->
-								CoordUtils.calcEuclideanDistance(activity.getCoord(), l.getCoord())))
-							.orElseThrow();
-
-						if (replacement == null) {
-							throw new IllegalStateException(
-								"No replacement link found for activity of person "
-									+ person.getId() + " at " + activity.getCoord());
-						}
-
-						log.info("Relocating activity of person {} from removed link {} to {}",
-							person.getId(), activity.getLinkId(), replacement.getId());
-
-						activity.setLinkId(replacement.getId());
-						relocatedActivities++;
-						relocated = true;
-					}
-
-					if (pe instanceof Leg leg) {
-						if (TransportMode.bike.equals(leg.getMode())) {
-							hasBikeLeg = true;
-						}
-					}
-				}
-
-				if (relocated || hasBikeLeg) {
-					PopulationUtils.resetRoutes(plan);
-					resetPlans++;
-				}
-			}
-		}
-
-		log.info("Relocated {} activities and reset {} plans.",
-			relocatedActivities, resetPlans);
 	}
 
 
