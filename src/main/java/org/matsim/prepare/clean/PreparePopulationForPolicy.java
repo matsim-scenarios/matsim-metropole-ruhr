@@ -1,14 +1,19 @@
 package org.matsim.prepare.clean;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.application.prepare.population.PersonNetworkLinkCheck;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.FacilitiesConfigGroup;
+import org.matsim.core.config.groups.NetworkConfigGroup;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.filter.NetworkFilterManager;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.algorithms.ParallelPersonAlgorithmUtils;
 import org.matsim.core.population.algorithms.PersonAlgorithm;
@@ -16,9 +21,11 @@ import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.facilities.FacilitiesFromPopulation;
 import org.matsim.facilities.FacilitiesWriter;
+import org.matsim.run.MetropoleRuhrScenario;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,6 +49,11 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 	@CommandLine.Option(names = "--output-facilities", description = "Path to output facilities", required = true)
 	private Path outputFacilitiesPath;
 
+	@CommandLine.Option(names = "--output-network", required = true)
+	private Path outputNetworkPath;
+
+	private static final Logger log = LogManager.getLogger(PreparePopulationForPolicy.class);
+
 	public static void main(String[] args) throws Exception {
 		new PreparePopulationForPolicy().execute(args);
 	}
@@ -53,6 +65,7 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 
 		Population population = PopulationUtils.readPopulation(populationPath);
 		Network network = NetworkUtils.readNetwork(networkPath);
+		network = removeDedicatedBikeNetwork(network);
 
 		// Delete link ids, that are now invalid
 		ParallelPersonAlgorithmUtils.run(population, Runtime.getRuntime().availableProcessors(), PersonNetworkLinkCheck.createPersonAlgorithm(network));
@@ -72,6 +85,7 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 		// Write the resulting population and generated facility file
 		PopulationUtils.writePopulation(population, outputPopulationPath.toString());
 		new FacilitiesWriter(scenario.getActivityFacilities()).write(outputFacilitiesPath.toString());
+		new NetworkWriter(network).write(outputNetworkPath.toString());
 
 		return 0;
 	}
@@ -88,12 +102,12 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 
 				final List<PlanElement> planElements = plan.getPlanElements();
 
-				// Remove all pt trips
+				// Remove all bike trips
 				for (TripStructureUtils.Trip trip : TripStructureUtils.getTrips(plan)) {
 
-					boolean hasPT = trip.getLegsOnly().stream().anyMatch(l -> Objects.equals(l.getMode(), TransportMode.pt));
+					boolean hasBike = trip.getLegsOnly().stream().anyMatch(l -> Objects.equals(l.getMode(), TransportMode.bike));
 
-					if (!hasPT)
+					if (!hasBike)
 						continue;
 
 					// Replaces all trip elements and inserts single leg
@@ -103,8 +117,8 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 							planElements.indexOf(trip.getDestinationActivity()));
 
 					fullTrip.clear();
-					Leg leg = PopulationUtils.createLeg(TransportMode.pt);
-					TripStructureUtils.setRoutingMode(leg, TransportMode.pt);
+					Leg leg = PopulationUtils.createLeg(TransportMode.bike);
+					TripStructureUtils.setRoutingMode(leg, TransportMode.bike);
 					fullTrip.add(leg);
 				}
 
@@ -117,5 +131,34 @@ public class PreparePopulationForPolicy implements MATSimAppCommand {
 			}
 
 		}
+	}
+
+	private static Network removeDedicatedBikeNetwork(Network network) {
+
+		log.info("Removing bike infrastructure network");
+		log.info("Number of links before filtering: {}", network.getLinks().size());
+
+		NetworkFilterManager manager = new NetworkFilterManager(network, new NetworkConfigGroup());
+
+		manager.addLinkFilter(link -> {
+			boolean dedicatedBike =
+				link.getAllowedModes().size() == 1 &&
+				link.getAllowedModes().contains(TransportMode.bike);
+
+			if (dedicatedBike) {
+				log.debug("Removing bike-only link {}", link.getId());
+			}
+
+			return !dedicatedBike;
+		});
+
+		Network filtered = manager.applyFilters();
+
+		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(filtered);
+		cleaner.run(Collections.singleton(TransportMode.bike));
+
+		log.info("Number of links after filtering: {}", filtered.getLinks().size());
+
+		return filtered;
 	}
 }

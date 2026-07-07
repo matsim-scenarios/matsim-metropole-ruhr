@@ -111,8 +111,13 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	@CommandLine.Option(names = "--remove-bike-infra", defaultValue = "false", description = "Remove dedicated bike infra")
 	private boolean removeBikeInfra;
 
+	@CommandLine.Option(names = "--faciltiy-file", defaultValue = "false", description = "Provide facility file")
+	private String facilityFile;
+
 	@CommandLine.Option(names = "--infra-speed-factor", defaultValue = "1.0", description = "Set bike infra speed factor consistently")
 	private double infraSpeedFactor;
+
+
 
 	/**
 	 * Constructor for extending scenarios.
@@ -297,10 +302,7 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		preparePtFareConfig(config);
 
 		if (removeBikeInfra) {
-
-			// create filtered network once
-
-			removeDedicatedBikeNetwork(config);
+			config.facilities().setInputFile(facilityFile);
 		}
 
 		return config;
@@ -353,9 +355,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 
 		if (removeBikeInfra) {
 			log.info("Repairing activity links after removing bike infrastructure");
-			repairActivityLinksAndResetRoutes(
-				scenario.getPopulation(),
-				scenario.getNetwork());
 		}
 	}
 
@@ -429,54 +428,6 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 					}
 				}
 			}
-		}
-	}
-
-	private static void removeDedicatedBikeNetwork(Config config) {
-
-		// Load original network
-		Network network = NetworkUtils.createNetwork();
-		new MatsimNetworkReader(network).readFile(config.network().getInputFile());
-
-		log.info("Removing bike infra network");
-		log.info("Number of links before removing bike infra network: {}", network.getLinks().size());
-
-		// Filter the network
-		NetworkFilterManager manager =
-			new NetworkFilterManager(network, new NetworkConfigGroup());
-
-		manager.addLinkFilter(link -> {
-			boolean dedicatedBike =
-				link.getAllowedModes().size() == 1 &&
-					link.getAllowedModes().contains(TransportMode.bike);
-
-			if (dedicatedBike) {
-				log.info("Removing bike-only link {}", link.getId());
-			}
-
-			return !dedicatedBike;
-		});
-
-		Network filtered = manager.applyFilters();
-
-
-		// Clean remaining bike network
-		MultimodalNetworkCleaner cleaner = new MultimodalNetworkCleaner(filtered);
-		cleaner.run(Collections.singleton(TransportMode.bike));
-
-		log.info("Number of links after removing bike network: {}", filtered.getLinks().size());
-
-		try {
-			Path tmpNetwork = Files.createTempFile("network-no-bike-infra-", ".xml.gz");
-
-			new NetworkWriter(filtered).write(tmpNetwork.toString());
-
-			config.network().setInputFile(tmpNetwork.toString());
-
-			log.info("Using filtered network {}", tmpNetwork);
-
-		} catch (IOException e) {
-			throw new RuntimeException("Could not write filtered network.", e);
 		}
 	}
 
