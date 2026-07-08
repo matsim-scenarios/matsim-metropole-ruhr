@@ -30,6 +30,14 @@ public final class RechargeVehicleTypeUtils {
 		return vehicleTypeId.toString().endsWith(RECHARGE_TYPE_SUFFIX);
 	}
 
+	static String rechargeIdSuffix(int multiplierApplications) {
+		return "_" + multiplierApplications + RECHARGE_TYPE_SUFFIX;
+	}
+
+	static Id<VehicleType> createRechargeVehicleTypeId(Id<VehicleType> referenceTypeId, int multiplierApplications) {
+		return Id.create(referenceTypeId + rechargeIdSuffix(multiplierApplications), VehicleType.class);
+	}
+
 	public static Optional<Id<VehicleType>> getReferenceVehicleTypeId(Id<VehicleType> rechargeTypeId) {
 		String typeId = rechargeTypeId.toString();
 		if (!typeId.endsWith(RECHARGE_TYPE_SUFFIX)) {
@@ -40,6 +48,27 @@ public final class RechargeVehicleTypeUtils {
 			return Optional.empty();
 		}
 		return Optional.of(Id.create(typeId.substring(0, separatorIndex), VehicleType.class));
+	}
+
+	/**
+	 * Returns the numeric Recharge level from IDs like type_1Recharge or type_2Recharge.
+	 * Older or manually created IDs that only end with Recharge are treated as one multiplier application.
+	 */
+	static int getRechargeMultiplierApplications(Id<VehicleType> vehicleTypeId) {
+		String typeId = vehicleTypeId.toString();
+		if (!typeId.endsWith(RECHARGE_TYPE_SUFFIX)) {
+			return 0;
+		}
+		int suffixStartIndex = typeId.length() - RECHARGE_TYPE_SUFFIX.length();
+		int separatorIndex = typeId.lastIndexOf('_');
+		if (separatorIndex < 0 || separatorIndex + 1 >= suffixStartIndex) {
+			return 1;
+		}
+		try {
+			return Math.max(1, Integer.parseInt(typeId.substring(separatorIndex + 1, suffixStartIndex)));
+		} catch (NumberFormatException e) {
+			return 1;
+		}
 	}
 
 	/**
@@ -95,11 +124,36 @@ public final class RechargeVehicleTypeUtils {
 					referenceTypeId.get());
 				continue;
 			}
-			vehicleType.setDescription(referenceType.getDescription() + " " + RECHARGE_TYPE_SUFFIX);
-			vehicleType.getCostInformation().setFixedCost(referenceType.getCostInformation().getFixedCosts());
-			VehicleUtils.setEnergyCapacity(vehicleType.getEngineInformation(), VehicleUtils.getEnergyCapacity(referenceType.getEngineInformation()));
+			copyBaseVehicleTypeProperties(referenceType, vehicleType);
+			vehicleType.setDescription(baseDescription(referenceType) + " " + RECHARGE_TYPE_SUFFIX);
 			restoredTypes++;
 		}
 		return restoredTypes;
+	}
+
+	static VehicleType createRechargeVehicleType(Id<VehicleType> rechargeTypeId, VehicleType referenceType, double rangeMultiplier,
+	                                             double fixedCostMultiplier, String descriptionSuffix) {
+		VehicleType rechargeType = VehicleUtils.createVehicleType(rechargeTypeId);
+		copyBaseVehicleTypeProperties(referenceType, rechargeType);
+		applyRechargeAdjustments(rechargeType, referenceType, rangeMultiplier, fixedCostMultiplier);
+		rechargeType.setDescription(baseDescription(referenceType) + descriptionSuffix);
+		return rechargeType;
+	}
+
+	static void applyRechargeAdjustments(VehicleType rechargeType, VehicleType referenceType, double rangeMultiplier,
+	                                     double fixedCostMultiplier) {
+		Double energyCapacity = VehicleUtils.getEnergyCapacity(referenceType.getEngineInformation());
+		if (energyCapacity != null) {
+			VehicleUtils.setEnergyCapacity(rechargeType.getEngineInformation(), energyCapacity * rangeMultiplier);
+		}
+		rechargeType.getCostInformation().setFixedCost(referenceType.getCostInformation().getFixedCosts() * fixedCostMultiplier);
+	}
+
+	static void copyBaseVehicleTypeProperties(VehicleType referenceType, VehicleType targetType) {
+		VehicleUtils.copyFromTo(referenceType, targetType);
+	}
+
+	private static String baseDescription(VehicleType referenceType) {
+		return referenceType.getDescription() == null ? referenceType.getId().toString() : referenceType.getDescription();
 	}
 }

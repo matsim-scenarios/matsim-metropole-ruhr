@@ -14,10 +14,13 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.freight.carriers.Carrier;
 import org.matsim.freight.carriers.CarrierCapabilities;
+import org.matsim.freight.carriers.CarrierPlan;
 import org.matsim.freight.carriers.CarrierService;
 import org.matsim.freight.carriers.CarrierVehicle;
 import org.matsim.freight.carriers.CarrierVehicleTypes;
 import org.matsim.freight.carriers.CarriersUtils;
+import org.matsim.freight.carriers.ScheduledTour;
+import org.matsim.freight.carriers.Tour;
 import org.matsim.vehicles.MatsimVehicleReader;
 import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicle;
@@ -52,7 +55,7 @@ class RangeAwareUnhandledServicesSolutionTest {
 			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
 
 		assertEquals(1, result.rangeInfeasibleServices());
-		assertEquals(0, result.servicesBeyondOneRechargeRange());
+		assertEquals(0, result.servicesWithoutFeasibleRechargeFallback());
 		assertEquals(1, result.addedVehicles());
 		assertEquals(1, result.carriersWithAddedVehicles());
 		assertEquals(2, carrier.getCarrierCapabilities().getCarrierVehicles().size());
@@ -78,7 +81,7 @@ class RangeAwareUnhandledServicesSolutionTest {
 			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
 
 		assertEquals(1, result.rangeInfeasibleServices());
-		assertEquals(0, result.servicesBeyondOneRechargeRange());
+		assertEquals(0, result.servicesWithoutFeasibleRechargeFallback());
 		assertEquals(1, result.addedVehicles());
 
 		CarrierVehicle longRangeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
@@ -90,9 +93,32 @@ class RangeAwareUnhandledServicesSolutionTest {
 	}
 
 	@Test
-	void doesNotAddVehicleWhenCurrentRangeCanReachService() {
+	void addsOneRechargeVehiclePerRangeInfeasibleService() {
 		Scenario scenario = createScenario();
-		VehicleType electricType = createElectricVehicleType(100., 1., 123.);
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarriersUtils.addService(carrier, CarrierService.Builder
+			.newInstance(Id.create("service2", CarrierService.class), SERVICE_LINK_ID, 1)
+			.build());
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(2, result.rangeInfeasibleServices());
+		assertEquals(0, result.servicesWithoutFeasibleRechargeFallback());
+		assertEquals(2, result.addedVehicles());
+		assertEquals(1, result.carriersWithAddedVehicles());
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge_1", Vehicle.class)));
+		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void doesNotAddVehicleWhenCurrentRangeCanReachServiceWithClearMargin() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(200., 1., 123.);
 		Carrier carrier = createCarrierWithVehicleAndService(electricType);
 		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
 		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
@@ -103,6 +129,61 @@ class RangeAwareUnhandledServicesSolutionTest {
 		assertEquals(0, result.rangeInfeasibleServices());
 		assertEquals(0, result.addedVehicles());
 		assertEquals(1, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void addsRechargeVehicleWhenCurrentRangeOnlyHasSmallSafetyMargin() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(110., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.rangeInfeasibleServices());
+		assertEquals(1, result.addedVehicles());
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
+	}
+
+	@Test
+	void doesNotAddRechargeVehicleFromUsedTemplateWhenRangeAlreadyFits() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(130., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierVehicle usedBaseVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle", Vehicle.class));
+		CarrierService handledService = CarrierService.Builder
+			.newInstance(Id.create("handledService", CarrierService.class), SERVICE_LINK_ID, 1)
+			.build();
+		CarriersUtils.addService(carrier, handledService);
+		addSelectedPlanWithService(carrier, usedBaseVehicle, handledService);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.rangeInfeasibleServices());
+		assertEquals(0, result.addedVehicles());
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
+	}
+
+	@Test
+	void doesNotAddRechargeVehicleWhenOnlyTimeWindowNeedsRepair() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(100., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType, 8.);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.rangeInfeasibleServices());
+		assertEquals(0, result.addedVehicles());
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
 	}
 
 	@Test
@@ -132,7 +213,7 @@ class RangeAwareUnhandledServicesSolutionTest {
 	}
 
 	@Test
-	void addsAnotherLongRangeVehicleWhenRangeInfeasibleServiceRemainsUnhandled() {
+	void doesNotAddAnotherLongRangeVehicleWhenExistingRechargeVehicleIsFree() {
 		Scenario scenario = createScenario();
 		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
 		Carrier carrier = createCarrierWithVehicleAndService(electricType);
@@ -143,17 +224,184 @@ class RangeAwareUnhandledServicesSolutionTest {
 		solution.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
 		RangeAwareUnhandledServicesSolution.Result result = solution.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
 
+		assertEquals(0, result.addedVehicles());
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge_1", Vehicle.class)));
+		assertEquals(2, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void addsNextRechargeLevelWhenExistingRechargeVehicleIsOutsideBufferedRange() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(55., 1., 123.);
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback)");
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierVehicle freeRechargeVehicle = CarrierVehicle.Builder
+			.newInstance(Id.create("vehicle_1Recharge", Vehicle.class), DEPOT_LINK_ID, longRangeType)
+			.setEarliestStart(0.)
+			.setLatestEnd(24. * 3600.)
+			.build();
+		carrier.getCarrierCapabilities().getCarrierVehicles().put(freeRechargeVehicle.getId(), freeRechargeVehicle);
+		carrier.getCarrierCapabilities().getVehicleTypes().add(longRangeType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(longRangeType.getId(), longRangeType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.addedVehicles());
+		assertEquals(0, result.servicesCoveredByFreeVehicleNearRangeLimit());
+		assertEquals(1, result.rangeInfeasibleServices());
+		CarrierVehicle nextRechargeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle_2Recharge", Vehicle.class));
+		assertNotNull(nextRechargeVehicle);
+		assertEquals("electric_2Recharge", nextRechargeVehicle.getType().getId().toString());
+		assertEquals(220., VehicleUtils.getEnergyCapacity(nextRechargeVehicle.getType().getEngineInformation()));
+		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void addsSameRechargeLevelFromBetterTemplateWhenExistingRechargeVehicleFailsBufferedTimeCheck() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(70., 1., 123.);
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback)");
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierVehicle tightRechargeVehicle = CarrierVehicle.Builder
+			.newInstance(Id.create("tight_1Recharge", Vehicle.class), DEPOT_LINK_ID, longRangeType)
+			.setEarliestStart(0.)
+			.setLatestEnd(40.)
+			.build();
+		carrier.getCarrierCapabilities().getCarrierVehicles().put(tightRechargeVehicle.getId(), tightRechargeVehicle);
+		carrier.getCarrierCapabilities().getVehicleTypes().add(longRangeType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(longRangeType.getId(), longRangeType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier), 5.);
+
+		assertEquals(1, result.addedVehicles());
+		assertEquals(0, result.servicesCoveredByFreeVehicle());
+		assertEquals(0, result.servicesCoveredByFreeVehicleNearRangeLimit());
+		assertEquals(1, result.rangeInfeasibleServices());
+		CarrierVehicle robustRechargeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle_1Recharge", Vehicle.class));
+		assertNotNull(robustRechargeVehicle);
+		assertEquals("electric_1Recharge", robustRechargeVehicle.getType().getId().toString());
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_2Recharge", Vehicle.class)));
+		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void addsAnotherLongRangeVehicleWhenExistingRechargeVehicleIsAlreadyUsed() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+		RangeAwareUnhandledServicesSolution solution = new RangeAwareUnhandledServicesSolution(100., 2., 10.);
+
+		solution.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+		CarrierVehicle alreadyUsedRechargeVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle_1Recharge", Vehicle.class));
+		CarrierService handledService = CarrierService.Builder
+			.newInstance(Id.create("handledService", CarrierService.class), SERVICE_LINK_ID, 1)
+			.build();
+		CarriersUtils.addService(carrier, handledService);
+		addSelectedPlanWithService(carrier, alreadyUsedRechargeVehicle, handledService);
+
+		RangeAwareUnhandledServicesSolution.Result result = solution.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
 		assertEquals(1, result.addedVehicles());
 		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge_1", Vehicle.class)));
 		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
 	}
 
 	@Test
+	void addsLongRangeVehicleFromUsedBaseTemplateWhenExtraRangeIsNeeded() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierVehicle usedBaseVehicle = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle", Vehicle.class));
+		CarrierService handledService = CarrierService.Builder
+			.newInstance(Id.create("handledService", CarrierService.class), SERVICE_LINK_ID, 1)
+			.build();
+		CarriersUtils.addService(carrier, handledService);
+		addSelectedPlanWithService(carrier, usedBaseVehicle, handledService);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.addedVehicles());
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
+	}
+
+	@Test
+	void addsOnlyMissingLongRangeVehicleWhenOneFreeRechargeCannotCoverAllUnhandledServices() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
+			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
+			" (range fallback)");
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarriersUtils.addService(carrier, CarrierService.Builder
+			.newInstance(Id.create("service2", CarrierService.class), SERVICE_LINK_ID, 1)
+			.build());
+		CarrierVehicle freeRechargeVehicle = CarrierVehicle.Builder
+			.newInstance(Id.create("vehicle_1Recharge", Vehicle.class), DEPOT_LINK_ID, longRangeType)
+			.setEarliestStart(0.)
+			.setLatestEnd(24. * 3600.)
+			.build();
+		carrier.getCarrierCapabilities().getCarrierVehicles().put(freeRechargeVehicle.getId(), freeRechargeVehicle);
+		carrier.getCarrierCapabilities().getVehicleTypes().add(longRangeType);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(longRangeType.getId(), longRangeType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(1, result.addedVehicles());
+		assertNotNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge_1", Vehicle.class)));
+		assertEquals(3, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
+	void doesNotAddRechargeVehicleWhenReferenceVehicleTimeWindowIsTooShort() {
+		Scenario scenario = createScenario();
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierService serviceLongerThanVehicleAvailability = CarrierService.Builder
+			.newInstance(Id.create("service", CarrierService.class), SERVICE_LINK_ID, 1)
+			.setServiceDuration(25. * 3600.)
+			.build();
+		carrier.getServices().put(serviceLongerThanVehicleAvailability.getId(), serviceLongerThanVehicleAvailability);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		RangeAwareUnhandledServicesSolution.Result result = new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		assertEquals(0, result.addedVehicles());
+		assertNull(carrier.getCarrierCapabilities().getCarrierVehicles().get(Id.create("vehicle_1Recharge", Vehicle.class)));
+		assertEquals(1, carrier.getCarrierCapabilities().getCarrierVehicles().size());
+	}
+
+	@Test
 	void writesMainRunVehicleTypesWithOriginalFixedCosts(@TempDir Path tempDir) throws Exception {
 		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
-		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+		electricType.setWidth(1.5);
+		electricType.getCapacity().setSeats(1).setStandingRoom(0).setOther(4600.);
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
 			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
-			" (range fallback, assumes one recharge)");
+			" (range fallback)");
 		VehicleType unrestrictedType = createUnrestrictedVehicleType();
 		Vehicles inputVehicles = VehicleUtils.createVehiclesContainer();
 		inputVehicles.addVehicleType(electricType);
@@ -179,15 +427,19 @@ class RangeAwareUnhandledServicesSolutionTest {
 		assertEquals(1., normalizedLongRangeType.getCostInformation().getCostsPerMeter());
 		assertEquals(1., normalizedLongRangeType.getCostInformation().getCostsPerSecond());
 		assertEquals(TransportMode.car, normalizedLongRangeType.getNetworkMode());
+		assertEquals(1.5, normalizedLongRangeType.getWidth());
+		assertEquals(1, normalizedLongRangeType.getCapacity().getSeats());
+		assertEquals(0, normalizedLongRangeType.getCapacity().getStandingRoom());
+		assertEquals(4600., normalizedLongRangeType.getCapacity().getOther());
 		assertNull(outputVehicles.getVehicleTypes().get(Id.create("unrestricted_1Recharge", VehicleType.class)));
 	}
 
 	@Test
 	void normalizesExistingMainRunFallbackCostsAndCapacity(@TempDir Path tempDir) throws Exception {
 		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
-		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
 			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
-			" (range fallback, assumes one recharge)");
+			" (range fallback)");
 		Vehicles inputVehicles = VehicleUtils.createVehiclesContainer();
 		inputVehicles.addVehicleType(electricType);
 		inputVehicles.addVehicleType(longRangeType);
@@ -237,9 +489,9 @@ class RangeAwareUnhandledServicesSolutionTest {
 	@Test
 	void restoresFallbackCostsAfterTourPlanning() {
 		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
-		VehicleType longRangeType = RangeAwareUnhandledServicesSolution.createLongRangeVehicleType(
+		VehicleType longRangeType = RechargeVehicleTypeUtils.createRechargeVehicleType(
 			Id.create("electric_1Recharge", VehicleType.class), electricType, 2., 10.,
-			" (range fallback, assumes one recharge)");
+			" (range fallback)");
 		Map<Id<VehicleType>, VehicleType> vehicleTypes = new HashMap<>();
 		vehicleTypes.put(electricType.getId(), electricType);
 		vehicleTypes.put(longRangeType.getId(), longRangeType);
@@ -292,6 +544,18 @@ class RangeAwareUnhandledServicesSolutionTest {
 		CarriersUtils.writeCarrierVehicleTypes(carrierVehicleTypes, carrierVehicleTypesFile.toString());
 	}
 
+	private static void addSelectedPlanWithService(Carrier carrier, CarrierVehicle vehicle, CarrierService handledService) {
+		Tour.Builder tourBuilder = Tour.Builder.newInstance(Id.create("tour", Tour.class));
+		tourBuilder.scheduleStart(vehicle.getLinkId());
+		tourBuilder.addLeg(tourBuilder.createLeg(null, vehicle.getEarliestStartTime(), 0.));
+		tourBuilder.scheduleService(handledService);
+		tourBuilder.addLeg(tourBuilder.createLeg(null, vehicle.getEarliestStartTime(), 0.));
+		tourBuilder.scheduleEnd(vehicle.getLinkId());
+		CarrierPlan plan = new CarrierPlan(List.of(ScheduledTour.newInstance(tourBuilder.build(), vehicle, vehicle.getEarliestStartTime())));
+		carrier.addPlan(plan);
+		carrier.setSelectedPlan(plan);
+	}
+
 	private static VehicleType createUnrestrictedVehicleType() {
 		VehicleType vehicleType = VehicleUtils.createVehicleType(Id.create("unrestricted", VehicleType.class));
 		vehicleType.setNetworkMode(TransportMode.car);
@@ -303,10 +567,14 @@ class RangeAwareUnhandledServicesSolutionTest {
 	}
 
 	private static Carrier createCarrierWithVehicleAndService(VehicleType vehicleType) {
+		return createCarrierWithVehicleAndService(vehicleType, 24. * 3600.);
+	}
+
+	private static Carrier createCarrierWithVehicleAndService(VehicleType vehicleType, double latestEndTime) {
 		CarrierVehicle vehicle = CarrierVehicle.Builder
 			.newInstance(Id.create("vehicle", Vehicle.class), DEPOT_LINK_ID, vehicleType)
 			.setEarliestStart(0.)
-			.setLatestEnd(24. * 3600.)
+			.setLatestEnd(latestEndTime)
 			.build();
 		Carrier carrier = CarriersUtils.createCarrier(Id.create("carrier", Carrier.class));
 		carrier.setCarrierCapabilities(CarrierCapabilities.Builder.newInstance()
