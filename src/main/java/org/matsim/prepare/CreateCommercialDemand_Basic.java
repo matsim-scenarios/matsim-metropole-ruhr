@@ -148,7 +148,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--resistanceFactorForKWM_goodsTraffic", defaultValue = "0.2", description = "ResistanceFactor of the goodsTraffic for the trip distribution in the small scale commercial model.")
 	private double resistanceFactorForKWM_goodsTraffic;
 
-	@CommandLine.Option(names = "--resistanceFactorForKWM_commercialPersonTraffic", defaultValue = "0.1", description = "ResistanceFactor of the commercialPersonTraffic for the trip distribution in the small scale commercial model.")
+	@CommandLine.Option(names = "--resistanceFactorForKWM_commercialPersonTraffic", defaultValue = "0.225", description = "ResistanceFactor of the commercialPersonTraffic for the trip distribution in the small scale commercial model.")
 	private double resistanceFactorForKWM_commercialPersonTraffic;
 
 	@CommandLine.Option(names = "--networkChangeEventsFile", description = "Path to the network change events file. If no file is set, no networkChangeEvents are used.")
