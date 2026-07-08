@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Analyse der commercialTraffic-Endlaeufe in output/studyWV_Ruhr.
+# Analyse der commercialTraffic-Endlaeufe fuer ein oder mehrere Szenarien.
 #
 # Das Script erzeugt CSV-Tabellen und PNG-Plots. Es beruecksichtigt die
 # Sample-Groesse, indem zaehlende Werte auf 100% hochskaliert werden.
@@ -20,15 +20,41 @@ suppressPackageStartupMessages({
 
 repo_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 
-study_dir <- file.path(repo_root, "output", "studyWV_Ruhr")
-out_dir <- file.path(repo_root, "output", "studyWV_Ruhr_analysis")
+# Hier den Szenario-Namen anpassen. Er bestimmt im Standardfall sowohl den
+# Input-Ordner output/<scenario_name> als auch den Analyseordner
+# output/<scenario_name>_analysis.
+scenario_name <- "studyWV_Ruhr"
+
+# Direkte Pfade: in R-Strings funktionieren Windows-Pfade am besten mit "/"
+# statt "\".
+studyWV_Ruhr_dir <- "C:/Users/erica/shared/matsim-metropole-ruhr/output/studyWV_Ruhr"
+studyWV_Ruhr_analysis_dir <- "C:/Users/erica/shared/matsim-metropole-ruhr/output/studyWV_Ruhr_analysis"
+
+# Einzelnes Szenario:
+scenario_paths <- c(
+  studyWV_Ruhr = studyWV_Ruhr_dir
+)
+
+# Mehrere Szenarien/Runs koennen als benannter Vektor analysiert werden.
+# Die Namen werden in CSVs und Plot-Facets als scenario_name genutzt.
+# scenario_paths <- c(
+#   base_2024 = "C:/Users/erica/shared/matsim-metropole-ruhr/output/studyWV_Ruhr",
+#   sensitivity_2030 = "C:/Users/erica/shared/matsim-metropole-ruhr/output/studyWV_Ruhr_2030"
+# )
+
+out_dir <- studyWV_Ruhr_analysis_dir
 csv_dir <- file.path(out_dir, "csv")
 plot_dir <- file.path(out_dir, "plots")
 
 # TRUE: Plots werden zusaetzlich zur PNG-Datei an das aktive R-Plot-Device
 # geschickt. Das ist vor allem praktisch in RStudio oder einer interaktiven
-# R-Konsole. IntelliJ zeigt diese Devices je nach R-Plugin nicht immer an.
+# R-Konsole. Fuer IntelliJ das Script am besten in der R-Konsole ausfuehren
+# oder sourcen, damit alle print(plot)-Aufrufe im Plot-Fenster landen.
 show_plots_interactively <- TRUE
+
+# Kurze Pause nach jedem print(plot), damit IDE-Plot-Viewer wie IntelliJ die
+# Anzeige zuverlaessig aktualisieren koennen.
+plot_display_pause_seconds <- 0.15
 
 # =============================================================================
 # 2. Hauptablauf: hier sieht man, was das Script nacheinander ausfuehrt
@@ -41,7 +67,11 @@ main <- function() {
 
   # 1) Run-Inventar erstellen: findet Run-Klassen, Sample-Ordner und
   # commercialTraffic_RunXpct-Endlaeufe.
-  sample_dirs <- build_run_inventory(study_dir)
+  resolved_scenario_paths <- resolve_scenario_paths(scenario_paths, scenario_name, repo_root)
+  message("Analyzing scenario path(s):")
+  walk2(names(resolved_scenario_paths), resolved_scenario_paths, ~ message("  ", .x, ": ", .y))
+
+  sample_dirs <- build_run_inventory(resolved_scenario_paths)
   write_csv(sample_dirs, file.path(csv_dir, "run_inventory.csv"), na = "")
 
   # Nur Runs mit vorhandenem analysis-Ordner werden fuer die Ergebnisanalyse
@@ -165,6 +195,47 @@ normalize_subpopulation <- function(x) {
   )
 }
 
+resolve_scenario_paths <- function(paths, default_scenario_name, repo_root) {
+  if (length(paths) == 0 || all(is.na(paths) | !nzchar(paths))) {
+    paths <- c(file.path(repo_root, "output", default_scenario_name))
+  }
+
+  path_labels <- names(paths)
+  if (is.null(path_labels)) {
+    path_labels <- rep("", length(paths))
+  }
+
+  path_labels <- if_else(
+    is.na(path_labels) | !nzchar(path_labels),
+    basename(paths),
+    path_labels
+  )
+
+  if (length(paths) == 1 && path_labels[[1]] == basename(paths[[1]])) {
+    path_labels[[1]] <- default_scenario_name
+  }
+
+  path_labels <- make.unique(path_labels, sep = "_")
+  normalized_paths <- normalizePath(paths, winslash = "/", mustWork = FALSE)
+  names(normalized_paths) <- path_labels
+
+  missing_paths <- normalized_paths[!dir.exists(normalized_paths)]
+  if (length(missing_paths) > 0) {
+    warning(
+      "Scenario path(s) not found and will be skipped: ",
+      paste(paste0(names(missing_paths), "=", missing_paths), collapse = "; "),
+      call. = FALSE
+    )
+  }
+
+  existing_paths <- normalized_paths[dir.exists(normalized_paths)]
+  if (length(existing_paths) == 0) {
+    stop("No existing scenario path found. Please adjust scenario_paths at the top of the script.", call. = FALSE)
+  }
+
+  existing_paths
+}
+
 remove_basic_ftl_ltl <- function(data, columns) {
   # Im Basic-Ansatz werden FTL/LTL nicht separat erzeugt. Falls diese
   # Kategorien durch zusammengefuehrte Tabellen oder Plot-Facets auftauchen,
@@ -186,32 +257,39 @@ remove_basic_ftl_ltl <- function(data, columns) {
     filter(!(demand_model == "Basic" & is_basic_ftl_ltl))
 }
 
-build_run_inventory <- function(study_dir) {
-  run_classes <- list.dirs(study_dir, recursive = FALSE, full.names = TRUE)
+build_run_inventory <- function(study_dirs) {
+  map_dfr(seq_along(study_dirs), function(study_index) {
+    study_dir <- unname(study_dirs[[study_index]])
+    scenario_label <- names(study_dirs)[[study_index]]
+    run_classes <- list.dirs(study_dir, recursive = FALSE, full.names = TRUE)
 
-  map_dfr(run_classes, function(run_class_path) {
-    sample_paths <- list.dirs(run_class_path, recursive = FALSE, full.names = TRUE)
-    sample_paths <- sample_paths[str_detect(basename(sample_paths), "^commercial_[0-9.]+pct$")]
+    map_dfr(run_classes, function(run_class_path) {
+      sample_paths <- list.dirs(run_class_path, recursive = FALSE, full.names = TRUE)
+      sample_paths <- sample_paths[str_detect(basename(sample_paths), "^commercial_[0-9.]+pct$")]
 
-    map_dfr(sample_paths, function(sample_path) {
-      run_meta <- parse_run_class(run_class_path)
-      sample_meta <- parse_sample(sample_path)
-      run_folder <- paste0("commercialTraffic_Run", sample_meta$sample_pct, "pct")
-      final_run_path <- file.path(sample_path, run_folder)
-      trips_path <- file.path(final_run_path, paste0(run_folder, ".output_trips.csv.gz"))
+      map_dfr(sample_paths, function(sample_path) {
+        run_meta <- parse_run_class(run_class_path)
+        sample_meta <- parse_sample(sample_path)
+        run_folder <- paste0("commercialTraffic_Run", sample_meta$sample_pct, "pct")
+        final_run_path <- file.path(sample_path, run_folder)
+        trips_path <- file.path(final_run_path, paste0(run_folder, ".output_trips.csv.gz"))
 
-      bind_cols(run_meta, sample_meta) %>%
-        mutate(
-          run_class_path = normalizePath(run_class_path, winslash = "/", mustWork = FALSE),
-          sample_path = normalizePath(sample_path, winslash = "/", mustWork = FALSE),
-          final_run = run_folder,
-          final_run_path = normalizePath(final_run_path, winslash = "/", mustWork = FALSE),
-          analysis_path = normalizePath(file.path(final_run_path, "analysis"), winslash = "/", mustWork = FALSE),
-          has_final_run = dir.exists(final_run_path),
-          has_analysis = dir.exists(file.path(final_run_path, "analysis")),
-          has_trips_csv = file.exists(trips_path),
-          trips_csv_path = normalizePath(trips_path, winslash = "/", mustWork = FALSE)
-        )
+        bind_cols(run_meta, sample_meta) %>%
+          mutate(
+            scenario_name = scenario_label,
+            scenario_path = normalizePath(study_dir, winslash = "/", mustWork = FALSE),
+            run_class_path = normalizePath(run_class_path, winslash = "/", mustWork = FALSE),
+            sample_path = normalizePath(sample_path, winslash = "/", mustWork = FALSE),
+            final_run = run_folder,
+            final_run_path = normalizePath(final_run_path, winslash = "/", mustWork = FALSE),
+            analysis_path = normalizePath(file.path(final_run_path, "analysis"), winslash = "/", mustWork = FALSE),
+            has_final_run = dir.exists(final_run_path),
+            has_analysis = dir.exists(file.path(final_run_path, "analysis")),
+            has_trips_csv = file.exists(trips_path),
+            trips_csv_path = normalizePath(trips_path, winslash = "/", mustWork = FALSE)
+          ) %>%
+          relocate(scenario_name, scenario_path)
+      })
     })
   })
 }
@@ -220,8 +298,8 @@ read_analysis_file <- function(runs, relative_path) {
   map_dfr(seq_len(nrow(runs)), function(i) {
     meta <- runs[i, ] %>%
       select(
-        run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-        sample_factor_to_100pct, final_run, final_run_path
+        scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+        sample_name, sample_pct, sample_factor_to_100pct, final_run, final_run_path
       )
     path <- file.path(runs$analysis_path[i], relative_path)
     data <- safe_read_csv_auto(path)
@@ -274,8 +352,9 @@ build_general_travel <- function(analysis_runs) {
       scaled_traveledDistance_km = traveledDistance_km * sample_factor_to_100pct
     ) %>%
     group_by(
-      run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-      sample_factor_to_100pct, final_run, final_run_path, source_file, group
+      scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+      sample_name, sample_pct, sample_factor_to_100pct, final_run,
+      final_run_path, source_file, group
     ) %>%
     summarise(
       numberOfAgents = sum(as.numeric(numberOfAgents), na.rm = TRUE),
@@ -296,8 +375,9 @@ build_population_trip_stats <- function(analysis_runs) {
   read_analysis_file(analysis_runs, file.path("population", "population_trip_stats.csv")) %>%
     pivot_longer(
       cols = -c(
-        run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-        sample_factor_to_100pct, final_run, final_run_path, source_file, Group
+        scenario_name, scenario_path, run_class, fleet, demand_model,
+        run_variant, sample_name, sample_pct, sample_factor_to_100pct,
+        final_run, final_run_path, source_file, Group
       ),
       names_to = "group",
       values_to = "value"
@@ -328,9 +408,9 @@ build_trip_stats <- function(analysis_runs) {
       mutate(subpopulation_group = normalize_subpopulation(subpopulation_group)) %>%
       pivot_longer(
         cols = -c(
-          run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-          sample_factor_to_100pct, final_run, final_run_path, source_file,
-          subpopulation_group, Info
+          scenario_name, scenario_path, run_class, fleet, demand_model,
+          run_variant, sample_name, sample_pct, sample_factor_to_100pct,
+          final_run, final_run_path, source_file, subpopulation_group, Info
         ),
         names_to = "main_mode",
         values_to = "value"
@@ -355,8 +435,9 @@ build_tour_distance_summary <- function(analysis_runs) {
       distanceInKmWithDepotCharging = as.numeric(distanceInKmWithDepotCharging)
     ) %>%
     group_by(
-      run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-      sample_factor_to_100pct, groupOfSubpopulation, vehicleType, dist_group
+      scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+      sample_name, sample_pct, sample_factor_to_100pct, groupOfSubpopulation,
+      vehicleType, dist_group
     ) %>%
     summarise(
       tours_sample = n(),
@@ -378,8 +459,9 @@ build_tour_duration_summary <- function(analysis_runs) {
       tourDurationsInHours = as.numeric(tourDurationsInHours)
     ) %>%
     group_by(
-      run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-      sample_factor_to_100pct, groupOfSubpopulation, vehicleType, duration_group
+      scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+      sample_name, sample_pct, sample_factor_to_100pct, groupOfSubpopulation,
+      vehicleType, duration_group
     ) %>%
     summarise(
       tours_sample = n(),
@@ -398,8 +480,9 @@ build_jobs_per_tour_summary <- function(analysis_runs) {
       jobsPerTour = as.numeric(jobsPerTour)
     ) %>%
     group_by(
-      run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-      sample_factor_to_100pct, groupOfSubpopulation, vehicleType, numberOfJobs_group
+      scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+      sample_name, sample_pct, sample_factor_to_100pct, groupOfSubpopulation,
+      vehicleType, numberOfJobs_group
     ) %>%
     summarise(
       tours_sample = n(),
@@ -414,8 +497,9 @@ read_share_table <- function(analysis_runs, file_name, dimension_name) {
   read_analysis_file(analysis_runs, file.path("commercialTraffic", file_name)) %>%
     pivot_longer(
       cols = -c(
-        run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-        sample_factor_to_100pct, final_run, final_run_path, source_file
+        scenario_name, scenario_path, run_class, fleet, demand_model,
+        run_variant, sample_name, sample_pct, sample_factor_to_100pct,
+        final_run, final_run_path, source_file
       ),
       names_to = dimension_name,
       values_to = "distance_share"
@@ -425,9 +509,9 @@ read_share_table <- function(analysis_runs, file_name, dimension_name) {
       distance_share = as.numeric(distance_share)
     ) %>%
     group_by(
-      run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-      sample_factor_to_100pct, final_run, final_run_path, source_file,
-      .data[[dimension_name]]
+      scenario_name, scenario_path, run_class, fleet, demand_model, run_variant,
+      sample_name, sample_pct, sample_factor_to_100pct, final_run,
+      final_run_path, source_file, .data[[dimension_name]]
     ) %>%
     summarise(distance_share = sum(distance_share, na.rm = TRUE), .groups = "drop") %>%
     remove_basic_ftl_ltl(c(dimension_name))
@@ -469,8 +553,9 @@ read_trips_csv_summary <- function(analysis_runs) {
   map_dfr(seq_len(nrow(trip_runs)), function(i) {
     meta <- trip_runs[i, ] %>%
       select(
-        run_class, fleet, demand_model, run_variant, sample_name, sample_pct,
-        sample_factor_to_100pct, final_run, final_run_path
+        scenario_name, scenario_path, run_class, fleet, demand_model,
+        run_variant, sample_name, sample_pct, sample_factor_to_100pct,
+        final_run, final_run_path
       )
     trips <- safe_read_csv_auto(trip_runs$trips_csv_path[i])
     if (nrow(trips) == 0 || !("person" %in% names(trips))) {
@@ -506,8 +591,14 @@ read_trips_csv_summary <- function(analysis_runs) {
 build_sample_comparison <- function(trip_stats) {
   sample_comparison <- trip_stats %>%
     filter(Info == "Number of trips", subpopulation_group != "total") %>%
-    select(run_class, fleet, demand_model, run_variant, sample_pct, subpopulation_group, main_mode, scaled_value) %>%
-    group_by(fleet, demand_model, run_variant, subpopulation_group, main_mode, sample_pct) %>%
+    select(
+      scenario_name, scenario_path, run_class, fleet, demand_model,
+      run_variant, sample_pct, subpopulation_group, main_mode, scaled_value
+    ) %>%
+    group_by(
+      scenario_name, scenario_path, fleet, demand_model, run_variant,
+      subpopulation_group, main_mode, sample_pct
+    ) %>%
     summarise(scaled_trips_100pct = sum(scaled_value, na.rm = TRUE), .groups = "drop") %>%
     pivot_wider(names_from = sample_pct, values_from = scaled_trips_100pct, names_prefix = "sample_")
 
@@ -533,6 +624,10 @@ build_sample_comparison <- function(trip_stats) {
 save_plot <- function(plot, file_name, width = 16, height = 9) {
   if (isTRUE(show_plots_interactively)) {
     print(plot)
+    try(grDevices::dev.flush(), silent = TRUE)
+    if (plot_display_pause_seconds > 0) {
+      Sys.sleep(plot_display_pause_seconds)
+    }
   }
 
   ggsave(
@@ -544,6 +639,19 @@ save_plot <- function(plot, file_name, width = 16, height = 9) {
     bg = "white",
     limitsize = FALSE
   )
+}
+
+facet_formula <- function(data, rows, cols, scenario_side = "columns") {
+  has_multiple_scenarios <- "scenario_name" %in% names(data) &&
+    n_distinct(data$scenario_name, na.rm = TRUE) > 1
+
+  if (has_multiple_scenarios && scenario_side == "columns") {
+    cols <- paste("scenario_name", cols, sep = " + ")
+  } else if (has_multiple_scenarios && scenario_side == "rows") {
+    rows <- paste("scenario_name", rows, sep = " + ")
+  }
+
+  as.formula(paste(rows, "~", cols))
 }
 
 label_number <- function(x, digits = 1, suffix = "") {
@@ -585,7 +693,7 @@ plot_scaled_travel_distance <- function(general_travel) {
       vjust = -0.25,
       size = 3
     ) +
-    facet_grid(sample_pct ~ demand_model, labeller = label_both) +
+    facet_grid(facet_formula(general_travel, "sample_pct", "demand_model"), labeller = label_both) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.16))) +
     labs(
       title = "Scaled travel distance by fleet, demand model and sample",
@@ -614,7 +722,7 @@ plot_distance_share <- function(distance_share_group) {
       vjust = -0.25,
       size = 3
     ) +
-    facet_grid(sample_pct ~ demand_model, labeller = label_both) +
+    facet_grid(facet_formula(distance_share_group, "sample_pct", "demand_model"), labeller = label_both) +
     scale_y_continuous(labels = scales::percent_format(), expand = expansion(mult = c(0, 0.16))) +
     labs(
       title = "Travel distance shares by subpopulation group",
@@ -635,7 +743,7 @@ plot_average_tour_distance <- function(tour_distance_summary) {
   dodge <- position_dodge(width = 0.8)
 
   p <- tour_distance_summary %>%
-    group_by(fleet, demand_model, sample_pct, groupOfSubpopulation) %>%
+    group_by(scenario_name, scenario_path, fleet, demand_model, sample_pct, groupOfSubpopulation) %>%
     summarise(avg_distance_km = weighted.mean(avg_distance_km, tours_sample, na.rm = TRUE), .groups = "drop") %>%
     ggplot(aes(x = groupOfSubpopulation, y = avg_distance_km, fill = fleet)) +
     geom_col(position = dodge) +
@@ -645,7 +753,7 @@ plot_average_tour_distance <- function(tour_distance_summary) {
       vjust = -0.25,
       size = 3
     ) +
-    facet_grid(sample_pct ~ demand_model, labeller = label_both) +
+    facet_grid(facet_formula(tour_distance_summary, "sample_pct", "demand_model"), labeller = label_both) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.16))) +
     labs(
       title = "Average tour distance",
@@ -663,9 +771,11 @@ plot_sample_difference <- function(sample_comparison) {
     return(invisible(NULL))
   }
 
-  p <- sample_comparison %>%
+  sample_plot_data <- sample_comparison %>%
     filter(!is.na(rel_diff_10pct_vs_1pct), is.finite(rel_diff_10pct_vs_1pct)) %>%
-    mutate(label_vjust = if_else(rel_diff_10pct_vs_1pct >= 0, -0.25, 1.2)) %>%
+    mutate(label_vjust = if_else(rel_diff_10pct_vs_1pct >= 0, -0.25, 1.2))
+
+  p <- sample_plot_data %>%
     ggplot(aes(x = main_mode, y = rel_diff_10pct_vs_1pct, fill = subpopulation_group)) +
     geom_hline(yintercept = 0, color = "grey45") +
     geom_col(position = position_dodge(width = 0.8)) +
@@ -674,7 +784,7 @@ plot_sample_difference <- function(sample_comparison) {
       position = position_dodge(width = 0.8),
       size = 3
     ) +
-    facet_grid(demand_model ~ fleet, labeller = label_both) +
+    facet_grid(facet_formula(sample_plot_data, "demand_model", "fleet", scenario_side = "rows"), labeller = label_both) +
     scale_y_continuous(labels = scales::percent_format(), expand = expansion(mult = c(0.16, 0.16))) +
     labs(
       title = "Relative difference of scaled trip counts: 10% sample vs 1% sample",
