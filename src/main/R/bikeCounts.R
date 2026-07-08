@@ -16,7 +16,7 @@ scale_factor <- 100   # 10 for 10% sample, 100 for 1% sample
 countsRVR <- st_read("/Users/gregorr/Downloads/20251002_Übersicht_Zählstellen_Rad_LinkIDs.gpkg")
 
 matsimLinkStats <- read_csv2(
-  "/Users/gregorr/Documents/work/respos/public-svn/matsim/scenarios/countries/de/metropole-ruhr/metropole-ruhr-v2024/metropole-ruhr-v2024.2/output/metropole-ruhr-v2024.2-1pct/gr_analysis/linkPaxVolumesPerNetworkModePerHour.csv.gz"
+  "/Users/gregorr/Volumes/math-cluster/matsim-metropole-ruhr/experiments-based-on-v2024.2/bike/same-infra-speed-factor/runs/004/gr_analysis/linkPaxVolumesPerNetworkModePerHour.csv.gz"
 )
 
 #==================================================
@@ -122,6 +122,43 @@ p <- ggplot(
     title = "Observed vs. simulated bicycle volumes"
   ) +
   theme_bw(base_size = 18)
-
 p
+
+filtered <- countsRVR_matched %>%
+  filter(vol_bike_sum <= 5000)
+
+max_val <- max(
+  filtered$X24hcountDOquer,
+  filtered$vol_bike_sum,
+  na.rm = TRUE
+)
+
+ggplot(
+  filtered,
+  aes(x = X24hcountDOquer, y = vol_bike_sum)
+) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    colour = "red",
+    linewidth = 1.2
+  ) +
+  coord_equal(
+    xlim = c(0, max_val),
+    ylim = c(0, max_val)
+  ) +
+  labs(
+    x = "Observed 24h bicycle count",
+    y = "MATSim 24h bicycle volume",
+    title = "Observed vs. simulated bicycle volumes",
+    subtitle = "Filtered out (≤ 5,000 simulated cyclists/day)"
+  ) +
+  theme_bw(base_size = 18) +
+  theme(
+    panel.grid.major = element_line(colour = "grey75"),
+    panel.grid.minor = element_line(colour = "grey90")
+  )
+
+
 
