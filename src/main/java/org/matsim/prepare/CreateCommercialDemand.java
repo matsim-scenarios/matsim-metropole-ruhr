@@ -844,7 +844,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			"--pathOutput", selectedOutputPathSmallScaleCommercial,
 			"--network", networkPath,
 			"--nameOutputPopulation", selectedSmallScaleCommercialPopulationName,
-			"--numberOfPlanVariantsPerAgent", "5",
+			"--numberOfPlanVariantsPerAgent", "1",
 			"--additionalTravelBufferPerIterationInMinutes", String.valueOf(additionalTravelBufferPerIterationInMinutes),
 			"--factorForTravelBufferCalculation", String.valueOf(factorForTravelBufferCalculation),
 			"--maxNumberOfLoopsForVRPSolving", selectedGenerationOption.equals("useExistingCarrierFileWithSolution") ? "0" : String.valueOf(maxNumberOfLoopsForVRPSolving),
