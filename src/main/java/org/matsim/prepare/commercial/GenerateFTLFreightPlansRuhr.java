@@ -7,6 +7,9 @@ import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.population.*;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.application.options.CrsOptions;
+import org.matsim.application.options.ShpOptions;
+import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import picocli.CommandLine;
@@ -14,6 +17,7 @@ import picocli.CommandLine;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
@@ -43,6 +47,27 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
     @CommandLine.Option(names = "--sample", defaultValue = "0.01", description = "Scaling factor of the freight traffic (0, 1)")
     private double sample;
 
+    @CommandLine.Option(names = {"--cutAtBoundary", "--cut-at-boundary"}, description = "Cut FTL trips at the shape-file boundary after generating the plans")
+    private boolean cutAtBoundary;
+
+    @CommandLine.Option(names = {"--long-distance-network", "--network"}, description = "Path to the long-distance freight network used for routing and boundary detection")
+    private Path longDistanceNetworkPath;
+
+    @CommandLine.Option(names = "--scenario-network", description = "Scenario network used to anchor cut activities on scenario-network links")
+    private Path scenarioNetworkPath;
+
+    @CommandLine.Option(names = "--geographicalTripType", description = "Set the geographicalTripType for boundary cutting: OUTGOING, INCOMING, TRANSIT, INTERNAL, ALL", defaultValue = "ALL")
+    private String geographicalTripType;
+
+    @CommandLine.Option(names = "--legMode", defaultValue = "truck40t", description = "Default leg mode used for boundary link matching")
+    private String legMode;
+
+    @CommandLine.Mixin
+    private ShpOptions shp = new ShpOptions();
+
+    @CommandLine.Mixin
+    private CrsOptions crs = new CrsOptions();
+
     @Override
     public Integer call() throws Exception {
 
@@ -71,7 +96,7 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
         }
 
         if (!Files.exists(output)) {
-            Files.createDirectory(output);
+            Files.createDirectories(output);
         }
 
         String sampleName = getSampleNameOfOutputFolder(sample);
@@ -81,7 +106,24 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
         else
             outputPlansPath = output.resolve(nameOutputPopulation).toString();
         PopulationWriter populationWriter = new PopulationWriter(outputPopulation);
-        populationWriter.write(outputPlansPath);
+        if (cutAtBoundary) {
+            int validationResult = validateBoundaryCutOptions();
+            if (validationResult != 0) {
+                return validationResult;
+            }
+
+            Path finalOutputPlansPath = Path.of(outputPlansPath);
+            Path plansBeforeBoundaryCut = createPlansBeforeBoundaryCutPath(finalOutputPlansPath);
+
+            log.info("Writing uncut FTL freight plans to {} before boundary cutting", plansBeforeBoundaryCut);
+            populationWriter.write(plansBeforeBoundaryCut.toString());
+
+            log.info("Cutting FTL freight plans at boundary...");
+            new ExtractRelevantFreightTrips().execute(createBoundaryCutArguments(plansBeforeBoundaryCut, finalOutputPlansPath).toArray(new String[0]));
+            Files.deleteIfExists(plansBeforeBoundaryCut);
+        } else {
+            populationWriter.write(outputPlansPath);
+        }
 
         log.info("Freight plans successfully generated!");
         boolean writeTsv = false;
@@ -132,6 +174,71 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
         else
             sampleName = String.valueOf((sample * 100));
         return sampleName;
+    }
+
+    /**
+     * Validates the additional inputs that are only required when the generated FTL plans are cut at the scenario boundary.
+     */
+    private int validateBoundaryCutOptions() {
+        if (longDistanceNetworkPath == null) {
+            log.error("--long-distance-network needs to be defined when --cutAtBoundary is used");
+            return 2;
+        }
+        if (shp.getShapeFile() == null) {
+            log.error("--shp needs to be defined when --cutAtBoundary is used");
+            return 2;
+        }
+        return 0;
+    }
+
+    /**
+     * Converts the FTL-specific boundary-cut options to the generic freight extraction command arguments.
+     */
+    private List<String> createBoundaryCutArguments(Path inputPlansPath, Path outputPlansPath) {
+        List<String> arguments = new ArrayList<>();
+        arguments.add(inputPlansPath.toString());
+        arguments.add("--long-distance-network");
+        arguments.add(longDistanceNetworkPath.toString());
+        if (scenarioNetworkPath != null) {
+            arguments.add("--scenario-network");
+            arguments.add(scenarioNetworkPath.toString());
+        }
+        arguments.add("--output");
+        arguments.add(outputPlansPath.toString());
+        arguments.add("--shp");
+        arguments.add(shp.getShapeFile());
+        if (crs.getInputCRS() != null) {
+            arguments.add("--input-crs");
+            arguments.add(crs.getInputCRS());
+        }
+        if (crs.getTargetCRS() != null) {
+            arguments.add("--target-crs");
+            arguments.add(crs.getTargetCRS());
+        }
+        if (shp.getShapeCrs() != null) {
+            arguments.add("--shp-crs");
+            arguments.add(shp.getShapeCrs());
+        }
+        arguments.add("--geographicalTripType");
+        arguments.add(geographicalTripType);
+        arguments.add("--legMode");
+        arguments.add(legMode);
+        arguments.add("--cut-on-boundary");
+        return arguments;
+    }
+
+    /**
+     * Creates the temporary filename used for the uncut intermediate plans before the generic extractor writes the final output.
+     */
+    private static Path createPlansBeforeBoundaryCutPath(Path finalOutputPlansPath) {
+        String fileName = finalOutputPlansPath.getFileName().toString();
+        String tmpFileName;
+        if (fileName.endsWith(".xml.gz")) {
+            tmpFileName = fileName.substring(0, fileName.length() - ".xml.gz".length()) + ".beforeBoundaryCut.xml.gz";
+        } else {
+            tmpFileName = fileName + ".beforeBoundaryCut.xml.gz";
+        }
+        return finalOutputPlansPath.resolveSibling(tmpFileName);
     }
 
 }
