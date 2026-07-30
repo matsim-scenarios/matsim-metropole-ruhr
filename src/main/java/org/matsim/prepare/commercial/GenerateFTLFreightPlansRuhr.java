@@ -167,6 +167,9 @@ public class GenerateFTLFreightPlansRuhr implements MATSimAppCommand {
         new GenerateFTLFreightPlansRuhr().execute(args);
     }
 
+    /**
+     * Formats the sample factor in the same naming convention as the existing FTL output files.
+     */
     private static String getSampleNameOfOutputFolder(double sample) {
         String sampleName;
         if ((sample * 100) % 1 == 0)
