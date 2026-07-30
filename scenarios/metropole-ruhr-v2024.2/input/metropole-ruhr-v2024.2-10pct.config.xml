@@ -71,12 +71,12 @@
 	</module>
 
 	<module name="simwrapper" >
+		<param name="sampleSize" value="0.1" />
 		<parameterset type="params" >
 			<param name="context" value="" />
 			<!-- TODO: predefine view
 			<param name="mapCenter" value="13.39,52.51" />
 			<param name="mapZoomLevel" value="9.1" /> -->
-			<param name="sampleSize" value="0.1" />
 			<param name="shp" value="./area/area.shp" />
 		</parameterset>
 	</module>
