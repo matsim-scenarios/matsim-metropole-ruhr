@@ -650,6 +650,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			config.qsim().setMainModes(Sets.union(qsimModes, modes));
 			config.qsim().setVehiclesSource(QSimConfigGroup.VehiclesSource.modeVehicleTypesFromVehiclesData);
 			config.routing().setNetworkModes(modes);
+			config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
 
 			SimWrapper sw = SimWrapper.create(config);
 			sw.getConfigGroup().defaultParams().setShp(null);
