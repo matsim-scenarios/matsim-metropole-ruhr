@@ -10,6 +10,7 @@ import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
 import org.matsim.application.prepare.population.MergePopulations;
+import org.matsim.contrib.common.conventions.vsp.SubpopulationDefaultNames;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ControllerConfigGroup;
@@ -240,6 +241,8 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 				argumentsForFreightTransitTraffic.add("ALL");
 				argumentsForFreightTransitTraffic.add("--legMode");
 				argumentsForFreightTransitTraffic.add("truck40t");
+				argumentsForFreightTransitTraffic.add("--subpopulation");
+				argumentsForFreightTransitTraffic.add(SubpopulationDefaultNames.SUBPOP_LONG_DISTANCE_FREIGHT);
 				argumentsForFreightTransitTraffic.add("--cut-on-boundary");
 
 				new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));

@@ -419,6 +419,8 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				argumentsForFreightTransitTraffic.add("TRANSIT");
 				argumentsForFreightTransitTraffic.add("--legMode");
 				argumentsForFreightTransitTraffic.add("truck40t");
+				argumentsForFreightTransitTraffic.add("--subpopulation");
+				argumentsForFreightTransitTraffic.add(SubpopulationDefaultNames.SUBPOP_LONG_DISTANCE_FREIGHT);
 				argumentsForFreightTransitTraffic.add("--cut-on-boundary");
 
 				new ExtractRelevantFreightTrips().execute(argumentsForFreightTransitTraffic.toArray(new String[0]));
