@@ -173,6 +173,9 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 	@CommandLine.Option(names = "--smallScaleCommercialCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent small scale commercial carrier part to solve.")
 	private int smallScaleCommercialCarrierPartIndex;
 
+	@CommandLine.Option(names ="--areaToCutLongDistance",	description = "Path to the shape file of the area of the longDistanceFreight and FTL area will cut")
+	private Path cutAreaPath;
+
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand_Basic()).execute(args));
 	}
