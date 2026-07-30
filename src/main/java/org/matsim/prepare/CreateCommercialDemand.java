@@ -10,9 +10,11 @@ import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.prepare.longDistanceFreightGER.tripExtraction.ExtractRelevantFreightTrips;
 import org.matsim.application.prepare.population.MergePopulations;
+import org.matsim.contrib.common.conventions.vsp.SubpopulationDefaultNames;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.QSimConfigGroup;
+import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.*;
 import org.matsim.core.population.PopulationUtils;
@@ -167,6 +169,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 	@CommandLine.Option(names = "--networkForLongDistanceFreight", description = "Path to the network file for long distance freight", required = true, defaultValue = "../public-svn/matsim/scenarios/countries/de/german-wide-freight/v2/germany-europe-network.xml.gz")
 	private Path networkForLongDistanceFreight;
 
+	@CommandLine.Option(names = "--cutFtlAtBoundary", description = "Cut generated FTL trips at the scenario boundary")
+	private boolean cutFtlAtBoundary;
+
 	@CommandLine.Option(names = "--outputPlansPath", description = "Path to the output plans file")
 	private String outputPlansPath;
 
@@ -208,6 +213,9 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--smallScaleCommercialCarrierPartIndex", defaultValue = "0", description = "Zero-based index of the independent small scale commercial carrier part to solve.")
 	private int smallScaleCommercialCarrierPartIndex;
+
+	@CommandLine.Option(names ="--areaToCutLongDistance",	description = "Path to the shape file of the area of the longDistanceFreight and FTL area will cut")
+	private Path cutAreaPath;
 
 	public static void main(String[] args) {
 		System.exit(new CommandLine(new CreateCommercialDemand()).execute(args));
@@ -277,7 +285,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			if (Files.exists(output.resolve(FTLFreightPopulationName))) {
 				log.warn("Freight population already exists. Skipping generation.");
 			} else {
-				new GenerateFTLFreightPlansRuhr().execute(
+				List<String> argumentsForFTL = new ArrayList<>(List.of(
 					"--data", generatedInputDataPath.resolve(freightDataName).toString(),
 					"--output", output.toString(),
 					"--nameOutputPopulation", FTLFreightPopulationName,
@@ -285,7 +293,22 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 					"--working-days", "260",
 					"--max-kilometer-for-return-journey", "200",
 					"--sample", String.valueOf(sample)
-				);
+				));
+				if (cutFtlAtBoundary) {
+					argumentsForFTL.addAll(List.of(
+						"--cutAtBoundary",
+						"--long-distance-network", networkForLongDistanceFreight.toString(),
+						"--scenario-network", configPath.getParent().resolve(networkPath).toString(),
+//						"--shp", osmDataLocation.resolve("regions_25832.shp").toString(),
+						"--shp", cutAreaPath.toString(),
+						"--input-crs", shapeCRS,
+						"--target-crs", shapeCRS,
+						"--shp-crs", shapeCRS,
+						"--geographicalTripType", "ALL",
+						"--legMode", "truck40t"
+					));
+				}
+				new GenerateFTLFreightPlansRuhr().execute(argumentsForFTL.toArray(new String[0]));
 			}
 			if (runPart == RunPart.ftl) {
 				return 0;
@@ -385,7 +408,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 				argumentsForFreightTransitTraffic.add("--output");
 				argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
 				argumentsForFreightTransitTraffic.add("--shp");
-				argumentsForFreightTransitTraffic.add(osmDataLocation.resolve("regions_25832.shp").toString());
+				argumentsForFreightTransitTraffic.add(cutAreaPath.toString());
 				argumentsForFreightTransitTraffic.add("--input-crs");
 				argumentsForFreightTransitTraffic.add(shapeCRS);
 				argumentsForFreightTransitTraffic.add("--target-crs");

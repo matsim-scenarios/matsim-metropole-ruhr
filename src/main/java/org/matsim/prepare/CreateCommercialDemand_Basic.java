@@ -14,6 +14,7 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ControllerConfigGroup;
 import org.matsim.core.config.groups.QSimConfigGroup;
+import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controller;
@@ -225,7 +226,7 @@ public class CreateCommercialDemand_Basic implements MATSimAppCommand {
 				argumentsForFreightTransitTraffic.add("--output");
 				argumentsForFreightTransitTraffic.add(longDistanceFreightPopulationName);
 				argumentsForFreightTransitTraffic.add("--shp");
-				argumentsForFreightTransitTraffic.add(osmDataLocation.resolve("regions_25832.shp").toString());
+				argumentsForFreightTransitTraffic.add(cutAreaPath.toString());
 				argumentsForFreightTransitTraffic.add("--input-crs");
 				argumentsForFreightTransitTraffic.add(shapeCRS);
 				argumentsForFreightTransitTraffic.add("--target-crs");
