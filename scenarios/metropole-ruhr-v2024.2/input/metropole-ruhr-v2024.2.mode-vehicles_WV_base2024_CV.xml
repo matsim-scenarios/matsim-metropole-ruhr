@@ -86,7 +86,7 @@
 		<engineInformation>
 			<attributes>
 				<attribute name="HbefaVehicleCategory" class="java.lang.String">PASSENGER_CAR</attribute>
-				<attribute name="HbefaTechnology" class="java.lang.String">petrol</attribute>
+				<attribute name="HbefaTechnology" class="java.lang.String">petrol (4S)</attribute>
 				<attribute name="HbefaSizeClass" class="java.lang.String">average</attribute>
 				<attribute name="HbefaEmissionsConcept" class="java.lang.String">average</attribute>
 			</attributes>
