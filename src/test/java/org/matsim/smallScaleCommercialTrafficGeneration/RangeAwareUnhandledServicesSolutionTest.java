@@ -10,7 +10,9 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.NetworkChangeEvent;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.network.TimeDependentNetwork;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.freight.carriers.Carrier;
 import org.matsim.freight.carriers.CarrierCapabilities;
@@ -37,6 +39,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RangeAwareUnhandledServicesSolutionTest {
 
@@ -67,6 +70,37 @@ class RangeAwareUnhandledServicesSolutionTest {
 		assertEquals(180., VehicleUtils.getEnergyCapacity(longRangeVehicle.getType().getEngineInformation()));
 		assertEquals(1230., longRangeVehicle.getType().getCostInformation().getFixedCosts());
 		assertEquals(DEPOT_LINK_ID, longRangeVehicle.getLinkId());
+	}
+
+	@Test
+	void usesNetworkChangeEventsWhenSizingRangeFallbackWindow() {
+		Scenario scenario = createScenario(true);
+		NetworkChangeEvent changeEvent = new NetworkChangeEvent(3600.);
+		changeEvent.addLink(scenario.getNetwork().getLinks().get(DEPOT_LINK_ID));
+		changeEvent.addLink(scenario.getNetwork().getLinks().get(SERVICE_LINK_ID));
+		changeEvent.setFreespeedChange(new NetworkChangeEvent.ChangeValue(
+			NetworkChangeEvent.ChangeType.ABSOLUTE_IN_SI_UNITS, 1.));
+		((TimeDependentNetwork) scenario.getNetwork()).addNetworkChangeEvent(changeEvent);
+
+		VehicleType electricType = createElectricVehicleType(90., 1., 123.);
+		Carrier carrier = createCarrierWithVehicleAndService(electricType);
+		CarrierVehicle delayedVehicle = CarrierVehicle.Builder
+			.newInstance(Id.create("vehicle", Vehicle.class), DEPOT_LINK_ID, electricType)
+			.setEarliestStart(4000.)
+			.setLatestEnd(24. * 3600.)
+			.build();
+		carrier.getCarrierCapabilities().getCarrierVehicles().put(delayedVehicle.getId(), delayedVehicle);
+		CarriersUtils.addOrGetCarriers(scenario).addCarrier(carrier);
+		CarriersUtils.getOrAddCarrierVehicleTypes(scenario).getVehicleTypes().put(electricType.getId(), electricType);
+
+		new RangeAwareUnhandledServicesSolution(100., 2., 10.)
+			.addLongRangeVehiclesForRangeInfeasibleServices(scenario, List.of(carrier));
+
+		CarrierVehicle fallback = carrier.getCarrierCapabilities().getCarrierVehicles()
+			.get(Id.create("vehicle_1Recharge", Vehicle.class));
+		assertNotNull(fallback);
+		assertTrue(fallback.getLatestEndTime() - fallback.getEarliestStartTime() > 1850.,
+			"Fallback window must include event-adjusted travel time plus the 30-minute slack.");
 	}
 
 	@Test
@@ -507,7 +541,13 @@ class RangeAwareUnhandledServicesSolutionTest {
 	}
 
 	private static Scenario createScenario() {
-		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
+		return createScenario(false);
+	}
+
+	private static Scenario createScenario(boolean timeVariantNetwork) {
+		var config = ConfigUtils.createConfig();
+		config.network().setTimeVariantNetwork(timeVariantNetwork);
+		Scenario scenario = ScenarioUtils.createScenario(config);
 		Network network = scenario.getNetwork();
 		Node fromDepot = NetworkUtils.createAndAddNode(network, Id.createNodeId("fromDepot"), new Coord(0., 0.));
 		Node toDepot = NetworkUtils.createAndAddNode(network, Id.createNodeId("toDepot"), new Coord(50., 0.));
