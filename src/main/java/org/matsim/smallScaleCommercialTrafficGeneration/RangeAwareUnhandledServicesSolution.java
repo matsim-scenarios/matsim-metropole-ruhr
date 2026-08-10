@@ -47,6 +47,8 @@ public final class RangeAwareUnhandledServicesSolution implements UnhandledServi
 	 * because jsprit's final routed tour may be slightly longer than the depot-service-depot pre-check.
 	 */
 	private static final double NEAR_CURRENT_RANGE_LIMIT_UTILIZATION = 0.90;
+	private static final double MAX_FALLBACK_VEHICLE_AVAILABILITY = 18. * 3600.;
+	private static final double FALLBACK_VEHICLE_SLACK = 30. * 60.;
 	/**
 	 * Additional RangeAware-only buffer on top of the configured jsprit usable range. Jsprit still receives the original
 	 * usable range; RangeAware uses only this share in its pre-check to avoid accepting services that sit exactly at the
@@ -93,9 +95,9 @@ public final class RangeAwareUnhandledServicesSolution implements UnhandledServi
 		Result result = addLongRangeVehiclesForRangeInfeasibleServices(scenario, nonCompleteSolvedCarriers);
 		logRangeCheckResult("pre-check", result);
 
-		new DefaultUnhandledServicesSolution(generator, (currentScenario, currentNonCompleteSolvedCarriers, effectiveTravelBufferFactor) -> {
-			Result iterationResult = addLongRangeVehiclesForRangeInfeasibleServices(currentScenario, currentNonCompleteSolvedCarriers,
-				effectiveTravelBufferFactor);
+		new DefaultUnhandledServicesSolution(generator, (currentScenario, currentNonCompleteSolvedCarriers, _) -> {
+			// NetworkChangeEvents plus the fixed 30-minute fallback slack already cover route-time uncertainty.
+			Result iterationResult = addLongRangeVehiclesForRangeInfeasibleServices(currentScenario, currentNonCompleteSolvedCarriers);
 			logRangeCheckResult("loop check", iterationResult);
 			return iterationResult.addedVehicles();
 		}, vehicleType -> !RechargeVehicleTypeUtils.isRechargeVehicleType(vehicleType.getId()))
@@ -461,13 +463,26 @@ public final class RangeAwareUnhandledServicesSolution implements UnhandledServi
 			return false;
 		}
 
+		double earliestStartTime = referenceVehicle.getEarliestStartTime();
+		double latestEndTime = Math.min(referenceVehicle.getLatestEndTime(),
+			Math.min(candidate.reachability().requiredLatestEndTime() + FALLBACK_VEHICLE_SLACK,
+				earliestStartTime + MAX_FALLBACK_VEHICLE_AVAILABILITY));
+		if (candidate.reachability().requiredLatestEndTime() > latestEndTime) {
+			log.warn(
+				"Carrier '{}': Skipping range fallback vehicle for service '{}' because the required buffered latestEnd {} would exceed the capped fallback window {}-{}.",
+				carrier.getId(), candidate.service().getId(), candidate.reachability().requiredLatestEndTime(),
+				earliestStartTime, latestEndTime);
+			return false;
+		}
+
 		CarrierVehicle longRangeVehicle = CarrierVehicle.Builder.newInstance(vehicleId, referenceVehicle.getLinkId(),
-			longRangeVehicleType).setEarliestStart(referenceVehicle.getEarliestStartTime()).setLatestEnd(referenceVehicle.getLatestEndTime()).build();
+			longRangeVehicleType).setEarliestStart(earliestStartTime).setLatestEnd(latestEndTime).build();
 		referenceVehicle.getAttributes().getAsMap().forEach((key, value) -> longRangeVehicle.getAttributes().putAttribute(key, value));
 		carrier.getCarrierCapabilities().getCarrierVehicles().put(longRangeVehicle.getId(), longRangeVehicle);
-		log.info("Added range fallback vehicle '{}' of type '{}' to carrier '{}' for service '{}' based on '{}'. Details: {}. latestEnd={}.",
+		log.info("Added range fallback vehicle '{}' of type '{}' to carrier '{}' for service '{}' based on '{}'. Window {}-{} (availability {} minutes, max {} hours). Details: {}.",
 			longRangeVehicle.getId(), longRangeVehicleType.getId(), carrier.getId(), candidate.service().getId(),
-			referenceVehicle.getId(), describeReachability(candidate.reachability()), referenceVehicle.getLatestEndTime());
+			referenceVehicle.getId(), earliestStartTime, latestEndTime, (latestEndTime - earliestStartTime) / 60.,
+			MAX_FALLBACK_VEHICLE_AVAILABILITY / 3600., describeReachability(candidate.reachability()));
 		return true;
 	}
 
