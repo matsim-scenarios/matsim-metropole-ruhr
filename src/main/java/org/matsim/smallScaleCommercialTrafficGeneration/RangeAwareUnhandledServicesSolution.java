@@ -135,7 +135,7 @@ public final class RangeAwareUnhandledServicesSolution implements UnhandledServi
 		CarrierVehicleTypes carrierVehicleTypes = CarriersUtils.getOrAddCarrierVehicleTypes(scenario);
 		Set<VehicleType> vehicleTypes = nonCompleteSolvedCarriers.stream().map(Carrier::getCarrierCapabilities).filter(Objects::nonNull).map(
 			CarrierCapabilities::getVehicleTypes).flatMap(Collection::stream).collect(Collectors.toSet());
-		NetworkBasedTransportCosts transportCosts = NetworkBasedTransportCosts.Builder.newInstance(scenario.getNetwork(), vehicleTypes).build();
+		NetworkBasedTransportCosts transportCosts = createNetworkBasedTransportCosts(scenario, vehicleTypes);
 		double safeEffectiveTravelBufferFactor = Math.max(1., effectiveTravelBufferFactor);
 
 		Result result = new Result();
@@ -400,6 +400,19 @@ public final class RangeAwareUnhandledServicesSolution implements UnhandledServi
 			vehicle.getType().getMaximumVelocity()).build();
 		return VehicleImpl.Builder.newInstance(vehicle.getId().toString()).setStartLocation(
 			Location.newInstance(vehicle.getLinkId().toString())).setType(jspritType).build();
+	}
+
+	/**
+	 * Builds the same time-dependent transport-cost view used by the jsprit solver.
+	 */
+	private static NetworkBasedTransportCosts createNetworkBasedTransportCosts(Scenario scenario, Collection<VehicleType> vehicleTypes) {
+		NetworkBasedTransportCosts.Builder builder = NetworkBasedTransportCosts.Builder.newInstance(scenario.getNetwork(), vehicleTypes);
+		if (scenario.getNetwork() instanceof TimeDependentNetwork timeDependentNetwork
+			&& !timeDependentNetwork.getNetworkChangeEvents().isEmpty()) {
+			FreightCarriersConfigGroup freightConfig = ConfigUtils.addOrGetModule(scenario.getConfig(), FreightCarriersConfigGroup.class);
+			builder.setTimeSliceWidth(freightConfig.getTravelTimeSliceWidth());
+		}
+		return builder.build();
 	}
 
 	/**
