@@ -1,4 +1,4 @@
-package org.matsim.prepare.commercial;
+package org.matsim.smallScaleCommercialTrafficGeneration;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import org.apache.logging.log4j.LogManager;
@@ -11,9 +11,6 @@ import org.matsim.api.core.v01.population.*;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.population.PopulationUtils;
-import org.matsim.smallScaleCommercialTrafficGeneration.DefaultIntegrateExistingTrafficToSmallScaleCommercialImpl;
-import org.matsim.smallScaleCommercialTrafficGeneration.GenerateSmallScaleCommercialTrafficDemand;
-import org.matsim.smallScaleCommercialTrafficGeneration.TrafficVolumeGeneration;
 import org.matsim.vehicles.VehicleUtils;
 
 import java.nio.file.Path;
@@ -21,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * Reduces generated Ruhr small-scale goods traffic by already generated LTL freight trips.
+ */
 public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrateExistingTrafficToSmallScaleCommercialImpl {
 
 	private static final Logger log = LogManager.getLogger(IntegrationOfExistingCommercialTrafficRuhr.class);
@@ -41,15 +41,15 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 
 	@Override
 	public void reduceDemandBasedOnExistingCarriers(Scenario scenario, ShpOptions.Index indexZones,
-	                                                GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType smallScaleCommercialTrafficType,
-	                                                Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_start,
-	                                                Map<TrafficVolumeGeneration.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_stop) {
+	                                                GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficSegment smallScaleCommercialTrafficSegment,
+	                                                Map<TrafficVolumesGenerator.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_start,
+	                                                Map<TrafficVolumesGenerator.TrafficVolumeKey, Object2DoubleMap<Integer>> trafficVolumePerTypeAndZone_stop) {
 		// we only have existing freight traffic
-		if (smallScaleCommercialTrafficType.equals(
-			GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic))
+		if (smallScaleCommercialTrafficSegment.equals(
+			GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficSegment.commercialPersonTraffic))
 			return;
 
-		log.info("Reducing the demand of '{}' based on the existing LTL trips!", smallScaleCommercialTrafficType);
+		log.info("Reducing the demand of '{}' based on the existing LTL trips!", smallScaleCommercialTrafficSegment);
 		log.warn("Existing long-haul trips and FTL trips will not be considered in the demand reduction!");
 		log.warn(
 			"Assuming that sample of the currently generating scenario is the same in the existing plans. The existing plans will not be sampled");
@@ -93,7 +93,7 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 			}
 		}
 		log.info("Reduced the demand of '{}' based on the existing LTL trips! Number of reduced trips: {}",
-			smallScaleCommercialTrafficType, countReductions);
+			smallScaleCommercialTrafficSegment, countReductions);
 	}
 
 	/**
@@ -111,7 +111,9 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 		};
 	}
 
-	/** Get the purpose of the trip, based on the purpuses of the small scale commercial traffic.
+	/**
+	 * Get the purpose of the trip, based on the purpuses of the small scale commercial traffic.
+	 *
 	 * @param goodsType the goods type
 	 * @return the purpose of the trip
 	 */
@@ -159,4 +161,3 @@ public class IntegrationOfExistingCommercialTrafficRuhr extends DefaultIntegrate
 		return indexZones.query(coord);
 	}
 }
-
