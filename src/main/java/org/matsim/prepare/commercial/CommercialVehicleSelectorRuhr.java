@@ -126,8 +126,8 @@ public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector,
 
 	@Override
 	public VehicleTypeInformation getVehicleTypeInformation(int purpose, String modeOrVehType,
-	                                                        GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType smallScaleCommercialTrafficType) {
-		if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.commercialPersonTraffic)) {
+	                                                        GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficSegment smallScaleCommercialTrafficSegment) {
+		if (smallScaleCommercialTrafficSegment.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficSegment.commercialPersonTraffic)) {
 			if (purpose == 1) {
 				return new VehicleTypeInformation(new String[]{"golf1.0", "ID.3"}, 1.5);
 			} else if (purpose == 2) {
@@ -139,7 +139,7 @@ public class CommercialVehicleSelectorRuhr implements CommercialVehicleSelector,
 			} else if (purpose == 5) {
 				return new VehicleTypeInformation(new String[]{"VW_T6", "ID.Buzz"}, 1.7); //TODO Kosten hier anpassen, wenn mehr Personal im Auto?
 			}
-		} else if (smallScaleCommercialTrafficType.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficType.goodsTraffic)) {
+		} else if (smallScaleCommercialTrafficSegment.equals(GenerateSmallScaleCommercialTrafficDemand.SmallScaleCommercialTrafficSegment.goodsTraffic)) {
 			return switch (modeOrVehType) {
 				case "vehTyp1" -> new VehicleTypeInformation(
 					new String[]{"VW_T6", "ID.Buzz"}, 1.); // possible to add more types, see source
