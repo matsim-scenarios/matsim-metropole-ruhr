@@ -798,11 +798,14 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 		VehicleTypeSelection vehicleTypeSelection, String selectedSmallScaleCommercialTrafficType,
 		Path ltlPopulationPathForSmallScaleGoods) {
 		RangeAwareUnhandledServicesSolution unhandledServicesSolution = createRangeAwareUnhandledServicesSolution();
-		GenerateSmallScaleCommercialTrafficDemand generator = SmallScaleCommercialTrafficDemandFactory.create(
-			isAdvancedDemandModel()
-				? createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods)
-				: null,
-			vehicleTypeSelection, unhandledServicesSolution);
+		GenerateSmallScaleCommercialTrafficDemand generator = GenerateSmallScaleCommercialTrafficDemand.Builder.newInstance()
+			.setIntegrateExistingTrafficToSmallScaleCommercial(
+				isAdvancedDemandModel()
+					? createIntegrationForSmallScaleCommercial(selectedSmallScaleCommercialTrafficType, ltlPopulationPathForSmallScaleGoods)
+					: null
+			)
+			.setVehicleTypeSelection(vehicleTypeSelection)
+			.setUnhandledServicesSolution(unhandledServicesSolution).build();
 		if (unhandledServicesSolution != null) {
 			unhandledServicesSolution.setGenerator(generator);
 		}
