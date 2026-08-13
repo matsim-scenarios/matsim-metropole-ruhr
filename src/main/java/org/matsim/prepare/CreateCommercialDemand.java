@@ -13,7 +13,6 @@ import org.matsim.application.prepare.population.MergePopulations;
 import org.matsim.contrib.common.conventions.vsp.SubpopulationDefaultNames;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.ControllerConfigGroup;
 import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
@@ -146,9 +145,6 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 
 	@CommandLine.Option(names = "--nameOfExistingCarriersSmallScaleCommercial", description = "Path to the existing carriers file")
 	private String nameOfExistingCarriersSmallScaleCommercial;
-
-	@CommandLine.Option(names = "--additionalTravelBufferPerIterationInMinutes", description = "Additional buffer for the travel time", defaultValue = "120")
-	private int additionalTravelBufferPerIterationInMinutes;
 
 	@CommandLine.Option(names = "--factorForTravelBufferCalculation", description = "The factor describing how many vehicles should be created in relation to the number of created services (for small-scale-commercial). If maxNumberOfLoopsForVRPSolving > 0 more vehicles are added in the replanning process.", defaultValue = "1.1")
 	private double factorForTravelBufferCalculation;
