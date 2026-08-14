@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.matsim</groupId>
 		<artifactId>matsim-all</artifactId>
-		<version>2027.0-PR5124</version>
+		<version>2027.0-PR5125</version>
 <!--		<version>2027.0-SNAPSHOT</version>-->
 	</parent>
 
