@@ -1821,7 +1821,7 @@ build_paper_key_facts_by_component <- function(tour_distances, tour_durations, t
     relocate(
       scenario_name, year, fleet_type, model_type, sample_pct, sample_factor_to_100pct,
       final_run_dir, component_group, component, paper_relevance, sample_scope,
-      evaluation_scope, metric_scope, cost_scope, source_dataset, inclusion_rule
+      evaluation_scope, metric_scope, source_dataset, inclusion_rule
     )
 }
 
@@ -1836,7 +1836,6 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
     transmute(
       component,
       reconstructed_total_cost_eur = total_cost_eur,
-      reconstructed_cost_scope = cost_scope,
       reconstructed_source_dataset = source_dataset,
       reconstructed_source_file = source_file
     )
@@ -1849,7 +1848,6 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
     mutate(
       has_reconstructed_cost = !is.na(reconstructed_total_cost_eur),
       total_cost_eur = ifelse(has_reconstructed_cost, reconstructed_total_cost_eur, total_cost_eur),
-      cost_scope = ifelse(has_reconstructed_cost, reconstructed_cost_scope, cost_scope),
       source_dataset = ifelse(
         has_reconstructed_cost,
         paste_source_columns(source_dataset, reconstructed_source_dataset),
@@ -1858,7 +1856,7 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
       source_file = paste_source_columns(source_file, reconstructed_source_file)
     ) %>%
     select(
-      -reconstructed_total_cost_eur, -reconstructed_cost_scope,
+      -reconstructed_total_cost_eur,
       -reconstructed_source_dataset, -reconstructed_source_file, -has_reconstructed_cost
     )
 }
@@ -1905,7 +1903,6 @@ build_small_component_key_facts <- function(tour_distances, tour_durations, path
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       evaluation_scope = "study_area_start",
       metric_scope = "study_area_start",
-      cost_scope = "not_computed_in_r",
       source_dataset = "tourAnalysis_distances.csv;tourAnalysis_durations.csv",
       inclusion_rule = "commercialPersonTraffic and goodsTraffic agents contained in analysis/commercialTraffic/tourAnalysis_distances.csv",
       source_file = "analysis/commercialTraffic/tourAnalysis_distances.csv;analysis/commercialTraffic/tourAnalysis_durations.csv"
@@ -1942,7 +1939,6 @@ build_trip_component_key_facts <- function(trip_measures, paths) {
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       evaluation_scope = "all_generated_agents",
       metric_scope = "represented_cutout",
-      cost_scope = "not_computed_in_r",
       source_dataset = "output_trips.csv joined with output_persons.csv",
       inclusion_rule = "FTL, longDistanceFreight, wasteCollection, CEP and remainingLTL include all agents found in output_trips.csv"
     ) %>%
@@ -2035,7 +2031,6 @@ build_selected_long_distance_key_facts <- function(selected_plan_measures, trip_
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       evaluation_scope = "all_generated_agents",
       metric_scope = ifelse(has_boundary_attributes & has_route_travel_time, "boundary_adjusted_operational", "selected_plan_or_trip_fallback"),
-      cost_scope = "not_computed_in_r",
       source_dataset = ifelse(
         has_boundary_attributes & has_route_travel_time,
         "output_trips.csv + final selected plans + component source plans XML boundary attributes",
@@ -2047,7 +2042,7 @@ build_selected_long_distance_key_facts <- function(selected_plan_measures, trip_
       component, vehicles, tours, trips, distance_km, travel_time_h, total_cost_eur,
       route_distance_km, route_travel_time_h, boundary_distance_km, boundary_travel_time_h,
       cutout_distance_km, cutout_travel_time_h, has_boundary_attributes, has_route_travel_time,
-      paper_relevance, sample_scope, evaluation_scope, metric_scope, cost_scope,
+      paper_relevance, sample_scope, evaluation_scope, metric_scope,
       source_dataset, inclusion_rule, source_file
     ) %>%
     copy_analysis_meta(selected_plan_measures)
@@ -2069,19 +2064,19 @@ build_paper_costs_by_component <- function(selected_plan_cost_legs, selected_pla
     ) %>%
     mutate(
       in_study_area_start_scope = coalesce(in_study_area_start_scope, FALSE),
-      include_in_paper_cost_scope = case_when(
+      include_in_paper_cost_filter = case_when(
         paper_component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic") ~ in_study_area_start_scope,
         paper_component %in% c("wasteCollection", "CEP", "remainingLTL", "FTL", "longDistanceFreight") ~ TRUE,
         TRUE ~ FALSE
       )
     ) %>%
-    filter(include_in_paper_cost_scope)
+    filter(include_in_paper_cost_filter)
 
   if (nrow(eligible_legs) == 0) {
     add_warning("No selected-plan legs remain after applying paper cost scopes.")
     return(tibble())
   }
-  eligible_activities <- apply_paper_cost_scope_to_activities(selected_plan_cost_activities, study_area_start_scope)
+  eligible_activities <- apply_paper_cost_filter_to_activities(selected_plan_cost_activities, study_area_start_scope)
 
   cost_years <- sort(unique(as.integer(vehicle_cost_parameters$cost_result_year)))
   expanded_legs <- eligible_legs %>%
@@ -2183,12 +2178,6 @@ build_paper_costs_by_component <- function(selected_plan_cost_legs, selected_pla
     mutate(
       included_in_comparable_cost = !component %in% comparable_cost_excluded_components(paths$model_type),
       comparable_cost_eur = ifelse(included_in_comparable_cost, total_cost_eur, 0),
-      cost_status = ifelse(
-        missing_cost_rate_legs > 0,
-        "cost_partly_missing_vehicle_type_rates",
-        "cost_available_from_r_vehicle_type_costs"
-      ),
-      cost_scope = cost_scope_label(component, cost_result_year, paths$year),
       source_dataset = source_dataset_label_for_costs(component),
       paper_relevance = "paper_canonical_costs",
       sample_scope = paste0(paths$sample_tag, "pct_run"),
@@ -2233,7 +2222,7 @@ build_study_area_start_person_scope <- function(tour_distances) {
 }
 
 # Applies the same paper component scope to activity rows as to route-leg cost rows.
-apply_paper_cost_scope_to_activities <- function(selected_plan_cost_activities, study_area_start_scope) {
+apply_paper_cost_filter_to_activities <- function(selected_plan_cost_activities, study_area_start_scope) {
   if (is.null(selected_plan_cost_activities) || nrow(selected_plan_cost_activities) == 0) {
     return(tibble())
   }
@@ -2246,13 +2235,13 @@ apply_paper_cost_scope_to_activities <- function(selected_plan_cost_activities, 
     ) %>%
     mutate(
       in_study_area_start_scope = coalesce(in_study_area_start_scope, FALSE),
-      include_in_paper_cost_scope = case_when(
+      include_in_paper_cost_filter = case_when(
         paper_component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic") ~ in_study_area_start_scope,
         paper_component %in% c("wasteCollection", "CEP", "remainingLTL", "FTL", "longDistanceFreight") ~ TRUE,
         TRUE ~ FALSE
       )
     ) %>%
-    filter(include_in_paper_cost_scope)
+    filter(include_in_paper_cost_filter)
 }
 
 # Builds per-person service/handling time costs from selected-plan activities.
@@ -2432,8 +2421,7 @@ build_paper_cost_total_rows <- function(component_rows, paths) {
       component_rows %>% filter(included_in_comparable_cost) %>% pull(component) %>% unique(),
       TRUE
     )
-  ) %>%
-    mutate(exclusion_rule = comparable_cost_rule_text(paths$model_type))
+  )
 }
 
 # Sums cost rows for one named total.
@@ -2467,8 +2455,6 @@ summarise_paper_cost_total <- function(component_rows, component, source_compone
       missing_cost_rate_legs = sum(coalesce(missing_cost_rate_legs, 0), na.rm = TRUE),
       included_in_comparable_cost = comparable_total,
       comparable_cost_eur = sum(coalesce(comparable_cost_eur, 0), na.rm = TRUE),
-      cost_status = paste(unique(cost_status), collapse = ";"),
-      cost_scope = paste(unique(cost_scope), collapse = ";"),
       source_dataset = paste(unique(source_dataset), collapse = ";"),
       paper_relevance = ifelse(comparable_total, "paper_comparable_cost_total", "paper_cost_total"),
       sample_scope = first(sample_scope),
@@ -2479,21 +2465,6 @@ summarise_paper_cost_total <- function(component_rows, component, source_compone
       .groups = "drop"
     ) %>%
     copy_analysis_meta(selected)
-}
-
-# Labels the cost boundary and price-year treatment.
-cost_scope_label <- function(component, cost_result_year, scenario_year) {
-  price_label <- ifelse(
-    as.integer(cost_result_year) == as.integer(scenario_year),
-    "run_year_vehicle_type_costs",
-    paste0(cost_result_year, "_vehicle_type_costs")
-  )
-
-  ifelse(
-    component %in% c("FTL", "longDistanceFreight"),
-    paste0("boundary_adjusted_operational_", price_label),
-    paste0("selected_plan_vehicle_type_specific_scoring_recomputed_", price_label)
-  )
 }
 
 # Describes the raw input files used for reconstructed operating costs.
@@ -2547,7 +2518,6 @@ summarise_paper_total <- function(rows, component, source_components) {
       sample_scope = first(sample_scope),
       evaluation_scope = "component_specific",
       metric_scope = paste(unique(metric_scope), collapse = ";"),
-      cost_scope = paste(unique(cost_scope), collapse = ";"),
       source_dataset = paste(unique(source_dataset), collapse = ";"),
       inclusion_rule = paste(unique(inclusion_rule), collapse = " | "),
       vehicles = safe_sum(vehicles),
@@ -2636,7 +2606,6 @@ build_paper_table_sample_size_by_component <- function(tour_distances, tour_dura
   rows %>%
     left_join(cpu_time, by = "component") %>%
     mutate(
-      paper_run_id = infer_paper_run_id(paths),
       demand_generation = paths$model_type,
       vehicle_type = paper_vehicle_type_label(paths$fleet_type),
       sample = paste0(paths$sample_tag, "%"),
@@ -2653,7 +2622,7 @@ build_paper_table_sample_size_by_component <- function(tour_distances, tour_dura
       "CEP", "remainingLTL", "FTL", "longDistanceFreight"
     ))) %>%
     transmute(
-      paper_run_id, scenario_name = paths$scenario_name, demand_generation,
+      scenario_name = paths$scenario_name, demand_generation,
       vehicle_type, sample, row_type = "component", component,
       agents_tours, avg_duration_h, avg_distance_km, avg_stops_per_tour,
       stops_in_sample, cpu_time_h, source_file
@@ -2668,7 +2637,6 @@ build_paper_table_sample_size <- function(sample_by_component, paths) {
 
   total <- sample_by_component %>%
     summarise(
-      paper_run_id = first(paper_run_id),
       scenario_name = first(scenario_name),
       demand_generation = first(demand_generation),
       vehicle_type = first(vehicle_type),
@@ -2684,7 +2652,7 @@ build_paper_table_sample_size <- function(sample_by_component, paths) {
       .groups = "drop"
     ) %>%
     transmute(
-      paper_run_id, scenario_name, demand_generation, vehicle_type, sample, row_type, component,
+      scenario_name, demand_generation, vehicle_type, sample, row_type, component,
       agents_tours = round(agents_tours_total, 0),
       avg_duration_h = round(safe_divide(total_duration_h, agents_tours_total), 2),
       avg_distance_km = round(safe_divide(total_distance_km, agents_tours_total), 2),
@@ -2833,21 +2801,19 @@ build_paper_table_key_facts <- function(paper_key_facts_by_component, paper_key_
   rows %>%
     add_comparable_cost_columns(paper_comparable_costs, paths) %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name,
       demand_generation = model_type,
       vehicle_type = paper_vehicle_type_label(fleet_type),
       sample = paste0(sample_pct, "%"),
       row_type,
       component,
-      agents_or_assigned_vehicles = round(vehicles, 0),
+      vehicles = round(vehicles, 0),
       total_distance_traveled_km = round(distance_km, 0),
       total_time_traveled_h = round(travel_time_h, 0),
       total_cost_eur = round(total_cost_eur, 0),
       included_in_comparable_cost,
       comparable_cost_eur = round(comparable_cost_eur, 0),
-      cost_exclusion_rule,
-      sample_scope, evaluation_scope, metric_scope, cost_scope, source_file
+      sample_scope, evaluation_scope, metric_scope, source_file
     )
 }
 
@@ -2863,14 +2829,13 @@ build_paper_table_per_vehicle_appendix <- function(paper_key_facts_by_component,
 
   rows %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name,
       demand_generation = model_type,
       vehicle_type = paper_vehicle_type_label(fleet_type),
       sample = paste0(sample_pct, "%"),
       row_type,
       component,
-      agents_or_assigned_vehicles = round(vehicles, 0),
+      vehicles = round(vehicles, 0),
       reported_distance_km = round(distance_km, 0),
       reported_time_h = round(travel_time_h, 0),
       avg_distance_km_per_vehicle = round(avg_distance_km_per_vehicle, 2),
@@ -2889,7 +2854,6 @@ build_paper_table_wtw_emissions <- function(energy_emissions, paths) {
     mutate(component = paper_component_from_emission_group(groupOfSubpopulation)) %>%
     group_by(component) %>%
     summarise(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = first(scenario_name),
       demand_generation = first(model_type),
       vehicle_type = paper_vehicle_type_label(first(fleet_type)),
@@ -2906,7 +2870,6 @@ build_paper_table_wtw_emissions <- function(energy_emissions, paths) {
 
   total <- energy_emissions %>%
     summarise(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = first(scenario_name),
       demand_generation = first(model_type),
       vehicle_type = paper_vehicle_type_label(first(fleet_type)),
@@ -2931,7 +2894,7 @@ build_paper_table_wtw_emissions <- function(energy_emissions, paths) {
       wtw_emissions_kt_year = round(wtw_emissions_kt_year, 1)
     ) %>%
     transmute(
-      paper_run_id, scenario_name, demand_generation, vehicle_type, year,
+      scenario_name, demand_generation, vehicle_type, year,
       row_type, component, vehicle_km_million_day, gasoline_million_l_year,
       diesel_million_l_year, electricity_gwh_year, wtw_emissions_kt_year,
       source_file
@@ -2946,7 +2909,6 @@ build_paper_table_cost_repricing <- function(paper_costs_by_component, paths) {
 
   paper_costs_by_component %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name,
       demand_generation = model_type,
       vehicle_type = paper_vehicle_type_label(fleet_type),
@@ -2955,7 +2917,7 @@ build_paper_table_cost_repricing <- function(paper_costs_by_component, paths) {
       cost_result_year,
       row_type,
       component,
-      agents_or_assigned_vehicles = round(vehicles, 0),
+      vehicles = round(vehicles, 0),
       total_distance_traveled_km = round(distance_km, 0),
       total_time_traveled_h = round(travel_time_h, 0),
       activity_time_h = round(activity_time_h, 0),
@@ -2967,9 +2929,6 @@ build_paper_table_cost_repricing <- function(paper_costs_by_component, paths) {
       total_cost_eur = round(total_cost_eur, 0),
       included_in_comparable_cost,
       comparable_cost_eur = round(comparable_cost_eur, 0),
-      cost_exclusion_rule = comparable_cost_rule_text(model_type),
-      cost_status,
-      cost_scope,
       source_file
     )
 }
@@ -3009,8 +2968,7 @@ add_comparable_cost_columns <- function(rows, paper_comparable_costs, paths) {
         component == "all components" & !is.na(comparable_total) ~ comparable_total,
         included_in_comparable_cost ~ total_cost_eur,
         TRUE ~ 0
-      ),
-      cost_exclusion_rule = comparable_cost_rule_text(paths$model_type)
+      )
     ) %>%
     select(-comparable_lookup_included, -comparable_lookup_cost, -component_excluded)
 }
@@ -3084,7 +3042,6 @@ build_paper_table_bev_range_feasibility <- function(jobs_per_tour, range_logs, p
 
   bind_rows(component_rows, total) %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = paths$scenario_name,
       demand_generation = paths$model_type,
       vehicle_type = paper_vehicle_type_label(paths$fleet_type),
@@ -3150,7 +3107,6 @@ build_paper_table_ltl_recharge_vehicle_use <- function(jobs_per_tour, person_sco
       jobs_on_recharge_vehicle_tour_share = safe_divide(jobs_on_recharge_vehicle_tours, assigned_jobs)
     ) %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = paths$scenario_name,
       demand_generation = paths$model_type,
       vehicle_type = paper_vehicle_type_label(paths$fleet_type),
@@ -3205,7 +3161,6 @@ build_paper_table_mixed_ltl_fleet_composition <- function(carrier_time_distance_
       bev_distance_share = safe_divide(bev_distance_km, total_distance_km)
     ) %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = paths$scenario_name,
       demand_generation = paths$model_type,
       vehicle_type = paper_vehicle_type_label(paths$fleet_type),
@@ -3258,7 +3213,6 @@ build_paper_table_mixed_ltl_wtw_emissions <- function(carrier_time_distance_vehi
 
   bind_rows(component_rows, total) %>%
     transmute(
-      paper_run_id = infer_paper_run_id(paths),
       scenario_name = paths$scenario_name,
       demand_generation = paths$model_type,
       vehicle_type = paper_vehicle_type_label(paths$fleet_type),
@@ -3322,18 +3276,6 @@ paper_vehicle_type_label <- function(fleet_type) {
   recode(as.character(fleet_type), CV = "ICEV", EV = "BEV", Mixed = "Mixed", .default = as.character(fleet_type))
 }
 
-# Returns a stable run label; known sample-size runs receive their paper IDs.
-infer_paper_run_id <- function(paths) {
-  sample <- as.numeric(paths$sample_pct)
-
-  case_when(
-    paths$model_type == "Basic" && paths$fleet_type == "CV" && paths$year == 2024 && sample == 1 ~ "S1a",
-    paths$model_type == "Basic" && paths$fleet_type == "CV" && paths$year == 2024 && sample == 10 ~ "S1b/S2 Basic",
-    paths$model_type == "Basic" && paths$fleet_type == "CV" && paths$year == 2024 && sample == 25 ~ "S1c",
-    TRUE ~ paste(paths$scenario_name, paste0(paths$sample_tag, "pct"), sep = "_")
-  )
-}
-
 # Collapses several optional source-file columns into one semicolon-separated value.
 paste_source_columns <- function(...) {
   purrr::pmap_chr(list(...), function(...) {
@@ -3365,13 +3307,7 @@ build_paper_comparable_costs <- function(paper_key_facts_by_component, paths) {
     mutate(
       included_in_comparable_cost = !component %in% excluded_components,
       comparable_cost_eur = ifelse(included_in_comparable_cost, total_cost_eur, 0),
-      cost_status = ifelse(
-        all(is.na(total_cost_eur)),
-        "cost_not_available_from_r_vehicle_type_costs",
-        "cost_available_from_r_vehicle_type_costs"
-      ),
-      exclusion_rule = comparable_cost_rule_text(paths$model_type),
-      paper_relevance = "paper_comparable_cost_scope"
+      paper_relevance = "paper_comparable_costs"
     )
 
   total <- component_rows %>%
@@ -3389,9 +3325,7 @@ build_paper_comparable_costs <- function(paper_key_facts_by_component, paths) {
       total_cost_eur = safe_sum(total_cost_eur),
       included_in_comparable_cost = TRUE,
       comparable_cost_eur = safe_sum(comparable_cost_eur),
-      cost_status = first(cost_status),
-      exclusion_rule = first(exclusion_rule),
-      paper_relevance = "paper_comparable_cost_scope",
+      paper_relevance = "paper_comparable_costs",
       source_file = paste(unique(source_file), collapse = ";"),
       .groups = "drop"
     )
@@ -3409,15 +3343,6 @@ comparable_cost_excluded_components <- function(selected_model_type) {
     strsplit(";", fixed = TRUE) %>%
     unlist(use.names = FALSE) %>%
     discard(~ .x == "")
-}
-
-# Explains the cost boundary used by the full-fleet and price-sensitivity comparisons.
-comparable_cost_rule_text <- function(selected_model_type) {
-  case_when(
-    selected_model_type == "Basic" ~ "Exclude longDistanceFreight from comparable costs.",
-    selected_model_type == "Advanced" ~ "Exclude FTL and longDistanceFreight from comparable costs.",
-    TRUE ~ "No long-distance comparable-cost exclusion configured for this model type."
-  )
 }
 
 extract_vehicle_type_values <- function(vehicle_types_raw) {
