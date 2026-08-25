@@ -50,6 +50,7 @@ import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleModule;
 import org.matsim.contrib.common.conventions.vsp.SnzActivities;
+import org.matsim.contrib.common.conventions.vsp.SubpopulationDefaultNames;
 import org.matsim.contrib.vsp.pt.fare.PtFareModule;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
@@ -157,8 +158,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 	public static void prepareCommercialTrafficReplanningAndScoringParams(Scenario scenario) {
 
 		Set<String> modes = Set.of("car","truck8t", "truck18t", "truck26t", "truck40t");
-		Set<String> knownCommercialSubpopulations = Set.of("LTL_trip", "commercialPersonTraffic", "commercialPersonTraffic_service", "longDistanceFreight",
-			"FTL_trip", "FTL_kv_trip", "goodsTraffic");
+		Set<String> knownCommercialSubpopulations = Set.of("LTL_trip", SubpopulationDefaultNames.SUBPOP_COM_PERSON, SubpopulationDefaultNames.SUBPOP_COM_PERSON_SERVICE, SubpopulationDefaultNames.SUBPOP_LONG_DISTANCE_FREIGHT,
+			"FTL_trip", "FTL_kv_trip", SubpopulationDefaultNames.SUBPOP_GOODS);
 
 		Set<String> subpopulations = PopulationUtils.getSubpopulationsOfPopulation(scenario.getPopulation());
 		Config config = scenario.getConfig();
@@ -183,40 +184,20 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			);
 
 			ScoringConfigGroup.ScoringParameterSet scoringParameters = config.scoring().getOrCreateScoringParameters(subpopulation);
-			double timeCosts;
-
-			if (subpopulation.contains("commercialPersonTraffic")) {
-				timeCosts = -34.86;
-			} else {
-				timeCosts = -28.55;
-			}
-			scoringParameters.setMarginalUtlOfWaiting_utils_hr(timeCosts);
-			scoringParameters.setPerforming_utils_hr(timeCosts);
-			scoringParameters.setMarginalUtilityOfMoney(1.0);
-			scoringParameters.setMarginalUtlOfWaitingPt_utils_hr(timeCosts);
+			scoringParameters.setPerforming_utils_hr(32.);
+			scoringParameters.setMarginalUtlOfWaitingPt_utils_hr(0.);
 			activityTypesPerSubpopulation.forEach(activityType -> {
 				ScoringConfigGroup.ActivityParams actParams = new ScoringConfigGroup.ActivityParams(activityType).setTypicalDuration(30 * 60);
-				// because we dont not score the time after and before the working hours we dont not score these activities
-				if (activityType.contains("start") || activityType.contains("end"))
-					actParams.setScoringThisActivityAtAll(false);
 				scoringParameters.addActivityParams(actParams);
 			});
 			modes.forEach(mode -> {
 				ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
-				thisModeParams.setMarginalUtilityOfTraveling(timeCosts);
-				thisModeParams.setMonetaryDistanceRate(0.0);	// mode spezifische Kosten pro Meter TODO
 				scoringParameters.addModeParams(thisModeParams);
 			});
-			ScoringConfigGroup.ModeParams walk = new ScoringConfigGroup.ModeParams("walk");
-			walk.setMarginalUtilityOfTraveling(timeCosts);
-			scoringParameters.addModeParams(walk);
+			scoringParameters.addModeParams(new ScoringConfigGroup.ModeParams("walk"));
 		});
-		ScoringConfigGroup.ScoringParameterSet defaultScoringParameters = config.scoring().getOrCreateScoringParameters(ScoringConfigGroup.DEFAULT_SUBPOPULATION);
-		modes.forEach(mode -> {
-				defaultScoringParameters.addModeParams(new ScoringConfigGroup.ModeParams(mode));
-			});
-		defaultScoringParameters.setMarginalUtlOfWaitingPt_utils_hr(0.);
-		config.scoring().addParameterSet(defaultScoringParameters); //TODO this should be not necessary at the end
+		config.scoring().setExplainScores(true);
+		config.scoring().setScoringParametersAsDefaultSubpopulation(SubpopulationDefaultNames.SUBPOP_COM_PERSON);
 	}
 
 	@Override
