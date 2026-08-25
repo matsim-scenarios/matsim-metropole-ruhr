@@ -766,7 +766,7 @@ public class CreateCommercialDemand implements MATSimAppCommand {
 			throw new IllegalArgumentException("--smallScaleCommercialCarrierPartCount must be greater than 1 when merging small scale commercial carrier parts.");
 		}
 		if (smallScaleCommercialCarrierPartCount > 1
-			&& (runPart == RunPart.all || runPart == RunPart.smallScaleCommercial || runPart == RunPart.smallScaleCommercialMerge)) {
+			&& (runPart == RunPart.all || runPart == RunPart.smallScaleCommercial)) {
 			throw new IllegalArgumentException("Small scale commercial carrier parts must be run separately for commercialPersonTraffic and goodsTraffic.");
 		}
 	}
