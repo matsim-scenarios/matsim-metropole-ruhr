@@ -2,37 +2,12 @@
 
 # Analyse der paper-relevanten Parameter eines WV-Ruhr-Runs.
 #
-# Bedienung:
-#   1) Oben run_folder_url anpassen. Dort kann entweder der Studienordner
-#      output/studyWV_Ruhr, ein Szenarioordner, ein commercial_Xpct-Ordner oder
-#      direkt commercialTraffic_RunXpct eingetragen werden.
-#   2) Jahr, Fleet und Modelltyp durch Ein-/Auskommentieren waehlen.
-#   3) Script in RStudio/IntelliJ/R-Konsole ausfuehren oder sourcen.
-#
-# Es gibt keine run arguments. Alle Ergebnisse werden als CSVs.
-
-required_packages <- c("dplyr", "purrr", "readr", "stringr", "tidyr", "tibble")
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-
-if (length(missing_packages) > 0) {
-  stop(
-    "Missing R packages: ",
-    paste(missing_packages, collapse = ", "),
-    ". Please install them before running this script.",
-    call. = FALSE
-  )
-}
-
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(purrr)
-  library(readr)
-  library(stringr)
-  library(tibble)
-  library(tidyr)
-})
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(tibble)
+library(tidyr)
 
 # =============================================================================
 # 1. Einstellungen: hier wird der Run ausgewaehlt
