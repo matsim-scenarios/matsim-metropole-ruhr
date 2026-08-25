@@ -28,8 +28,9 @@ costs$scenario <- factor(
   levels = c("Basic - ICEV", "Basic - BEV",
              "Advanced - ICEV", "Advanced - BEV")
 )
+costs$scenario_id <- as.numeric(costs$scenario)
 
-# The first factor level is drawn at the bottom of each bar.
+# The last factor level is drawn at the bottom of each bar.
 costs$component <- factor(
   costs$component,
   levels = c("Labor", "Distance energy", "Distance operation",
@@ -37,36 +38,100 @@ costs$component <- factor(
 )
 
 # Text labels within segments; do not label zero values.
-# Increase the threshold if labels in very small segments become too crowded.
-label_threshold <- 0.001
-costs$label <- ifelse(
-  costs$value >= label_threshold,
+# Draw small values outside the bars to keep them readable in a compact figure.
+small_label_threshold <- 0.40
+costs$label_inside <- ifelse(
+  costs$value >= small_label_threshold,
+  number(costs$value, accuracy = 0.01, decimal.mark = "."),
+  ""
+)
+costs$label_outside <- ifelse(
+  costs$value > 0 & costs$value < small_label_threshold,
   number(costs$value, accuracy = 0.01, decimal.mark = "."),
   ""
 )
 
+# Midpoints of stacked segments for labels drawn outside the bars.
+stack_order <- rev(levels(costs$component))
+costs$stack_order <- match(as.character(costs$component), stack_order)
+costs <- costs[order(costs$scenario, costs$stack_order), ]
+costs$ymin <- ave(costs$value, costs$scenario, FUN = function(x) cumsum(x) - x)
+costs$ymax <- ave(costs$value, costs$scenario, FUN = cumsum)
+costs$y_mid <- (costs$ymin + costs$ymax) / 2
+small_labels <- subset(costs, label_outside != "")
+
+spread_label_y <- function(y, min_gap = 0.32) {
+  if (length(y) <= 1) {
+    return(y)
+  }
+
+  order_y <- order(y)
+  placed <- y[order_y]
+
+  for (i in 2:length(placed)) {
+    placed[i] <- max(placed[i], placed[i - 1] + min_gap)
+  }
+
+  placed <- placed - (mean(placed) - mean(y[order_y]))
+
+  for (i in 2:length(placed)) {
+    placed[i] <- max(placed[i], placed[i - 1] + min_gap)
+  }
+
+  adjusted <- y
+  adjusted[order_y] <- placed
+  adjusted
+}
+
+small_labels$label_y <- ave(
+  small_labels$y_mid,
+  small_labels$scenario,
+  FUN = spread_label_y
+)
+
 # Totals calculated from the manually entered component values
 totals <- aggregate(value ~ scenario, data = costs, FUN = sum)
+totals$scenario_id <- as.numeric(totals$scenario)
 
 # -----------------------------------------------------------------------------
 # 2. Create plot
 # -----------------------------------------------------------------------------
-p_stacked <- ggplot(costs, aes(x = scenario, y = value, fill = component)) +
-  geom_col(width = 0.72, color = "white", linewidth = 0.35) +
+p_stacked <- ggplot(costs, aes(x = scenario_id, y = value, fill = component)) +
+  geom_col(width = 0.64, color = "white", linewidth = 0.25) +
   geom_text(
-    aes(label = label),
+    aes(label = label_inside),
     position = position_stack(vjust = 0.5),
     color = "white",
     fontface = "bold",
-    size = 3.6
+    size = 2.4
+  ) +
+  geom_segment(
+    data = small_labels,
+    aes(
+      x = scenario_id + 0.33,
+      xend = scenario_id + 0.43,
+      y = y_mid,
+      yend = label_y
+    ),
+    inherit.aes = FALSE,
+    color = "grey45",
+    linewidth = 0.2
+  ) +
+  geom_text(
+    data = small_labels,
+    aes(x = scenario_id + 0.46, y = label_y, label = label_outside),
+    inherit.aes = FALSE,
+    hjust = 0,
+    size = 2.4,
+    color = "grey20"
   ) +
   geom_text(
     data = totals,
-    aes(x = scenario, y = value, label = number(value, accuracy = 0.01)),
+    aes(x = scenario_id, y = value, label = number(value, accuracy = 0.01)),
     inherit.aes = FALSE,
-    vjust = -0.6,
+    vjust = -0.35,
     fontface = "bold",
-    size = 4
+    size = 3.0
   ) +
   scale_fill_manual(
     values = c(
@@ -80,44 +145,49 @@ p_stacked <- ggplot(costs, aes(x = scenario, y = value, fill = component)) +
   scale_y_continuous(
     name = "Comparable operating costs [million EUR/day]",
     labels = label_number(accuracy = 1),
-    expand = expansion(mult = c(0, 0.10))
+    expand = expansion(mult = c(0, 0.06))
   ) +
-  scale_x_discrete(
+  scale_x_continuous(
     name = NULL,
+    breaks = seq_along(levels(costs$scenario)),
+    limits = c(0.55, 5.05),
+    expand = expansion(mult = 0),
     labels = c(
-      "Basic - ICEV"    = "Basic\nICEV",
-      "Basic - BEV"     = "Basic\nBEV",
-      "Advanced - ICEV" = "Advanced\nICEV",
-      "Advanced - BEV"  = "Advanced\nBEV"
+      "Basic\nICEV",
+      "Basic\nBEV",
+      "Advanced\nICEV",
+      "Advanced\nBEV"
     )
   ) +
   labs(
-    title = "Composition of comparable operating costs",
-    subtitle = "2024 full-fleet electrification comparison",
+    title = NULL,
+    subtitle = NULL,
     fill = "Cost component",
-    caption = "Values in million EUR per simulated average working day (10% sample)."
+    caption = NULL
   ) +
   coord_cartesian(clip = "off") +
-  theme_minimal(base_size = 12) +
+  guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
+  theme_minimal(base_size = 9) +
   theme(
-    plot.title = element_text(face = "bold", size = 16),
-    plot.subtitle = element_text(color = "grey35"),
     panel.grid.major.x = element_blank(),
     panel.grid.minor = element_blank(),
-    axis.text.x = element_text(face = "bold", color = "grey20"),
-    axis.title.y = element_text(face = "bold"),
-    legend.position = "bottom",
-    legend.title = element_text(face = "bold"),
-    plot.margin = margin(10, 15, 10, 10)
+    axis.text.x = element_text(face = "bold", color = "grey20", size = 8),
+    axis.text.y = element_text(size = 8),
+    axis.title.y = element_text(face = "bold", size = 8),
+    legend.position = "right",
+    legend.text = element_text(size = 7),
+    legend.key.size = grid::unit(3, "mm"),
+    legend.spacing.y = grid::unit(1.0, "mm"),
+    plot.margin = margin(2, 2, 2, 2)
   )
 
 # Display in RStudio
 print(p_stacked)
 
 # Optional export (uncomment if desired)
-# ggsave("stacked_operating_costs.png", p_stacked, width = 10, height = 6,
+# ggsave("stacked_operating_costs.png", p_stacked, width = 7.0, height = 2.6,
 #        units = "in", dpi = 300, bg = "white")
-# ggsave("stacked_operating_costs.pdf", p_stacked, width = 10, height = 6,
+# ggsave("stacked_operating_costs.pdf", p_stacked, width = 7.0, height = 2.6,
 #        units = "in", bg = "white")
 
 
