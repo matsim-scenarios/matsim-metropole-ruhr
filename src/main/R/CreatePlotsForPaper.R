@@ -146,11 +146,60 @@ line_costs <- data.frame(
   )
 )
 
+
+line_BEV_costs_benefits <- data.frame(
+  demand = rep(c("Advanced"), each = 18),
+  component = rep(c("commercialPersonTraffic", "smallScaleGoodsTraffic", "wasteCollection", "CEP", "remainingLTL", "Comparable total"), each = 3),
+  year = rep(c(2024, 2030, 2050), 6),
+  share_tours = c(
+    9.8, 26.8, 45.2,  # Advanced - commercialPersonTraffic
+    29.5, 58.6, 68.2,  # Advanced - smallScaleGoodsTraffic
+    2.1, 31.2, 75.0,  # Advanced - wasteCollection
+    27.6, 62.7, 88.6,  # Advanced - CEP
+    39.4, 83.3, 94.8,  # Advanced - remainingLTL
+    16.3, 37.4, 53.3   # Advanced - Comparable total
+  ),
+  share_distances = c(
+    27.1, 56.5, 77.4,  # Advanced - commercialPersonTraffic
+    56.5, 87.1, 93.4,  # Advanced - smallScaleGoodsTraffic
+    4.0, 41.5, 83.2,  # Advanced - wasteCollection
+    48.5, 81.7, 95.8,  # Advanced - CEP
+    53.0, 93.6, 98.8,  # Advanced - remainingLTL
+    38.6, 68.8, 83.9   # Advanced - Comparable total
+  )
+)
+
 line_costs$scenario <- factor(
   paste(line_costs$demand, line_costs$vehicle, sep = " - "),
   levels = c("Basic - ICEV", "Basic - BEV",
              "Advanced - ICEV", "Advanced - BEV")
 )
+
+line_BEV_costs_benefits$component <- factor(
+  line_BEV_costs_benefits$component,
+  levels = c(
+    "commercialPersonTraffic",
+    "smallScaleGoodsTraffic",
+    "wasteCollection",
+    "CEP",
+    "remainingLTL",
+    "Comparable total"
+  )
+)
+
+bev_plot_data <- line_BEV_costs_benefits %>%
+  pivot_longer(
+    cols = c(share_tours, share_distances),
+    names_to = "share_type",
+    values_to = "share"
+  ) %>%
+  mutate(
+    share_type = factor(
+      share_type,
+      levels = c("share_tours", "share_distances"),
+      labels = c("Tours", "Distance")
+    )
+  )
 
 demand_colors <- c(
   "Basic" = "#2F5597",
@@ -272,6 +321,85 @@ p_per_tour <- ggplot(
 print(p_total)
 print(p_per_tour)
 
+
+# -----------------------------------------------------------------------------
+# 6. Plot for cheaper BEV share of tours and distances in 2050 (Advanced demand)
+# -----------------------------------------------------------------------------
+
+bev_gplot <- ggplot(
+  bev_plot_data,
+  aes(
+    x = year,
+    y = share,
+    color = component,
+    linetype = share_type,
+    group = interaction(component, share_type)
+  )
+) +
+  geom_line(linewidth = 0.9) +
+  geom_point(
+    aes(shape = share_type),
+    size = 1.2
+  ) +
+  scale_x_continuous(
+    name = "Energy-price year",
+    breaks = c(2024, 2030, 2050)
+  ) +
+  scale_y_continuous(
+    name = "Share [%]",
+    labels = label_number(accuracy = 1),
+    limits = c(0, 100),
+    expand = expansion(mult = c(0.02, 0.05))
+  ) +
+  scale_color_brewer(palette = "Set2") +
+  scale_linetype_manual(
+    values = c(
+      "Tours" = "solid",
+      "Distance" = "dashed"
+    )
+  ) +
+  scale_shape_manual(
+    values = c(
+      "Tours" = 16,
+      "Distance" = 16
+    )
+  ) +
+  labs(
+    title = "Share of cost benefits for BEV under different energy-price settings",
+    color = "Component",
+    linetype = "Measure",
+    shape = "Measure"
+  ) +
+  guides(
+    color = guide_legend(
+      position = "right",
+      title = "Component",
+    ),
+    linetype = guide_legend(
+      position = "bottom",
+      title = "Measure",
+      theme = theme(
+        legend.key.width = unit(2.0, "cm")
+      )
+    ),
+    shape = "none"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+
+    legend.title = element_text(face = "bold"),
+
+    # Component-Legende unten möglichst horizontal
+    legend.box = "horizontal",
+
+    plot.margin = margin(10, 15, 10, 15)
+  )
+
+print(bev_gplot)
 # Optional export (uncomment if desired)
 # ggsave("total_cost_lineplot.png", p_total, width = 10, height = 6,
 #        units = "in", dpi = 300, bg = "white")
