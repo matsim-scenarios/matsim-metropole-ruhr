@@ -479,6 +479,14 @@ safe_divide <- function(numerator, denominator) {
   ifelse(is.na(denominator) | denominator == 0, NA_real_, numerator / denominator)
 }
 
+with_boundary_only <- function(in_simulation, with_boundary) {
+  ifelse(
+    is.na(in_simulation) | is.na(with_boundary) | abs(with_boundary - in_simulation) < 1e-9,
+    NA_real_,
+    with_boundary
+  )
+}
+
 clean_subpopulation <- function(x) {
   x <- as.character(x)
   x[is.na(x) | trimws(x) == ""] <- "unknown"
@@ -1389,13 +1397,20 @@ build_paper_key_facts_by_component <- function(tour_distances, tour_durations, t
   }
   rows <- apply_reconstructed_costs_to_key_facts(rows, paper_costs_by_component, paths)
   rows <- attach_tour_durations_to_key_facts(rows, tour_durations, tour_distances, person_scores, paths)
+  rows <- add_simulation_boundary_key_fact_columns(rows)
 
   rows %>%
     mutate(
       component_group = component_group_from_paper_component(component),
-      avg_distance_km_per_vehicle = safe_divide(distance_km, vehicles),
-      avg_travel_time_h_per_vehicle = safe_divide(travel_time_h, vehicles),
-      avg_tour_duration_h_per_vehicle = safe_divide(tour_duration_h, vehicles)
+      avg_distance_km_inSimulation_per_vehicle = safe_divide(distance_km_inSimulation, vehicles),
+      avg_distance_km_withBoundary_per_vehicle = safe_divide(distance_km_withBoundary, vehicles),
+      avg_travel_time_h_inSimulation_per_vehicle = safe_divide(travel_time_h_inSimulation, vehicles),
+      avg_travel_time_h_withBoundary_per_vehicle = safe_divide(travel_time_h_withBoundary, vehicles),
+      avg_tour_duration_h_inSimulation_per_vehicle = safe_divide(tour_duration_h_inSimulation, vehicles),
+      avg_tour_duration_h_withBoundary_per_vehicle = safe_divide(tour_duration_h_withBoundary, vehicles),
+      avg_distance_km_per_vehicle = avg_distance_km_withBoundary_per_vehicle,
+      avg_travel_time_h_per_vehicle = avg_travel_time_h_withBoundary_per_vehicle,
+      avg_tour_duration_h_per_vehicle = avg_tour_duration_h_withBoundary_per_vehicle
     ) %>%
     arrange(match(component, c(
       "commercialPersonTraffic", "smallScaleGoodsTraffic", "wasteCollection",
@@ -1419,6 +1434,9 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
     transmute(
       component,
       reconstructed_total_cost_eur = total_cost_eur,
+      reconstructed_total_cost_eur_inSimulation =
+        total_cost_eur - coalesce(boundary_distance_cost_eur, 0) - coalesce(boundary_time_cost_eur, 0),
+      reconstructed_total_cost_eur_withBoundary = total_cost_eur,
       reconstructed_source_dataset = source_dataset,
       reconstructed_source_file = source_file
     )
@@ -1430,6 +1448,16 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
     left_join(cost_rows, by = "component") %>%
     mutate(
       has_reconstructed_cost = !is.na(reconstructed_total_cost_eur),
+      total_cost_eur_inSimulation = ifelse(
+        has_reconstructed_cost,
+        reconstructed_total_cost_eur_inSimulation,
+        total_cost_eur
+      ),
+      total_cost_eur_withBoundary = ifelse(
+        has_reconstructed_cost,
+        reconstructed_total_cost_eur_withBoundary,
+        total_cost_eur
+      ),
       total_cost_eur = ifelse(has_reconstructed_cost, reconstructed_total_cost_eur, total_cost_eur),
       source_dataset = ifelse(
         has_reconstructed_cost,
@@ -1439,8 +1467,64 @@ apply_reconstructed_costs_to_key_facts <- function(rows, paper_costs_by_componen
       source_file = paste_source_columns(source_file, reconstructed_source_file)
     ) %>%
     select(
-      -reconstructed_total_cost_eur,
+      -reconstructed_total_cost_eur, -reconstructed_total_cost_eur_inSimulation,
+      -reconstructed_total_cost_eur_withBoundary,
       -reconstructed_source_dataset, -reconstructed_source_file, -has_reconstructed_cost
+    )
+}
+
+# Adds explicit simulation-only and boundary-augmented metric columns for paper exports.
+add_simulation_boundary_key_fact_columns <- function(rows) {
+  if (nrow(rows) == 0) {
+    return(rows)
+  }
+
+  optional_cols <- c(
+    "route_distance_km", "cutout_distance_km", "boundary_distance_km",
+    "route_travel_time_h", "cutout_travel_time_h", "boundary_travel_time_h",
+    "tour_duration_h", "trips", "total_cost_eur",
+    "total_cost_eur_inSimulation", "total_cost_eur_withBoundary"
+  )
+  for (col in setdiff(optional_cols, names(rows))) {
+    rows[[col]] <- NA_real_
+  }
+
+  rows %>%
+    mutate(
+      boundary_distance_km = coalesce(boundary_distance_km, 0),
+      boundary_travel_time_h = coalesce(boundary_travel_time_h, 0),
+      distance_km_inSimulation = coalesce(
+        ifelse(!is.na(route_distance_km) & route_distance_km > 0, route_distance_km, NA_real_),
+        cutout_distance_km,
+        distance_km
+      ),
+      travel_time_h_inSimulation = coalesce(
+        ifelse(!is.na(route_travel_time_h) & route_travel_time_h > 0, route_travel_time_h, NA_real_),
+        cutout_travel_time_h,
+        travel_time_h
+      ),
+      tour_duration_h_inSimulation = tour_duration_h,
+      distance_km_withBoundary = ifelse(
+        is.na(distance_km_inSimulation) & boundary_distance_km == 0,
+        NA_real_,
+        coalesce(distance_km_inSimulation, 0) + boundary_distance_km
+      ),
+      travel_time_h_withBoundary = ifelse(
+        is.na(travel_time_h_inSimulation) & boundary_travel_time_h == 0,
+        NA_real_,
+        coalesce(travel_time_h_inSimulation, 0) + boundary_travel_time_h
+      ),
+      tour_duration_h_withBoundary = ifelse(
+        is.na(tour_duration_h_inSimulation),
+        NA_real_,
+        tour_duration_h_inSimulation + boundary_travel_time_h
+      ),
+      total_cost_eur_inSimulation = coalesce(total_cost_eur_inSimulation, total_cost_eur),
+      total_cost_eur_withBoundary = coalesce(total_cost_eur_withBoundary, total_cost_eur),
+      distance_km = distance_km_withBoundary,
+      travel_time_h = travel_time_h_withBoundary,
+      tour_duration_h = tour_duration_h_withBoundary,
+      total_cost_eur = total_cost_eur_withBoundary
     )
 }
 
@@ -1461,7 +1545,6 @@ build_small_component_key_facts <- function(tour_distances, trip_measures, paths
     summarise(
       vehicles = n_distinct(person),
       tours = n(),
-      trips = NA_real_,
       distance_km = safe_sum(distance_km_value),
       .groups = "drop"
     )
@@ -1563,7 +1646,7 @@ build_tour_duration_summary <- function(tour_durations, tour_distances, person_s
 }
 
 build_small_component_travel_time_summary <- function(tour_distances, trip_measures) {
-  empty <- tibble(component = character(), travel_time_h = numeric(), travel_time_source_file = character())
+  empty <- tibble(component = character(), trips = numeric(), travel_time_h = numeric(), travel_time_source_file = character())
   if (nrow(trip_measures) == 0) {
     return(empty)
   }
@@ -1578,6 +1661,7 @@ build_small_component_travel_time_summary <- function(tour_distances, trip_measu
     semi_join(study_area_start_scope, by = c("component", "person")) %>%
     group_by(component) %>%
     summarise(
+      trips = n(),
       travel_time_h = safe_sum(travel_time_h),
       travel_time_source_file = collapse_source_values(source_file),
       .groups = "drop"
@@ -2195,13 +2279,27 @@ summarise_paper_total <- function(rows, component, source_components) {
       vehicles = safe_sum(vehicles),
       tours = safe_sum(tours),
       trips = safe_sum(trips),
-      distance_km = safe_sum(distance_km),
-      travel_time_h = safe_sum(travel_time_h),
-      tour_duration_h = safe_sum(tour_duration_h),
-      total_cost_eur = safe_sum(total_cost_eur),
-      avg_distance_km_per_vehicle = safe_divide(distance_km, vehicles),
-      avg_travel_time_h_per_vehicle = safe_divide(travel_time_h, vehicles),
-      avg_tour_duration_h_per_vehicle = safe_divide(tour_duration_h, vehicles),
+      distance_km_inSimulation = safe_sum(distance_km_inSimulation),
+      distance_km_withBoundary = safe_sum(distance_km_withBoundary),
+      travel_time_h_inSimulation = safe_sum(travel_time_h_inSimulation),
+      travel_time_h_withBoundary = safe_sum(travel_time_h_withBoundary),
+      tour_duration_h_inSimulation = safe_sum(tour_duration_h_inSimulation),
+      tour_duration_h_withBoundary = safe_sum(tour_duration_h_withBoundary),
+      distance_km = distance_km_withBoundary,
+      travel_time_h = travel_time_h_withBoundary,
+      tour_duration_h = tour_duration_h_withBoundary,
+      total_cost_eur_inSimulation = safe_sum(total_cost_eur_inSimulation),
+      total_cost_eur_withBoundary = safe_sum(total_cost_eur_withBoundary),
+      total_cost_eur = total_cost_eur_withBoundary,
+      avg_distance_km_inSimulation_per_vehicle = safe_divide(distance_km_inSimulation, vehicles),
+      avg_distance_km_withBoundary_per_vehicle = safe_divide(distance_km_withBoundary, vehicles),
+      avg_travel_time_h_inSimulation_per_vehicle = safe_divide(travel_time_h_inSimulation, vehicles),
+      avg_travel_time_h_withBoundary_per_vehicle = safe_divide(travel_time_h_withBoundary, vehicles),
+      avg_tour_duration_h_inSimulation_per_vehicle = safe_divide(tour_duration_h_inSimulation, vehicles),
+      avg_tour_duration_h_withBoundary_per_vehicle = safe_divide(tour_duration_h_withBoundary, vehicles),
+      avg_distance_km_per_vehicle = avg_distance_km_withBoundary_per_vehicle,
+      avg_travel_time_h_per_vehicle = avg_travel_time_h_withBoundary_per_vehicle,
+      avg_tour_duration_h_per_vehicle = avg_tour_duration_h_withBoundary_per_vehicle,
       source_file = collapse_source_values(source_file),
       .groups = "drop"
     ) %>%
@@ -2422,8 +2520,9 @@ build_sample_size_non_tour_component_rows <- function(paper_key_facts_by_compone
   }
 
   optional_cols <- c(
-    "route_distance_km", "cutout_distance_km", "route_travel_time_h",
-    "cutout_travel_time_h", "tour_duration_h"
+    "distance_km_inSimulation", "route_distance_km", "cutout_distance_km",
+    "travel_time_h_inSimulation", "route_travel_time_h", "cutout_travel_time_h",
+    "tour_duration_h_inSimulation", "tour_duration_h"
   )
   for (col in setdiff(optional_cols, names(paper_key_facts_by_component))) {
     paper_key_facts_by_component[[col]] <- NA_real_
@@ -2432,8 +2531,14 @@ build_sample_size_non_tour_component_rows <- function(paper_key_facts_by_compone
   paper_key_facts_by_component %>%
     filter(!component %in% existing_components, component_group != "total") %>%
     mutate(
-      sample_size_distance_km = coalesce(route_distance_km, cutout_distance_km, distance_km),
-      sample_size_duration_h = coalesce(tour_duration_h, route_travel_time_h, cutout_travel_time_h, travel_time_h)
+      sample_size_distance_km = coalesce(distance_km_inSimulation, route_distance_km, cutout_distance_km, distance_km),
+      sample_size_duration_h = coalesce(
+        tour_duration_h_inSimulation,
+        route_travel_time_h,
+        cutout_travel_time_h,
+        travel_time_h_inSimulation,
+        travel_time_h
+      )
     ) %>%
     transmute(
       component,
@@ -2492,12 +2597,36 @@ build_paper_table_key_facts <- function(paper_key_facts_by_component, paper_key_
       row_type,
       component,
       vehicles = round(vehicles, 0),
-      total_distance_traveled_km = round(distance_km, 0),
-      total_travel_time_h = round(travel_time_h, 0),
-      total_tour_duration_h = round(tour_duration_h, 0),
-      total_cost_eur = round(total_cost_eur, 0),
+      vehicles_100pct = round(vehicles * sample_factor_to_100pct, 0),
+      trips = round(trips, 0),
+      trips_100pct = round(trips * sample_factor_to_100pct, 0),
+      total_distance_traveled_km = round(distance_km_inSimulation, 0),
+      total_distance_traveled_km_100pct = round(distance_km_inSimulation * sample_factor_to_100pct, 0),
+      total_distance_traveled_km_withBoundary =
+        round(with_boundary_only(distance_km_inSimulation, distance_km_withBoundary), 0),
+      total_distance_traveled_km_100pct_withBoundary =
+        round(with_boundary_only(distance_km_inSimulation, distance_km_withBoundary) * sample_factor_to_100pct, 0),
+      total_travel_time_h = round(travel_time_h_inSimulation, 0),
+      total_travel_time_h_100pct = round(travel_time_h_inSimulation * sample_factor_to_100pct, 0),
+      total_travel_time_h_withBoundary =
+        round(with_boundary_only(travel_time_h_inSimulation, travel_time_h_withBoundary), 0),
+      total_travel_time_h_100pct_withBoundary =
+        round(with_boundary_only(travel_time_h_inSimulation, travel_time_h_withBoundary) * sample_factor_to_100pct, 0),
+      total_tour_duration_h = round(tour_duration_h_inSimulation, 0),
+      total_tour_duration_h_100pct = round(tour_duration_h_inSimulation * sample_factor_to_100pct, 0),
+      total_tour_duration_h_withBoundary =
+        round(with_boundary_only(tour_duration_h_inSimulation, tour_duration_h_withBoundary), 0),
+      total_tour_duration_h_100pct_withBoundary =
+        round(with_boundary_only(tour_duration_h_inSimulation, tour_duration_h_withBoundary) * sample_factor_to_100pct, 0),
+      total_cost_eur = round(total_cost_eur_inSimulation, 0),
+      total_cost_eur_100pct = round(total_cost_eur_inSimulation * sample_factor_to_100pct, 0),
+      total_cost_eur_withBoundary =
+        round(with_boundary_only(total_cost_eur_inSimulation, total_cost_eur_withBoundary), 0),
+      total_cost_eur_100pct_withBoundary =
+        round(with_boundary_only(total_cost_eur_inSimulation, total_cost_eur_withBoundary) * sample_factor_to_100pct, 0),
       included_in_comparable_cost,
       comparable_cost_eur = round(comparable_cost_eur, 0),
+      comparable_cost_eur_100pct = round(comparable_cost_eur * sample_factor_to_100pct, 0),
       sample_scope, evaluation_scope, metric_scope, source_file
     )
 }
@@ -2521,12 +2650,25 @@ build_paper_table_per_vehicle_appendix <- function(paper_key_facts_by_component,
       row_type,
       component,
       vehicles = round(vehicles, 0),
-      reported_distance_km = round(distance_km, 0),
-      reported_travel_time_h = round(travel_time_h, 0),
-      reported_tour_duration_h = round(tour_duration_h, 0),
-      avg_distance_km_per_vehicle = round(avg_distance_km_per_vehicle, 2),
-      avg_travel_time_h_per_vehicle = round(avg_travel_time_h_per_vehicle, 2),
-      avg_tour_duration_h_per_vehicle = round(avg_tour_duration_h_per_vehicle, 2),
+      trips = round(trips, 0),
+      reported_distance_km = round(distance_km_inSimulation, 0),
+      reported_distance_km_withBoundary =
+        round(with_boundary_only(distance_km_inSimulation, distance_km_withBoundary), 0),
+      reported_travel_time_h = round(travel_time_h_inSimulation, 0),
+      reported_travel_time_h_withBoundary =
+        round(with_boundary_only(travel_time_h_inSimulation, travel_time_h_withBoundary), 0),
+      reported_tour_duration_h = round(tour_duration_h_inSimulation, 0),
+      reported_tour_duration_h_withBoundary =
+        round(with_boundary_only(tour_duration_h_inSimulation, tour_duration_h_withBoundary), 0),
+      avg_distance_km_per_vehicle = round(avg_distance_km_inSimulation_per_vehicle, 2),
+      avg_distance_km_withBoundary_per_vehicle =
+        round(with_boundary_only(avg_distance_km_inSimulation_per_vehicle, avg_distance_km_withBoundary_per_vehicle), 2),
+      avg_travel_time_h_per_vehicle = round(avg_travel_time_h_inSimulation_per_vehicle, 2),
+      avg_travel_time_h_withBoundary_per_vehicle =
+        round(with_boundary_only(avg_travel_time_h_inSimulation_per_vehicle, avg_travel_time_h_withBoundary_per_vehicle), 2),
+      avg_tour_duration_h_per_vehicle = round(avg_tour_duration_h_inSimulation_per_vehicle, 2),
+      avg_tour_duration_h_withBoundary_per_vehicle =
+        round(with_boundary_only(avg_tour_duration_h_inSimulation_per_vehicle, avg_tour_duration_h_withBoundary_per_vehicle), 2),
       sample_scope, evaluation_scope, metric_scope, source_file
     )
 }
@@ -2612,15 +2754,27 @@ build_paper_table_cost_repricing <- function(paper_costs_by_component, paths) {
       row_type,
       component,
       vehicles = round(vehicles, 0),
-      total_distance_traveled_km = round(distance_km, 0),
-      total_travel_time_h = round(travel_time_h, 0),
+      total_distance_traveled_km = round(route_distance_km, 0),
+      total_distance_traveled_km_withBoundary =
+        round(with_boundary_only(route_distance_km, distance_km), 0),
+      total_travel_time_h = round(route_travel_time_h, 0),
+      total_travel_time_h_withBoundary =
+        round(with_boundary_only(route_travel_time_h, travel_time_h), 0),
       activity_time_h = round(activity_time_h, 0),
       fixed_cost_eur = round(fixed_cost_eur, 0),
-      distance_cost_eur = round(distance_cost_eur + boundary_distance_cost_eur, 0),
-      travel_time_cost_eur = round(time_cost_eur + boundary_time_cost_eur, 0),
+      distance_cost_eur = round(distance_cost_eur, 0),
+      distance_cost_eur_withBoundary =
+        round(with_boundary_only(distance_cost_eur, distance_cost_eur + boundary_distance_cost_eur), 0),
+      travel_time_cost_eur = round(time_cost_eur, 0),
+      travel_time_cost_eur_withBoundary =
+        round(with_boundary_only(time_cost_eur, time_cost_eur + boundary_time_cost_eur), 0),
       activity_time_cost_eur = round(activity_time_cost_eur, 0),
-      time_cost_eur = round(time_cost_eur + boundary_time_cost_eur + activity_time_cost_eur, 0),
-      total_cost_eur = round(total_cost_eur, 0),
+      time_cost_eur = round(time_cost_eur + activity_time_cost_eur, 0),
+      time_cost_eur_withBoundary =
+        round(with_boundary_only(time_cost_eur + activity_time_cost_eur, time_cost_eur + boundary_time_cost_eur + activity_time_cost_eur), 0),
+      total_cost_eur = round(total_cost_eur - boundary_distance_cost_eur - boundary_time_cost_eur, 0),
+      total_cost_eur_withBoundary =
+        round(with_boundary_only(total_cost_eur - boundary_distance_cost_eur - boundary_time_cost_eur, total_cost_eur), 0),
       included_in_comparable_cost,
       comparable_cost_eur = round(comparable_cost_eur, 0),
       source_file
