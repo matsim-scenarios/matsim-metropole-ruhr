@@ -207,6 +207,8 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 		});
 		config.scoring().setExplainScores(true);
 		config.scoring().setScoringParametersAsDefaultSubpopulation(SubpopulationDefaultNames.SUBPOP_COM_PERSON);
+		// currently the default value has to be positive, because negative values creates fail for SpeedyAlt
+		config.scoring().setDefaultPerforming_utils_hr(6.);
 	}
 
 	@Override
