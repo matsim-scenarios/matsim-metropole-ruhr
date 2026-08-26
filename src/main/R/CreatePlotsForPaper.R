@@ -257,19 +257,19 @@ line_BEV_costs_benefits$component <- factor(
   )
 )
 
-bev_plot_data <- line_BEV_costs_benefits %>%
-  pivot_longer(
-    cols = c(share_tours, share_distances),
-    names_to = "share_type",
-    values_to = "share"
-  ) %>%
-  mutate(
-    share_type = factor(
-      share_type,
-      levels = c("share_tours", "share_distances"),
-      labels = c("Tours", "Distance")
-    )
+bev_plot_data <- data.frame(
+  demand = rep(line_BEV_costs_benefits$demand, times = 2),
+  component = rep(line_BEV_costs_benefits$component, times = 2),
+  year = rep(line_BEV_costs_benefits$year, times = 2),
+  share_type = factor(
+    rep(c("Tours", "Distance"), each = nrow(line_BEV_costs_benefits)),
+    levels = c("Tours", "Distance")
+  ),
+  share = c(
+    line_BEV_costs_benefits$share_tours,
+    line_BEV_costs_benefits$share_distances
   )
+)
 
 demand_colors <- c(
   "Basic" = "#2F5597",
@@ -387,9 +387,76 @@ p_per_tour <- ggplot(
     plot.margin = margin(10, 15, 10, 15)
   )
 
-# Display both line plots in RStudio
-print(p_total)
-print(p_per_tour)
+get_plot_legend <- function(plot) {
+  plot_gtable <- ggplotGrob(plot)
+  guide_index <- grep("^guide-box", plot_gtable$layout$name)
+  guide_index <- guide_index[
+    !vapply(plot_gtable$grobs[guide_index], inherits, logical(1), "zeroGrob")
+  ]
+
+  if (length(guide_index) == 0) {
+    return(NULL)
+  }
+
+  plot_gtable$grobs[[guide_index[1]]]
+}
+
+p_costs_legend_source <- p_total +
+  guides(
+    color = guide_legend(order = 1),
+    linetype = guide_legend(
+      order = 2,
+      override.aes = list(linewidth = 1.2)
+    )
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.title = element_text(face = "bold"),
+    legend.key.width = grid::unit(1.4, "cm")
+  )
+
+p_costs_legend <- get_plot_legend(p_costs_legend_source)
+p_total_panel <- p_total + theme(legend.position = "none")
+p_per_tour_panel <- p_per_tour + theme(legend.position = "none")
+
+draw_costs_combined <- function() {
+  grid::grid.newpage()
+
+  layout_heights <- grid::unit.c(
+    grid::unit(1, "null"),
+    grid::grobHeight(p_costs_legend) + grid::unit(4, "mm")
+  )
+
+  grid::pushViewport(
+    grid::viewport(
+      layout = grid::grid.layout(
+        nrow = 2,
+        ncol = 2,
+        widths = grid::unit(c(1, 1), "null"),
+        heights = layout_heights
+      )
+    )
+  )
+
+  print(
+    p_total_panel,
+    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1)
+  )
+  print(
+    p_per_tour_panel,
+    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 2)
+  )
+
+  grid::pushViewport(
+    grid::viewport(layout.pos.row = 2, layout.pos.col = 1:2)
+  )
+  grid::grid.draw(p_costs_legend)
+  grid::popViewport(2)
+}
+
+# Display combined line plot in RStudio
+draw_costs_combined()
 
 
 # -----------------------------------------------------------------------------
@@ -443,13 +510,13 @@ bev_gplot <- ggplot(
   guides(
     color = guide_legend(
       position = "right",
-      title = "Component",
+      title = "Component"
     ),
     linetype = guide_legend(
       position = "bottom",
       title = "Measure",
       theme = theme(
-        legend.key.width = unit(2.0, "cm")
+        legend.key.width = grid::unit(2.0, "cm")
       )
     ),
     shape = "none"
@@ -471,10 +538,18 @@ bev_gplot <- ggplot(
 
 print(bev_gplot)
 # Optional export (uncomment if desired)
+# png("costs_combined_lineplot.png", width = 10, height = 4.8,
+#     units = "in", res = 300, bg = "white")
+# draw_costs_combined()
+# dev.off()
 # ggsave("total_cost_lineplot.png", p_total, width = 10, height = 6,
 #        units = "in", dpi = 300, bg = "white")
 # ggsave("cost_per_tour_lineplot.png", p_per_tour, width = 10, height = 6,
 #        units = "in", dpi = 300, bg = "white")
+# pdf("costs_combined_lineplot.pdf", width = 10, height = 4.8,
+#     bg = "white")
+# draw_costs_combined()
+# dev.off()
 # ggsave("total_cost_lineplot.pdf", p_total, width = 10, height = 6,
 #        units = "in", bg = "white")
 # ggsave("cost_per_tour_lineplot.pdf", p_per_tour, width = 10, height = 6,
