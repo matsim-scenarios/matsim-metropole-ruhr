@@ -269,27 +269,6 @@ open_text_connection <- function(path) {
   file(path, open = "rt")
 }
 
-# Opens plain, gzip or Zstandard-compressed text data for readr.
-open_binary_connection <- function(path) {
-  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
-    return(gzfile(path, open = "rb"))
-  }
-
-  if (grepl("\\.zst$", path, ignore.case = TRUE)) {
-    command <- zstd_stream_command(path)
-    if (is.na(command)) {
-      stop(
-        "Cannot read Zstandard-compressed file without zstd, unzstd or 7-Zip: ",
-        path,
-        call. = FALSE
-      )
-    }
-    return(pipe(command, open = "rb"))
-  }
-
-  file(path, open = "rb")
-}
-
 # Builds a shell command that streams a .zst file as text.
 zstd_stream_command <- function(path) {
   zstd <- Sys.which("zstd")
@@ -361,18 +340,33 @@ detect_delim <- function(path) {
 
 read_delim_auto <- function(path, col_names = TRUE) {
   delim <- detect_delim(path)
-  con <- open_binary_connection(path)
+  con <- open_text_connection(path)
   on.exit(close(con), add = TRUE)
 
-  readr::read_delim(
-    con,
-    delim = delim,
-    col_names = col_names,
-    col_types = readr::cols(.default = readr::col_character()),
-    na = c("", "NA", "NaN", "null"),
-    show_col_types = FALSE,
-    progress = FALSE,
-    locale = readr::locale(grouping_mark = ",")
+  read_args <- list(
+    file = con,
+    sep = delim,
+    header = identical(col_names, TRUE),
+    stringsAsFactors = FALSE,
+    quote = "",
+    comment.char = "",
+    check.names = FALSE,
+    na.strings = c("", "NA", "NaN", "null"),
+    colClasses = "character",
+    fill = TRUE,
+    skipNul = TRUE
+  )
+
+  if (is.character(col_names)) {
+    read_args$header <- FALSE
+    read_args$col.names <- col_names
+  } else if (identical(col_names, FALSE)) {
+    read_args$header <- FALSE
+  }
+
+  tibble::as_tibble(
+    do.call(utils::read.table, read_args),
+    .name_repair = "minimal"
   )
 }
 
@@ -1367,7 +1361,7 @@ component_group_from_paper_component <- function(component) {
 build_paper_key_facts_by_component <- function(tour_distances, tour_durations, trip_measures, person_scores,
                                                selected_plan_measures, paper_costs_by_component, paths) {
   small_components <- build_small_component_key_facts(tour_distances, trip_measures, paths)
-  trip_components <- build_trip_component_key_facts(trip_measures, paths)
+  trip_components <- build_trip_component_key_facts(trip_measures, person_scores, paths)
   selected_long_distance <- build_selected_long_distance_key_facts(selected_plan_measures, trip_components, paths)
   long_distance_components <- c("FTL", "longDistanceFreight")
 
@@ -1494,13 +1488,13 @@ add_simulation_boundary_key_fact_columns <- function(rows) {
       boundary_distance_km = coalesce(boundary_distance_km, 0),
       boundary_travel_time_h = coalesce(boundary_travel_time_h, 0),
       distance_km_inSimulation = coalesce(
-        ifelse(!is.na(route_distance_km) & route_distance_km > 0, route_distance_km, NA_real_),
         cutout_distance_km,
+        ifelse(!is.na(route_distance_km) & route_distance_km > 0, route_distance_km, NA_real_),
         distance_km
       ),
       travel_time_h_inSimulation = coalesce(
-        ifelse(!is.na(route_travel_time_h) & route_travel_time_h > 0, route_travel_time_h, NA_real_),
         cutout_travel_time_h,
+        ifelse(!is.na(route_travel_time_h) & route_travel_time_h > 0, route_travel_time_h, NA_real_),
         travel_time_h
       ),
       tour_duration_h_inSimulation = tour_duration_h,
@@ -1656,22 +1650,45 @@ build_small_component_travel_time_summary <- function(tour_distances, trip_measu
     return(empty)
   }
 
-  trip_measures %>%
-    mutate(component = paper_component_from_tour_group(subpopulation)) %>%
-    semi_join(study_area_start_scope, by = c("component", "person")) %>%
+  study_area_start_scope %>%
+    left_join(
+      trip_measures %>%
+        select(person, travel_time_h, trip_source_file = source_file) %>%
+        mutate(trip_row_present = TRUE),
+      by = "person"
+    ) %>%
     group_by(component) %>%
     summarise(
-      trips = n(),
-      travel_time_h = safe_sum(travel_time_h),
-      travel_time_source_file = collapse_source_values(source_file),
+      trips = sum(coalesce(trip_row_present, FALSE)),
+      travel_time_h = safe_sum(ifelse(coalesce(trip_row_present, FALSE), travel_time_h, NA_real_)),
+      travel_time_source_file = collapse_source_values(trip_source_file),
       .groups = "drop"
     )
 }
 
-# Uses output_trips joined with output_persons for all-agent LTL and interim long-distance facts.
-build_trip_component_key_facts <- function(trip_measures, paths) {
-  if (nrow(trip_measures) == 0) {
-    return(tibble())
+empty_trip_component_key_facts <- function() {
+  tibble(
+    component = character(),
+    vehicles = numeric(),
+    tours = numeric(),
+    trips = numeric(),
+    distance_km = numeric(),
+    travel_time_h = numeric(),
+    total_cost_eur = numeric(),
+    source_file = character(),
+    paper_relevance = character(),
+    sample_scope = character(),
+    evaluation_scope = character(),
+    metric_scope = character(),
+    source_dataset = character(),
+    inclusion_rule = character()
+  )
+}
+
+# Builds the all-agent component scope from output_persons.csv.
+build_trip_component_agent_scope <- function(person_scores, paths) {
+  if (nrow(person_scores) == 0) {
+    return(tibble(person = character(), component = character(), person_source_file = character()))
   }
 
   included_components <- c("FTL", "longDistanceFreight")
@@ -1679,21 +1696,55 @@ build_trip_component_key_facts <- function(trip_measures, paths) {
     included_components <- c(ltl_components(), included_components)
   }
 
-  trip_measures %>%
+  person_scores %>%
     mutate(component = paper_component_from_trip(subpopulation, goods_type)) %>%
     filter(component %in% included_components) %>%
+    group_by(person) %>%
+    summarise(
+      component = as.character(first_non_missing(component)),
+      person_source_file = collapse_source_values(source_file),
+      .groups = "drop"
+    ) %>%
+    filter(!is.na(component))
+}
+
+# Uses output_persons.csv for all-agent scope and counts matching output_trips.csv rows.
+build_trip_component_key_facts <- function(trip_measures, person_scores, paths) {
+  agent_scope <- build_trip_component_agent_scope(person_scores, paths)
+  if (nrow(agent_scope) == 0) {
+    return(empty_trip_component_key_facts())
+  }
+
+  agent_summary <- agent_scope %>%
     group_by(component) %>%
     summarise(
       vehicles = n_distinct(person),
-      tours = NA_real_,
-      trips = n(),
-      distance_km = safe_sum(traveled_distance_km),
-      travel_time_h = safe_sum(travel_time_h),
-      total_cost_eur = NA_real_,
-      source_file = collapse_source_values(source_file),
+      person_source_file = collapse_source_values(person_source_file),
       .groups = "drop"
+    )
+
+  trip_summary <- agent_scope %>%
+    left_join(
+      trip_measures %>%
+        select(person, traveled_distance_km, travel_time_h, trip_source_file = source_file) %>%
+        mutate(trip_row_present = TRUE),
+      by = "person"
     ) %>%
+    group_by(component) %>%
+    summarise(
+      trips = sum(coalesce(trip_row_present, FALSE)),
+      distance_km = safe_sum(ifelse(coalesce(trip_row_present, FALSE), traveled_distance_km, NA_real_)),
+      travel_time_h = safe_sum(ifelse(coalesce(trip_row_present, FALSE), travel_time_h, NA_real_)),
+      trip_source_file = collapse_source_values(trip_source_file),
+      .groups = "drop"
+    )
+
+  agent_summary %>%
+    left_join(trip_summary, by = "component") %>%
     mutate(
+      tours = NA_real_,
+      total_cost_eur = NA_real_,
+      source_file = paste_source_columns(person_source_file, trip_source_file),
       paper_relevance = ifelse(
         component %in% c("FTL", "longDistanceFreight"),
         "interim_until_selected_plan_values_are_available",
@@ -1702,12 +1753,17 @@ build_trip_component_key_facts <- function(trip_measures, paths) {
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       evaluation_scope = "all_generated_agents",
       metric_scope = "represented_cutout",
-      source_dataset = "output_trips.csv joined with output_persons.csv",
+      source_dataset = "output_persons.csv subpopulation scope joined to output_trips.csv by person",
       inclusion_rule = ifelse(
         component %in% ltl_components(),
-        "wasteCollection, CEP and remainingLTL include all agents found in output_trips.csv",
-        "FTL and longDistanceFreight include all agents found in output_trips.csv"
+        "wasteCollection, CEP and remainingLTL include all agents from output_persons.csv; trips are counted from output_trips.csv for those agents",
+        "FTL and longDistanceFreight include all agents from output_persons.csv; trips are counted from output_trips.csv for those agents"
       )
+    ) %>%
+    select(
+      component, vehicles, tours, trips, distance_km, travel_time_h, total_cost_eur,
+      source_file, paper_relevance, sample_scope, evaluation_scope, metric_scope,
+      source_dataset, inclusion_rule
     ) %>%
     copy_analysis_meta(trip_measures)
 }
@@ -1758,26 +1814,30 @@ build_selected_long_distance_key_facts <- function(selected_plan_measures, trip_
       component,
       cutout_trips = trips,
       cutout_distance_km = distance_km,
-      cutout_travel_time_h = travel_time_h
+      cutout_travel_time_h = travel_time_h,
+      cutout_source_file = source_file
     )
 
   selected_summary %>%
     left_join(trip_cutout, by = "component") %>%
     mutate(
+      source_file = paste_source_columns(source_file, cutout_source_file),
       has_boundary_attributes = !is.na(boundary_distance_km) & boundary_distance_km > 0,
       has_cutout_distance = !is.na(cutout_distance_km),
       has_route_distance = !is.na(route_distance_km) & route_distance_km > 0,
+      has_cutout_travel_time = !is.na(cutout_travel_time_h),
       has_route_travel_time = !is.na(route_travel_time_h) & route_travel_time_h > 0,
       distance_km = case_when(
-        has_boundary_attributes & has_route_distance ~ route_distance_km + boundary_distance_km,
         has_boundary_attributes & has_cutout_distance ~ cutout_distance_km + boundary_distance_km,
-        has_route_distance ~ route_distance_km,
-        TRUE ~ cutout_distance_km
+        has_boundary_attributes & has_route_distance ~ route_distance_km + boundary_distance_km,
+        has_cutout_distance ~ cutout_distance_km,
+        TRUE ~ route_distance_km
       ),
       travel_time_h = case_when(
+        has_boundary_attributes & has_cutout_travel_time ~ cutout_travel_time_h + boundary_travel_time_h,
         has_boundary_attributes & has_route_travel_time ~ route_travel_time_h + boundary_travel_time_h,
-        has_route_travel_time ~ route_travel_time_h,
-        TRUE ~ cutout_travel_time_h
+        has_cutout_travel_time ~ cutout_travel_time_h,
+        TRUE ~ route_travel_time_h
       ),
       trips = cutout_trips,
       tours = NA_real_,
@@ -1785,9 +1845,13 @@ build_selected_long_distance_key_facts <- function(selected_plan_measures, trip_
       paper_relevance = "paper_canonical_key_facts",
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       evaluation_scope = "all_generated_agents",
-      metric_scope = ifelse(has_boundary_attributes & has_route_travel_time, "boundary_adjusted_operational", "selected_plan_or_trip"),
+      metric_scope = ifelse(
+        has_boundary_attributes & (has_cutout_travel_time | has_route_travel_time),
+        "boundary_adjusted_operational",
+        "selected_plan_or_trip"
+      ),
       source_dataset = ifelse(
-        has_boundary_attributes & has_route_travel_time,
+        has_boundary_attributes & (has_cutout_travel_time | has_route_travel_time),
         "output_trips.csv + final selected plans + component source plans XML boundary attributes",
         "selected plans XML or output_trips.csv"
       ),
@@ -2545,12 +2609,7 @@ build_sample_size_non_tour_component_rows <- function(paper_key_facts_by_compone
       agents_tours = vehicles,
       total_distance_km = sample_size_distance_km,
       total_duration_h = sample_size_duration_h,
-      stops_in_sample = case_when(
-        component %in% c("longDistanceFreight", "FTL") ~ vehicles,
-        !is.na(tours) ~ tours,
-        !is.na(trips) ~ trips,
-        TRUE ~ vehicles
-      ),
+      stops_in_sample = coalesce(trips, tours, vehicles),
       source_file
     )
 }
