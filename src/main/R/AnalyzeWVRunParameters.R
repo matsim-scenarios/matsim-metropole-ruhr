@@ -94,9 +94,14 @@ main <- function() {
   range_logs <- tibble()
   if (should_build_bev_range_feasibility(paths)) {
     message("Reading range and recharge logs...")
-    range_logs <- read_range_recharge_logs(paths)
+    range_log_scope <- build_range_log_start_scope(analysis_files$tour_distances, person_scores)
+    range_logs <- read_range_recharge_logs(paths, range_log_scope)
   }
-  energy_emissions <- build_energy_emissions(analysis_files$tour_distances, paths)
+  energy_emissions <- build_energy_emissions(
+    analysis_files$tour_distances,
+    paths,
+    selected_plan_cost_legs
+  )
   paper_costs_by_component <- build_paper_costs_by_component(
     selected_plan_cost_legs,
     selected_plan_cost_activities,
@@ -118,12 +123,21 @@ main <- function() {
 
   paper_key_facts_total <- build_paper_key_facts_total(paper_key_facts_by_component)
   paper_comparable_costs <- build_paper_comparable_costs(paper_key_facts_by_component, paths)
+  validate_paper_analysis_outputs(
+    analysis_files$tour_distances,
+    person_scores,
+    energy_emissions,
+    paper_costs_by_component,
+    paper_key_facts_by_component,
+    paths
+  )
 
   paper_tables <- build_paper_table_outputs(
     tour_distances = analysis_files$tour_distances,
     tour_durations = analysis_files$tour_durations,
     jobs_per_tour = analysis_files$jobs_per_tour,
     person_scores = person_scores,
+    selected_plan_cost_legs = selected_plan_cost_legs,
     energy_emissions = energy_emissions,
     paper_costs_by_component = paper_costs_by_component,
     paper_key_facts_by_component = paper_key_facts_by_component,
@@ -453,6 +467,14 @@ safe_mean <- function(x) {
   mean(values)
 }
 
+safe_max <- function(x) {
+  values <- x[!is.na(x)]
+  if (length(values) == 0) {
+    return(NA_real_)
+  }
+  max(values)
+}
+
 safe_median <- function(x) {
   values <- x[!is.na(x)]
   if (length(values) == 0) {
@@ -512,8 +534,8 @@ should_build_ltl_analyses <- function(paths) {
   is_advanced_model(paths)
 }
 
-should_build_ltl_recharge_vehicle_use <- function(paths) {
-  should_build_ltl_analyses(paths) && is_bev_fleet(paths)
+should_build_recharge_vehicle_use <- function(paths) {
+  is_bev_fleet(paths)
 }
 
 should_build_mixed_ltl_tables <- function(paths) {
@@ -759,7 +781,12 @@ read_selected_plan_measures <- function(paths, person_scores) {
       selected_plan_boundary_travel_time_h = selected_plan_boundary_travel_time_s / 3600,
       selected_plan_distance_km = selected_plan_distance_m / 1000,
       selected_plan_travel_time_h = selected_plan_travel_time_s / 3600,
-      paper_component = coalesce(boundary_component, paper_component_from_trip(subpopulation, goods_type), source_component_hint)
+      paper_component = coalesce(
+        boundary_component,
+        source_component_hint,
+        paper_component_from_trip(subpopulation, goods_type),
+        paper_component_from_freight_person_id(person)
+      )
     )
 }
 
@@ -770,7 +797,12 @@ build_long_distance_person_filter <- function(person_scores) {
   }
 
   selected <- person_scores %>%
-    mutate(paper_component = paper_component_from_trip(subpopulation, goods_type)) %>%
+    mutate(
+      paper_component = coalesce(
+        paper_component_from_trip(subpopulation, goods_type),
+        paper_component_from_freight_person_id(person)
+      )
+    ) %>%
     filter(paper_component %in% c("FTL", "longDistanceFreight")) %>%
     pull(person) %>%
     unique()
@@ -807,23 +839,103 @@ find_selected_plan_source_files <- function(paths) {
 
 # Reads selected-plan legs and score-relevant activities in one streaming pass for cost reconstruction.
 read_selected_plan_cost_inputs <- function(paths, person_scores) {
-  plans_file <- find_run_file(paths, ".output_plans.xml.zst")
-  if (is.na(plans_file)) {
-    add_warning("Missing selected-plan XML for cost reconstruction in final run: ", paths$final_run_dir)
+  plan_sources <- find_selected_plan_source_files(paths)
+  if (nrow(plan_sources) == 0) {
+    add_warning("Missing selected-plan XML source for cost reconstruction in: ", paths$sample_dir)
     return(list(legs = tibble(), activities = tibble()))
   }
 
-  parsed <- tryCatch(
-    parse_selected_plan_cost_inputs(plans_file),
-    error = function(e) {
-      add_warning("Could not parse selected-plan cost inputs from ", plans_file, ": ", conditionMessage(e))
-      list(legs = empty_selected_plan_cost_legs(), activities = empty_selected_plan_cost_activities())
+  leg_chunks <- list()
+  activity_chunks <- list()
+  parsed_chunks <- list()
+  for (source_index in seq_len(nrow(plan_sources))) {
+    source_component_hint <- plan_sources$source_component_hint[[source_index]]
+    plans_file <- plan_sources$plans_file[[source_index]]
+    source_role <- plan_sources$source_role[[source_index]]
+
+    parsed <- tryCatch(
+      parse_selected_plan_cost_inputs(plans_file),
+      error = function(e) {
+        add_warning("Could not parse selected-plan cost inputs from ", plans_file, ": ", conditionMessage(e))
+        list(legs = empty_selected_plan_cost_legs(), activities = empty_selected_plan_cost_activities())
+      }
+    )
+
+    parsed_chunks[[source_index]] <- list(
+      parsed = parsed,
+      source_component_hint = source_component_hint,
+      source_role = source_role
+    )
+  }
+
+  source_component_lookup <- purrr::map_dfr(parsed_chunks, function(source) {
+    if (isTRUE(source$source_role != "boundary") || is.na(source$source_component_hint)) {
+      return(tibble(person = character(), source_component_from_boundary_plan = character()))
     }
-  )
+
+    parsed_persons <- bind_rows(
+      source$parsed$legs %>% select(person),
+      source$parsed$activities %>% select(person)
+    ) %>%
+      distinct(person) %>%
+      filter(!is.na(person), nzchar(person))
+
+    if (nrow(parsed_persons) == 0) {
+      return(tibble(person = character(), source_component_from_boundary_plan = character()))
+    }
+
+    parsed_persons %>%
+      transmute(
+        person,
+        source_component_from_boundary_plan = source$source_component_hint
+      )
+  }) %>%
+    group_by(person) %>%
+    summarise(
+      source_component_from_boundary_plan = ifelse(
+        n_distinct(source_component_from_boundary_plan) == 1,
+        first(source_component_from_boundary_plan),
+        NA_character_
+      ),
+      .groups = "drop"
+    )
+
+  for (source_index in seq_len(nrow(plan_sources))) {
+    source_component_hint <- plan_sources$source_component_hint[[source_index]]
+    plans_file <- plan_sources$plans_file[[source_index]]
+    source_role <- plan_sources$source_role[[source_index]]
+    parsed <- parsed_chunks[[source_index]]$parsed
+
+    leg_chunks[[source_index]] <- if (nrow(parsed$legs) == 0) {
+      if (source_role == "cutout_route") {
+        add_warning("No selected-plan route legs found for cost reconstruction in: ", plans_file)
+      }
+      tibble()
+    } else {
+      decorate_selected_plan_cost_legs(
+        parsed$legs,
+        plans_file,
+        person_scores,
+        paths,
+        source_component_hint,
+        source_role,
+        source_component_lookup
+      )
+    }
+    activity_chunks[[source_index]] <- decorate_selected_plan_cost_activities(
+      parsed$activities,
+      plans_file,
+      person_scores,
+      paths,
+      source_component_hint,
+      source_role,
+      source_component_lookup
+    )
+  }
 
   list(
-    legs = decorate_selected_plan_cost_legs(parsed$legs, plans_file, person_scores, paths),
-    activities = decorate_selected_plan_cost_activities(parsed$activities, plans_file, person_scores, paths)
+    legs = bind_rows(leg_chunks),
+    activities = bind_rows(activity_chunks)
   )
 }
 
@@ -957,7 +1069,13 @@ parse_selected_plan_cost_inputs <- function(plans_file, person_filter = NULL) {
 }
 
 # Adds person metadata and resolved vehicle types to selected-plan leg rows.
-decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, paths) {
+decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, paths,
+                                             source_component_hint = NA_character_,
+                                             source_role = NA_character_,
+                                             source_component_lookup = tibble(
+                                               person = character(),
+                                               source_component_from_boundary_plan = character()
+                                             )) {
   if (nrow(parsed) == 0) {
     add_warning("No selected-plan route legs found for cost reconstruction in: ", plans_file)
     return(tibble())
@@ -970,6 +1088,7 @@ decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, 
 
   parsed %>%
     left_join(person_lookup, by = "person") %>%
+    left_join(source_component_lookup, by = "person") %>%
     mutate(
       vehicle_types_raw = ifelse(
         !is.na(plan_vehicle_types_raw) & nzchar(plan_vehicle_types_raw),
@@ -982,7 +1101,6 @@ decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, 
         vapply(vehicle_types_raw, extract_vehicle_type_values, character(1), USE.NAMES = FALSE)
       ),
       subpopulation = clean_subpopulation(subpopulation),
-      paper_component = paper_component_from_cost_person(subpopulation, goods_type),
       leg_vehicle_type = mapply(
         resolve_vehicle_type_for_leg,
         leg_mode,
@@ -990,7 +1108,16 @@ decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, 
         vehicle_type_values,
         USE.NAMES = FALSE
       ),
+      source_component_hint = source_component_hint,
+      source_role = source_role,
       selected_plan_source_file = normalizePath(plans_file, winslash = "/", mustWork = FALSE),
+      paper_component = coalesce(
+        source_component_hint,
+        source_component_from_boundary_plan,
+        paper_component_from_ltl_tour_person(person, leg_vehicle_type),
+        paper_component_from_cost_person(subpopulation, goods_type),
+        paper_component_from_freight_person_id(person)
+      ),
       route_distance_km = route_distance_m / 1000,
       route_travel_time_h = route_travel_time_s / 3600
     ) %>%
@@ -998,13 +1125,19 @@ decorate_selected_plan_cost_legs <- function(parsed, plans_file, person_scores, 
       person, leg_index, leg_mode, leg_vehicle_type,
       route_distance_m, route_travel_time_s, route_distance_km, route_travel_time_h,
       vehicle_types_raw, vehicle_type_values, subpopulation, goods_type, carrier_id, tour_id,
-      paper_component, selected_plan_source_file
+      paper_component, source_component_hint, source_role, selected_plan_source_file
     ) %>%
     with_meta(paths, basename(plans_file))
 }
 
 # Adds person metadata and resolved vehicle types to selected-plan activity rows.
-decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_scores, paths) {
+decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_scores, paths,
+                                                  source_component_hint = NA_character_,
+                                                  source_role = NA_character_,
+                                                  source_component_lookup = tibble(
+                                                    person = character(),
+                                                    source_component_from_boundary_plan = character()
+                                                  )) {
   if (nrow(parsed) == 0) {
     return(tibble())
   }
@@ -1016,6 +1149,7 @@ decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_sc
 
   parsed %>%
     left_join(person_lookup, by = "person") %>%
+    left_join(source_component_lookup, by = "person") %>%
     mutate(
       vehicle_types_raw = ifelse(
         !is.na(plan_vehicle_types_raw) & nzchar(plan_vehicle_types_raw),
@@ -1028,7 +1162,6 @@ decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_sc
         vapply(vehicle_types_raw, extract_vehicle_type_values, character(1), USE.NAMES = FALSE)
       ),
       subpopulation = clean_subpopulation(subpopulation),
-      paper_component = paper_component_from_cost_person(subpopulation, goods_type),
       activity_vehicle_type = mapply(
         resolve_vehicle_type_for_leg,
         activity_leg_mode_hint,
@@ -1036,7 +1169,16 @@ decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_sc
         vehicle_type_values,
         USE.NAMES = FALSE
       ),
+      source_component_hint = source_component_hint,
+      source_role = source_role,
       selected_plan_source_file = normalizePath(plans_file, winslash = "/", mustWork = FALSE),
+      paper_component = coalesce(
+        source_component_hint,
+        source_component_from_boundary_plan,
+        paper_component_from_ltl_tour_person(person, activity_vehicle_type),
+        paper_component_from_cost_person(subpopulation, goods_type),
+        paper_component_from_freight_person_id(person)
+      ),
       activity_duration_h = activity_duration_s / 3600
     ) %>%
     filter(is_score_relevant_cost_activity(activity_type), activity_duration_s > 0) %>%
@@ -1044,7 +1186,7 @@ decorate_selected_plan_cost_activities <- function(parsed, plans_file, person_sc
       person, activity_index, activity_type, activity_duration_s, activity_duration_h,
       activity_leg_mode_hint, activity_vehicle_type,
       vehicle_types_raw, vehicle_type_values, subpopulation, goods_type, carrier_id, tour_id,
-      paper_component, selected_plan_source_file
+      paper_component, source_component_hint, source_role, selected_plan_source_file
     ) %>%
     with_meta(paths, basename(plans_file))
 }
@@ -1324,14 +1466,41 @@ paper_component_from_tour_group <- function(group) {
 paper_component_from_trip <- function(subpopulation, goods_type = NA_real_) {
   normalized <- clean_subpopulation(subpopulation)
   goods_type <- as_number(goods_type)
-  is_ltl <- normalized == "LTL"
+  is_ltl <- normalized %in% c("LTL", "LTL_trip")
 
   case_when(
-    normalized == "FTL" ~ "FTL",
-    normalized == "longDistanceFreight" ~ "longDistanceFreight",
-    is_ltl & goods_type == 140 ~ "wasteCollection",
+    normalized %in% c("FTL", "FTL_trip", "FTL_kv_trip") ~ "FTL",
+    normalized %in% c("longDistanceFreight", "longDistanceFreight_trip") ~ "longDistanceFreight",
     is_ltl & goods_type == 150 ~ "CEP",
     is_ltl ~ "remainingLTL",
+    TRUE ~ NA_character_
+  )
+}
+
+paper_component_from_ltl_tour_person <- function(person_id, vehicle_type = NA_character_) {
+  person_text <- as.character(person_id)
+  person_text[is.na(person_text)] <- ""
+  vehicle_type_base <- normalize_vehicle_type(vehicle_type)
+  vehicle_type_base[is.na(vehicle_type_base)] <- ""
+
+  case_when(
+    grepl("^ParcelDelivery", person_text, ignore.case = TRUE) ~ "CEP",
+    grepl("^WasteCollection", person_text, ignore.case = TRUE) |
+      grepl("^waste[_]?collection", person_text, ignore.case = TRUE) |
+      grepl("^waste[_]?collection", vehicle_type_base, ignore.case = TRUE) ~ "wasteCollection",
+    grepl("^GoodsType_", person_text, ignore.case = TRUE) |
+      grepl("^LTL", person_text, ignore.case = TRUE) ~ "remainingLTL",
+    TRUE ~ NA_character_
+  )
+}
+
+paper_component_from_freight_person_id <- function(person_id) {
+  person_text <- as.character(person_id)
+  person_text[is.na(person_text)] <- ""
+
+  case_when(
+    grepl("_FTL($|_return$)", person_text, ignore.case = TRUE) ~ "FTL",
+    grepl("^freight_.*_main$", person_text, ignore.case = TRUE) ~ "longDistanceFreight",
     TRUE ~ NA_character_
   )
 }
@@ -1362,6 +1531,9 @@ build_paper_key_facts_by_component <- function(tour_distances, tour_durations, t
                                                selected_plan_measures, paper_costs_by_component, paths) {
   small_components <- build_small_component_key_facts(tour_distances, trip_measures, paths)
   trip_components <- build_trip_component_key_facts(trip_measures, person_scores, paths)
+  ltl_agent_components <- build_ltl_component_key_facts(trip_components, paths)
+  trip_components <- trip_components %>%
+    filter(!component %in% ltl_components())
   selected_long_distance <- build_selected_long_distance_key_facts(selected_plan_measures, trip_components, paths)
   long_distance_components <- c("FTL", "longDistanceFreight")
 
@@ -1385,7 +1557,7 @@ build_paper_key_facts_by_component <- function(tour_distances, tour_durations, t
     )
   }
 
-  rows <- bind_rows(small_components, trip_components, selected_long_distance)
+  rows <- bind_rows(small_components, ltl_agent_components, trip_components, selected_long_distance)
   if (nrow(rows) == 0) {
     return(tibble())
   }
@@ -1560,6 +1732,15 @@ build_small_component_key_facts <- function(tour_distances, trip_measures, paths
     with_meta(paths, "analysis/commercialTraffic/tourAnalysis_distances.csv;output_trips.csv")
 }
 
+build_ltl_component_key_facts <- function(trip_components, paths) {
+  if (!should_build_ltl_analyses(paths) || nrow(trip_components) == 0) {
+    return(empty_trip_component_key_facts())
+  }
+
+  trip_components %>%
+    filter(component %in% ltl_components())
+}
+
 attach_tour_durations_to_key_facts <- function(rows, tour_durations, tour_distances, person_scores, paths) {
   duration_summary <- build_tour_duration_summary(tour_durations, tour_distances, person_scores, paths)
 
@@ -1591,7 +1772,7 @@ build_tour_duration_summary <- function(tour_durations, tour_distances, person_s
     return(empty)
   }
 
-  required <- c("personId", "groupOfSubpopulation", "tourDurationsInHours")
+  required <- c("personId", "groupOfSubpopulation", "vehicleType", "tourDurationsInHours")
   missing <- setdiff(required, names(tour_durations))
   if (length(missing) > 0) {
     stop("tourAnalysis_durations.csv misses required columns: ", paste(missing, collapse = ", "), call. = FALSE)
@@ -1609,12 +1790,21 @@ build_tour_duration_summary <- function(tour_durations, tour_distances, person_s
   tour_durations %>%
     transmute(
       person = as.character(.data$personId),
+      vehicle_type = as.character(.data$vehicleType),
       duration_group = clean_subpopulation(.data$groupOfSubpopulation),
       tour_duration_h_value = as_number(.data$tourDurationsInHours)
     ) %>%
     left_join(person_lookup, by = "person") %>%
     mutate(
-      component = paper_component_from_cost_person(coalesce(subpopulation, duration_group), goods_type)
+      component = coalesce(
+        ifelse(
+          duration_group == "LTL",
+          paper_component_from_ltl_tour_person(person, vehicle_type),
+          NA_character_
+        ),
+        paper_component_from_trip(subpopulation, goods_type),
+        paper_component_from_cost_person(duration_group, goods_type)
+      )
     ) %>%
     left_join(
       study_area_start_scope %>% mutate(in_study_area_start_scope = TRUE),
@@ -1697,7 +1887,13 @@ build_trip_component_agent_scope <- function(person_scores, paths) {
   }
 
   person_scores %>%
-    mutate(component = paper_component_from_trip(subpopulation, goods_type)) %>%
+    mutate(
+      component = coalesce(
+        paper_component_from_ltl_tour_person(person),
+        paper_component_from_trip(subpopulation, goods_type),
+        paper_component_from_freight_person_id(person)
+      )
+    ) %>%
     filter(component %in% included_components) %>%
     group_by(person) %>%
     summarise(
@@ -1890,13 +2086,19 @@ build_paper_costs_by_component <- function(selected_plan_cost_legs, selected_pla
         TRUE ~ FALSE
       )
     ) %>%
-    filter(include_in_paper_cost_filter)
+    filter(include_in_paper_cost_filter) %>%
+    prefer_cutout_cost_sources()
 
   if (nrow(eligible_legs) == 0) {
     add_warning("No selected-plan legs remain after applying paper cost scopes.")
     return(tibble())
   }
-  eligible_activities <- apply_paper_cost_filter_to_activities(selected_plan_cost_activities, study_area_start_scope, paths)
+  eligible_activities <- apply_paper_cost_filter_to_activities(
+    selected_plan_cost_activities,
+    study_area_start_scope,
+    paths
+  ) %>%
+    prefer_cutout_cost_sources()
 
   cost_years <- sort(unique(as.integer(vehicle_cost_parameters$cost_result_year)))
   expanded_legs <- eligible_legs %>%
@@ -2044,6 +2246,60 @@ build_study_area_start_person_scope <- function(tour_distances) {
     distinct(component, person)
 }
 
+# Maps the study-area-start agents to the KWM carriers represented in their logs.
+build_range_log_start_scope <- function(tour_distances, person_scores) {
+  if (nrow(tour_distances) == 0 || nrow(person_scores) == 0) {
+    return(tibble(component = character(), carrier_id = character()))
+  }
+
+  study_area_start_scope <- build_study_area_start_person_scope(tour_distances)
+  if (nrow(study_area_start_scope) == 0) {
+    return(tibble(component = character(), carrier_id = character()))
+  }
+
+  person_components <- person_scores %>%
+    transmute(
+      person,
+      component = paper_component_from_cost_person(subpopulation, goods_type),
+      carrier_id = as.character(.data$carrier_id)
+    ) %>%
+    filter(
+      component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic"),
+      !is.na(carrier_id),
+      nzchar(carrier_id)
+    )
+
+  scoped_persons <- person_components %>%
+    inner_join(study_area_start_scope, by = c("component", "person"))
+
+  carrier_scope <- scoped_persons %>%
+    distinct(component, carrier_id)
+
+  attr(
+    carrier_scope,
+    "agent_counts"
+  ) <- scoped_persons %>%
+    count(component, name = "agents_in_study_area_start_scope")
+
+  carrier_agent_counts <- person_components %>%
+    group_by(component, carrier_id) %>%
+    summarise(all_agents = n_distinct(person), .groups = "drop")
+  scoped_carrier_agent_counts <- scoped_persons %>%
+    group_by(component, carrier_id) %>%
+    summarise(start_scope_agents = n_distinct(person), .groups = "drop")
+  mixed_carriers <- carrier_agent_counts %>%
+    inner_join(scoped_carrier_agent_counts, by = c("component", "carrier_id")) %>%
+    filter(start_scope_agents < all_agents)
+  if (nrow(mixed_carriers) > 0) {
+    add_warning(
+      nrow(mixed_carriers),
+      " KWM carriers contain both study-area-start and outside-start agents. Their service logs are retained at carrier level."
+    )
+  }
+
+  carrier_scope
+}
+
 # Applies the same paper component scope to activity rows as to route-leg cost rows.
 apply_paper_cost_filter_to_activities <- function(selected_plan_cost_activities, study_area_start_scope, paths) {
   if (is.null(selected_plan_cost_activities) || nrow(selected_plan_cost_activities) == 0) {
@@ -2066,6 +2322,20 @@ apply_paper_cost_filter_to_activities <- function(selected_plan_cost_activities,
       )
     ) %>%
     filter(include_in_paper_cost_filter)
+}
+
+prefer_cutout_cost_sources <- function(rows) {
+  if (is.null(rows) || nrow(rows) == 0 || !"source_role" %in% names(rows)) {
+    return(rows)
+  }
+
+  rows %>%
+    mutate(source_role = coalesce(as.character(source_role), "")) %>%
+    group_by(paper_component, person) %>%
+    mutate(has_cutout_cost_source = any(source_role == "cutout_route")) %>%
+    ungroup() %>%
+    filter(!has_cutout_cost_source | source_role == "cutout_route") %>%
+    select(-has_cutout_cost_source)
 }
 
 # Builds per-person service/handling time costs from selected-plan activities.
@@ -2137,9 +2407,54 @@ attach_vehicle_cost_rates <- function(expanded_legs, vehicle_cost_parameters) {
     ) %>%
     distinct()
 
+  # Recharge vehicle types can be created dynamically during KWM tour planning.
+  # Future price-year files may therefore contain the base vehicle type but not
+  # every generated ID such as ID.3_1Recharge. Keep an explicitly priced type
+  # when it exists and use the non-Recharge base type only as a fallback.
+  exact_rates <- rates %>%
+    rename(
+      exact_fixed_costs_per_day = fixed_costs_per_day,
+      exact_costs_per_meter = costs_per_meter,
+      exact_costs_per_second = costs_per_second,
+      exact_cost_vehicle_source_file = cost_vehicle_source_file
+    )
+
+  base_rates <- rates %>%
+    filter(!is_recharge_vehicle_type(cost_vehicle_type)) %>%
+    transmute(
+      cost_result_year,
+      base_vehicle_type = cost_vehicle_type,
+      base_fixed_costs_per_day = fixed_costs_per_day,
+      base_costs_per_meter = costs_per_meter,
+      base_costs_per_second = costs_per_second,
+      base_cost_vehicle_source_file = cost_vehicle_source_file
+    )
+
   exact <- expanded_legs %>%
-    left_join(rates, by = c("cost_result_year", "leg_vehicle_type" = "cost_vehicle_type")) %>%
-    mutate(cost_vehicle_type = leg_vehicle_type)
+    left_join(
+      exact_rates,
+      by = c("cost_result_year", "leg_vehicle_type" = "cost_vehicle_type")
+    ) %>%
+    mutate(base_vehicle_type = normalize_vehicle_type(leg_vehicle_type)) %>%
+    left_join(base_rates, by = c("cost_result_year", "base_vehicle_type")) %>%
+    mutate(
+      fixed_costs_per_day = coalesce(exact_fixed_costs_per_day, base_fixed_costs_per_day),
+      costs_per_meter = coalesce(exact_costs_per_meter, base_costs_per_meter),
+      costs_per_second = coalesce(exact_costs_per_second, base_costs_per_second),
+      cost_vehicle_source_file = coalesce(
+        exact_cost_vehicle_source_file,
+        base_cost_vehicle_source_file
+      ),
+      # Keep the selected-plan vehicle type here. It is used to distinguish
+      # separately used base and Recharge vehicles when fixed costs are summed.
+      cost_vehicle_type = leg_vehicle_type
+    ) %>%
+    select(
+      -exact_fixed_costs_per_day, -exact_costs_per_meter, -exact_costs_per_second,
+      -exact_cost_vehicle_source_file, -base_vehicle_type,
+      -base_fixed_costs_per_day, -base_costs_per_meter, -base_costs_per_second,
+      -base_cost_vehicle_source_file
+    )
 
   exact %>%
     mutate(
@@ -2384,8 +2699,75 @@ paper_component_from_emission_group <- function(group) {
   )
 }
 
+validate_paper_analysis_outputs <- function(tour_distances, person_scores, energy_emissions,
+                                            paper_costs_by_component, paper_key_facts_by_component, paths) {
+  has_ltl_tours <- nrow(tour_distances) > 0 &&
+    "groupOfSubpopulation" %in% names(tour_distances) &&
+    any(clean_subpopulation(tour_distances$groupOfSubpopulation) == "LTL", na.rm = TRUE)
+  has_ltl_key_facts <- nrow(paper_key_facts_by_component) > 0 &&
+    "component" %in% names(paper_key_facts_by_component) &&
+    any(paper_key_facts_by_component$component %in% c(ltl_components(), "LTL"), na.rm = TRUE)
+  if (should_build_ltl_analyses(paths) && has_ltl_tours && !has_ltl_key_facts) {
+    add_warning(
+      "Advanced run contains LTL tours, but paper_key_facts_by_component has no LTL component rows."
+    )
+  }
+
+  all_agent_components <- c(ltl_components(), "FTL", "longDistanceFreight")
+  expected_all_agent_scope <- build_trip_component_agent_scope(person_scores, paths) %>%
+    filter(component %in% all_agent_components) %>%
+    count(component, name = "expected_agents")
+  actual_all_agent_scope <- paper_key_facts_by_component %>%
+    filter(component %in% all_agent_components) %>%
+    transmute(component, actual_agents = vehicles)
+  scope_mismatch <- expected_all_agent_scope %>%
+    full_join(actual_all_agent_scope, by = "component") %>%
+    mutate(
+      expected_agents = coalesce(expected_agents, 0),
+      actual_agents = coalesce(actual_agents, 0)
+    ) %>%
+    filter(expected_agents != actual_agents)
+  if (nrow(scope_mismatch) > 0) {
+    add_warning(
+      "All-agent scope mismatch for paper key facts: ",
+      paste(paste0(scope_mismatch$component, " expected ", scope_mismatch$expected_agents,
+                   ", got ", scope_mismatch$actual_agents), collapse = "; ")
+    )
+  }
+
+  ftl_key_rows <- tibble()
+  if (nrow(paper_key_facts_by_component) > 0 && "component" %in% names(paper_key_facts_by_component)) {
+    ftl_key_rows <- paper_key_facts_by_component %>% filter(component == "FTL")
+  }
+  has_ftl_key_results <- nrow(ftl_key_rows) > 0 &&
+    any(coalesce(ftl_key_rows$vehicles, 0) > 0 | coalesce(ftl_key_rows$distance_km, 0) > 0, na.rm = TRUE)
+  has_ftl_cost <- nrow(paper_costs_by_component) > 0 &&
+    all(c("row_type", "component", "cost_result_year", "total_cost_eur") %in% names(paper_costs_by_component)) &&
+    any(
+      paper_costs_by_component$row_type == "component" &
+        paper_costs_by_component$component == "FTL" &
+        as.integer(paper_costs_by_component$cost_result_year) == as.integer(paths$year) &
+        coalesce(paper_costs_by_component$total_cost_eur, 0) > 0,
+      na.rm = TRUE
+    )
+  if (has_ftl_key_results && !has_ftl_cost) {
+    add_warning("FTL has vehicles or distance in key facts, but no run-year cost row.")
+  }
+
+  ev_heavy40t_as_diesel <- is_bev_fleet(paths) &&
+    nrow(energy_emissions) > 0 &&
+    all(c("vehicle_type_base", "powertrain") %in% names(energy_emissions)) &&
+    any(energy_emissions$vehicle_type_base == "heavy40t" & energy_emissions$powertrain == "diesel", na.rm = TRUE)
+  if (ev_heavy40t_as_diesel) {
+    stop("EV heavy40t is mapped to diesel in WTW emissions.", call. = FALSE)
+  }
+
+  invisible(TRUE)
+}
+
 # Builds paper-table-shaped CSV rows for one selected run.
 build_paper_table_outputs <- function(tour_distances, tour_durations, jobs_per_tour, person_scores,
+                                      selected_plan_cost_legs,
                                       energy_emissions, paper_costs_by_component,
                                       paper_key_facts_by_component, paper_key_facts_total,
                                       paper_comparable_costs, carrier_kpis,
@@ -2420,8 +2802,12 @@ build_paper_table_outputs <- function(tour_distances, tour_durations, jobs_per_t
     tables$paper_table_bev_range_feasibility <- build_paper_table_bev_range_feasibility(jobs_per_tour, range_logs, paths)
   }
 
-  if (should_build_ltl_recharge_vehicle_use(paths)) {
-    tables$paper_table_ltl_recharge_vehicle_use <- build_paper_table_ltl_recharge_vehicle_use(jobs_per_tour, person_scores, paths)
+  if (should_build_recharge_vehicle_use(paths)) {
+    tables$paper_table_recharge_vehicle_use <- build_paper_table_recharge_vehicle_use(
+      selected_plan_cost_legs,
+      tour_distances,
+      paths
+    )
   }
 
   if (should_build_mixed_ltl_tables(paths)) {
@@ -2523,7 +2909,7 @@ build_sample_size_small_component_rows <- function(tour_distances, tour_duration
       component = paper_component_from_tour_group(groupOfSubpopulation),
       distance_km_value = as_number(distanceInKm)
     ) %>%
-    filter(!is.na(component)) %>%
+    filter(component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic")) %>%
     group_by(component) %>%
     summarise(
       agents_tours = n(),
@@ -2539,7 +2925,7 @@ build_sample_size_small_component_rows <- function(tour_distances, tour_duration
         component = paper_component_from_tour_group(groupOfSubpopulation),
         duration_h_value = as_number(tourDurationsInHours)
       ) %>%
-      filter(!is.na(component)) %>%
+      filter(component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic")) %>%
       group_by(component) %>%
       summarise(
         total_duration_h = safe_sum(duration_h_value),
@@ -2555,7 +2941,7 @@ build_sample_size_small_component_rows <- function(tour_distances, tour_duration
         component = paper_component_from_tour_group(groupOfSubpopulation),
         jobs_per_tour_value = as_number(jobsPerTour)
       ) %>%
-      filter(!is.na(component)) %>%
+      filter(component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic")) %>%
       group_by(component) %>%
       summarise(
         stops_in_sample = safe_sum(jobs_per_tour_value),
@@ -2903,7 +3289,14 @@ build_paper_table_bev_range_feasibility <- function(jobs_per_tour, range_logs, p
 
   range_rows <- tibble(
     component = character(),
+    agents_in_study_area_start_scope = numeric(),
     jobs_not_feasible_without_recharging = numeric(),
+    any_recharge_evaluation_services = numeric(),
+    selected_recharge_fallback_services = numeric(),
+    range_infeasible_selected_recharge_services = numeric(),
+    near_limit_selected_recharge_services = numeric(),
+    services_without_feasible_recharge_fallback = numeric(),
+    services_without_feasible_recharge_fallback_also_later_selected = numeric(),
     recharge_vehicles_added = numeric(),
     range_source_file = character()
   )
@@ -2912,17 +3305,35 @@ build_paper_table_bev_range_feasibility <- function(jobs_per_tour, range_logs, p
       filter(component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic")) %>%
       group_by(component) %>%
       summarise(
-        jobs_not_feasible_without_recharging = safe_sum(recharge_range_evaluation_services),
+        agents_in_study_area_start_scope = safe_max(agents_in_study_area_start_scope),
+        any_recharge_evaluation_services = safe_sum(any_recharge_evaluation_services),
+        selected_recharge_fallback_services = safe_sum(selected_recharge_fallback_services),
+        range_infeasible_selected_recharge_services = safe_sum(range_infeasible_selected_recharge_services),
+        near_limit_selected_recharge_services = safe_sum(near_limit_selected_recharge_services),
+        services_without_feasible_recharge_fallback = safe_sum(services_without_feasible_recharge_fallback),
+        services_without_feasible_recharge_fallback_also_later_selected =
+          safe_sum(services_without_feasible_recharge_fallback_also_later_selected),
         recharge_vehicles_added = safe_sum(added_high_cost_recharge_vehicles),
         range_source_file = collapse_source_values(log_file),
         .groups = "drop"
+      ) %>%
+      mutate(
+        jobs_not_feasible_without_recharging = selected_recharge_fallback_services
       )
   }
 
   component_rows <- job_rows %>%
     left_join(range_rows, by = "component") %>%
     mutate(
+      agents_in_study_area_start_scope = coalesce(agents_in_study_area_start_scope, 0),
+      any_recharge_evaluation_services = coalesce(any_recharge_evaluation_services, 0),
       jobs_not_feasible_without_recharging = coalesce(jobs_not_feasible_without_recharging, 0),
+      selected_recharge_fallback_services = coalesce(selected_recharge_fallback_services, 0),
+      range_infeasible_selected_recharge_services = coalesce(range_infeasible_selected_recharge_services, 0),
+      near_limit_selected_recharge_services = coalesce(near_limit_selected_recharge_services, 0),
+      services_without_feasible_recharge_fallback = coalesce(services_without_feasible_recharge_fallback, 0),
+      services_without_feasible_recharge_fallback_also_later_selected =
+        coalesce(services_without_feasible_recharge_fallback_also_later_selected, 0),
       recharge_vehicles_added = coalesce(recharge_vehicles_added, 0),
       share_not_feasible_without_recharging = safe_divide(jobs_not_feasible_without_recharging, jobs_shipments),
       row_type = "component",
@@ -2932,8 +3343,16 @@ build_paper_table_bev_range_feasibility <- function(jobs_per_tour, range_logs, p
   total <- component_rows %>%
     summarise(
       component = "reported subtotal",
+      agents_in_study_area_start_scope = safe_sum(agents_in_study_area_start_scope),
+      any_recharge_evaluation_services = safe_sum(any_recharge_evaluation_services),
       jobs_shipments = safe_sum(jobs_shipments),
       jobs_not_feasible_without_recharging = safe_sum(jobs_not_feasible_without_recharging),
+      selected_recharge_fallback_services = safe_sum(selected_recharge_fallback_services),
+      range_infeasible_selected_recharge_services = safe_sum(range_infeasible_selected_recharge_services),
+      near_limit_selected_recharge_services = safe_sum(near_limit_selected_recharge_services),
+      services_without_feasible_recharge_fallback = safe_sum(services_without_feasible_recharge_fallback),
+      services_without_feasible_recharge_fallback_also_later_selected =
+        safe_sum(services_without_feasible_recharge_fallback_also_later_selected),
       recharge_vehicles_added = safe_sum(recharge_vehicles_added),
       source_file = collapse_source_values(source_file),
       .groups = "drop"
@@ -2951,32 +3370,81 @@ build_paper_table_bev_range_feasibility <- function(jobs_per_tour, range_logs, p
       sample = paste0(paths$sample_tag, "%"),
       row_type,
       component,
+      agents_in_study_area_start_scope = round(agents_in_study_area_start_scope, 0),
       jobs_shipments = round(jobs_shipments, 0),
       jobs_not_feasible_without_recharging = round(jobs_not_feasible_without_recharging, 0),
+      any_recharge_evaluation_services = round(any_recharge_evaluation_services, 0),
+      selected_recharge_fallback_services = round(selected_recharge_fallback_services, 0),
+      range_infeasible_selected_recharge_services = round(range_infeasible_selected_recharge_services, 0),
+      near_limit_selected_recharge_services = round(near_limit_selected_recharge_services, 0),
+      services_without_feasible_recharge_fallback = round(services_without_feasible_recharge_fallback, 0),
+      services_without_feasible_recharge_fallback_also_later_selected =
+        round(services_without_feasible_recharge_fallback_also_later_selected, 0),
       share_not_feasible_without_recharging = round(share_not_feasible_without_recharging, 4),
       recharge_vehicles_added = round(recharge_vehicles_added, 0),
       source_file
     )
 }
 
-build_paper_table_ltl_recharge_vehicle_use <- function(jobs_per_tour, person_scores, paths) {
-  if (!should_build_ltl_recharge_vehicle_use(paths) || nrow(jobs_per_tour) == 0) {
+build_paper_table_recharge_vehicle_use <- function(selected_plan_cost_legs, tour_distances, paths) {
+  if (!should_build_recharge_vehicle_use(paths) || nrow(selected_plan_cost_legs) == 0) {
     return(tibble())
   }
 
-  person_lookup <- build_person_lookup(person_scores, c("person", "subpopulation", "goods_type"))
-  rows <- jobs_per_tour %>%
-    transmute(
-      person = as.character(personId),
-      vehicle_type = as.character(vehicleType),
-      jobs_per_tour = as_number(jobsPerTour)
+  required <- c("person", "leg_vehicle_type", "paper_component", "source_role", "selected_plan_source_file")
+  missing <- setdiff(required, names(selected_plan_cost_legs))
+  if (length(missing) > 0) {
+    stop("Selected-plan leg rows miss required columns for recharge table: ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+
+  component_order <- c(
+    "commercialPersonTraffic", "smallScaleGoodsTraffic",
+    "wasteCollection", "CEP", "remainingLTL",
+    "FTL", "longDistanceFreight"
+  )
+
+  study_area_start_scope <- build_study_area_start_person_scope(tour_distances)
+
+  rows <- selected_plan_cost_legs %>%
+    filter(
+      source_role == "cutout_route",
+      !is.na(person),
+      nzchar(person),
+      !is.na(leg_vehicle_type),
+      nzchar(leg_vehicle_type),
+      paper_component %in% component_order
     ) %>%
-    left_join(person_lookup, by = "person") %>%
+    left_join(
+      study_area_start_scope %>% mutate(in_study_area_start_scope = TRUE),
+      by = c("paper_component" = "component", "person" = "person")
+    ) %>%
     mutate(
-      component = paper_component_from_trip(subpopulation, goods_type),
-      is_recharge_vehicle = coalesce(is_recharge_vehicle_type(vehicle_type), FALSE)
+      in_study_area_start_scope = coalesce(in_study_area_start_scope, FALSE),
+      include_in_recharge_vehicle_scope = case_when(
+        paper_component %in% c("commercialPersonTraffic", "smallScaleGoodsTraffic") ~
+          in_study_area_start_scope,
+        paper_component %in% c("wasteCollection", "CEP", "remainingLTL", "FTL", "longDistanceFreight") ~
+          TRUE,
+        TRUE ~ FALSE
+      )
     ) %>%
-    filter(component %in% ltl_components())
+    filter(include_in_recharge_vehicle_scope) %>%
+    group_by(person) %>%
+    summarise(
+      component = first_non_missing(paper_component),
+      assigned_vehicle_type = {
+        vehicle_types <- unique(as.character(leg_vehicle_type))
+        recharge_types <- vehicle_types[is_recharge_vehicle_type(vehicle_types)]
+        if (length(recharge_types) > 0) recharge_types[[1]] else first_non_missing(vehicle_types)
+      },
+      uses_recharge_vehicle = any(is_recharge_vehicle_type(leg_vehicle_type), na.rm = TRUE),
+      selected_plan_source_file = collapse_source_values(selected_plan_source_file),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      component = factor(component, levels = component_order, ordered = TRUE)
+    )
+
   if (nrow(rows) == 0) {
     return(tibble())
   }
@@ -2984,30 +3452,31 @@ build_paper_table_ltl_recharge_vehicle_use <- function(jobs_per_tour, person_sco
   component_rows <- rows %>%
     group_by(component) %>%
     summarise(
-      assigned_tours = n_distinct(person),
-      recharge_vehicle_tours = n_distinct(person[is_recharge_vehicle]),
-      assigned_jobs = safe_sum(jobs_per_tour),
-      jobs_on_recharge_vehicle_tours = safe_sum(ifelse(is_recharge_vehicle, jobs_per_tour, 0)),
+      assigned_agents = n_distinct(person),
+      recharge_agents = n_distinct(person[uses_recharge_vehicle]),
+      recharge_vehicle_types = collapse_source_values(unique(assigned_vehicle_type[uses_recharge_vehicle])),
+      source_file = collapse_source_values(selected_plan_source_file),
       .groups = "drop"
     ) %>%
     mutate(row_type = "component")
 
   total <- component_rows %>%
     summarise(
-      component = "Explicit LTL total",
-      assigned_tours = safe_sum(assigned_tours),
-      recharge_vehicle_tours = safe_sum(recharge_vehicle_tours),
-      assigned_jobs = safe_sum(assigned_jobs),
-      jobs_on_recharge_vehicle_tours = safe_sum(jobs_on_recharge_vehicle_tours),
+      component = factor("all assigned components", levels = c(component_order, "all assigned components"), ordered = TRUE),
+      assigned_agents = safe_sum(assigned_agents),
+      recharge_agents = safe_sum(recharge_agents),
+      recharge_vehicle_types = collapse_source_values(recharge_vehicle_types),
+      source_file = collapse_source_values(source_file),
       .groups = "drop"
     ) %>%
     mutate(row_type = "total")
 
   bind_rows(component_rows, total) %>%
     mutate(
-      recharge_vehicle_tour_share = safe_divide(recharge_vehicle_tours, assigned_tours),
-      jobs_on_recharge_vehicle_tour_share = safe_divide(jobs_on_recharge_vehicle_tours, assigned_jobs)
+      recharge_agent_share = safe_divide(recharge_agents, assigned_agents),
+      component = as.character(component)
     ) %>%
+    arrange(match(component, c(component_order, "all assigned components"))) %>%
     transmute(
       scenario_name = paths$scenario_name,
       demand_generation = paths$model_type,
@@ -3015,13 +3484,11 @@ build_paper_table_ltl_recharge_vehicle_use <- function(jobs_per_tour, person_sco
       sample = paste0(paths$sample_tag, "%"),
       row_type,
       component,
-      assigned_tours = round(assigned_tours, 0),
-      recharge_vehicle_tours = round(recharge_vehicle_tours, 0),
-      recharge_vehicle_tour_share = round(recharge_vehicle_tour_share, 4),
-      assigned_jobs = round(assigned_jobs, 0),
-      jobs_on_recharge_vehicle_tours = round(jobs_on_recharge_vehicle_tours, 0),
-      jobs_on_recharge_vehicle_tour_share = round(jobs_on_recharge_vehicle_tour_share, 4),
-      source_file = "analysis/commercialTraffic/tourAnalysis_jobsPerTour.csv;output_persons.csv"
+      assigned_agents = round(assigned_agents, 0),
+      recharge_agents = round(recharge_agents, 0),
+      recharge_agent_share = round(recharge_agent_share, 4),
+      recharge_vehicle_types,
+      source_file = "output_plans.xml.zst selected-plan vehicleTypes"
     )
 }
 
@@ -3313,6 +3780,15 @@ resolve_vehicle_type_for_leg <- function(leg_mode, vehicle_types_raw, vehicle_ty
   NA_character_
 }
 
+resolve_emission_vehicle_type_base <- function(vehicle_type_base, paths) {
+  resolved <- as.character(vehicle_type_base)
+  if (is_bev_fleet(paths)) {
+    resolved <- ifelse(!is.na(resolved) & resolved == "heavy40t", "heavy40t_EV", resolved)
+  }
+
+  resolved
+}
+
 # =============================================================================
 # 6. Fahrzeugparameter und WTW-Emissionsschaetzung
 # =============================================================================
@@ -3529,21 +4005,117 @@ validate_emission_factor_years <- function(years) {
   unique(parsed_years)
 }
 
-build_energy_emissions <- function(tour_distances, paths) {
+build_energy_emission_input <- function(tour_distances, selected_plan_cost_legs, paths) {
+  source_file <- "analysis/commercialTraffic/tourAnalysis_distances.csv"
+  if (is.null(selected_plan_cost_legs) || nrow(selected_plan_cost_legs) == 0) {
+    return(list(data = tour_distances, source_file = source_file))
+  }
+
+  required_leg_columns <- c(
+    "source_role", "paper_component", "person", "leg_vehicle_type", "route_distance_km"
+  )
+  if (!all(required_leg_columns %in% names(selected_plan_cost_legs))) {
+    return(list(data = tour_distances, source_file = source_file))
+  }
+
+  all_agent_components <- c("FTL", "longDistanceFreight")
+  if (should_build_ltl_analyses(paths)) {
+    all_agent_components <- c(ltl_components(), all_agent_components)
+  }
+
+  if (!all(c("groupOfSubpopulation", "personId", "vehicleType", "distanceInKm") %in% names(tour_distances))) {
+    return(list(data = tour_distances, source_file = source_file))
+  }
+
+  represented_persons <- tibble(
+    emission_component = paper_component_from_emission_group(clean_subpopulation(tour_distances$groupOfSubpopulation)),
+    person = as.character(tour_distances$personId)
+  ) %>%
+    filter(emission_component %in% all_agent_components, !is.na(person), nzchar(person)) %>%
+    distinct()
+
+  fallback <- selected_plan_cost_legs %>%
+    filter(
+      source_role == "cutout_route",
+      paper_component %in% all_agent_components,
+      !is.na(person),
+      nzchar(person),
+      !is.na(leg_vehicle_type),
+      nzchar(leg_vehicle_type),
+      !is.na(route_distance_km),
+      route_distance_km > 0
+    ) %>%
+    mutate(
+      emission_component = ifelse(
+        paper_component %in% ltl_components(),
+        "LTL",
+        paper_component
+      ),
+      person = as.character(person),
+      vehicleType = as.character(leg_vehicle_type),
+      distanceInKm = as_number(route_distance_km)
+    ) %>%
+    anti_join(represented_persons, by = c("emission_component", "person")) %>%
+    group_by(emission_component, person, vehicleType) %>%
+    summarise(
+      distanceInKm = safe_sum(distanceInKm),
+      .groups = "drop"
+    ) %>%
+    transmute(
+      personId = as.character(person),
+      vehicleId = as.character(person),
+      vehicleType = as.character(vehicleType),
+      groupOfSubpopulation = as.character(emission_component),
+      dist_group = "selected_plan_missing_agent_fallback",
+      distanceInKm = as.character(distanceInKm),
+      distanceInKmWithDepotCharging = NA_character_,
+      shareOfTravelDistanceWithDepotCharging = NA_character_
+    )
+
+  if (nrow(fallback) == 0) {
+    return(list(data = tour_distances, source_file = source_file))
+  }
+
+  message(
+    "Adding selected-plan WTW fallback rows for missing all-agent scope: ",
+    paste(unique(fallback$groupOfSubpopulation), collapse = ", ")
+  )
+  common_columns <- intersect(
+    c(
+      "personId", "vehicleId", "vehicleType", "groupOfSubpopulation", "dist_group",
+      "distanceInKm", "distanceInKmWithDepotCharging",
+      "shareOfTravelDistanceWithDepotCharging"
+    ),
+    names(tour_distances)
+  )
+  tour_input <- tour_distances %>%
+    mutate(across(all_of(common_columns), as.character))
+  list(
+    data = bind_rows(tour_input, fallback),
+    source_file = paste_source_columns(
+      source_file,
+      "selected-plan cutout_route legs for missing LTL/FTL/longDistance agents"
+    )
+  )
+}
+
+build_energy_emissions <- function(tour_distances, paths, selected_plan_cost_legs = NULL) {
   if (nrow(tour_distances) == 0) {
     return(tibble())
   }
 
   factor_years <- validate_emission_factor_years(emission_factor_years)
+  energy_input <- build_energy_emission_input(tour_distances, selected_plan_cost_legs, paths)
 
-  result <- tour_distances %>%
+  result <- energy_input$data %>%
     mutate(
       groupOfSubpopulation = clean_subpopulation(.data$groupOfSubpopulation),
       vehicleType = as.character(.data$vehicleType),
       vehicle_type_base = normalize_vehicle_type(vehicleType),
+      emission_vehicle_type_base = resolve_emission_vehicle_type_base(vehicle_type_base, paths),
       distanceInKm = as_number(.data$distanceInKm)
     ) %>%
-    group_by(groupOfSubpopulation, vehicleType, vehicle_type_base) %>%
+    group_by(groupOfSubpopulation, vehicleType, vehicle_type_base, emission_vehicle_type_base) %>%
     summarise(
       tours_sample = n(),
       vehicle_km_sample_day = safe_sum(distanceInKm),
@@ -3552,7 +4124,7 @@ build_energy_emissions <- function(tour_distances, paths) {
       vehicle_km_100pct_year = vehicle_km_100pct_day * workdays_per_year,
       .groups = "drop"
     ) %>%
-    left_join(vehicle_type_to_key, by = "vehicle_type_base") %>%
+    left_join(vehicle_type_to_key, by = c("emission_vehicle_type_base" = "vehicle_type_base")) %>%
     left_join(vehicle_intensities, by = "vehicle_key") %>%
     expand_grid(emission_factor_year = factor_years) %>%
     mutate(
@@ -3582,7 +4154,7 @@ build_energy_emissions <- function(tour_distances, paths) {
       sample_scope = paste0(paths$sample_tag, "pct_run"),
       metric_scope = "represented_cutout"
     ) %>%
-    with_meta(paths, "analysis/commercialTraffic/tourAnalysis_distances.csv")
+    with_meta(paths, energy_input$source_file)
 
   unknown <- result %>%
     filter(is.na(vehicle_key)) %>%
@@ -3591,6 +4163,12 @@ build_energy_emissions <- function(tour_distances, paths) {
 
   if (length(unknown) > 0) {
     add_warning("No WTW mapping for vehicle type(s): ", paste(unknown, collapse = ", "))
+  }
+
+  ev_heavy40t_as_diesel <- is_bev_fleet(paths) &&
+    any(result$vehicle_type_base == "heavy40t" & result$powertrain == "diesel", na.rm = TRUE)
+  if (ev_heavy40t_as_diesel) {
+    stop("EV heavy40t is still mapped to diesel in the WTW emission table.", call. = FALSE)
   }
 
   result
@@ -3620,12 +4198,12 @@ infer_component_from_path <- function(path) {
   text <- normalize_user_path(path)
 
   case_when(
-    grepl("commercialPersonTraffic", text, ignore.case = TRUE) ~ "commercialPersonTraffic",
-    grepl("goodsTraffic", text, ignore.case = TRUE) ~ "smallScaleGoodsTraffic",
     grepl("PARCEL", text, ignore.case = TRUE) ~ "LTL_Parcel",
     grepl("WASTE", text, ignore.case = TRUE) ~ "LTL_Waste",
     grepl("REST", text, ignore.case = TRUE) ~ "LTL_Rest",
     grepl("FTL", text, ignore.case = TRUE) ~ "FTL",
+    grepl("commercialPersonTraffic", text, ignore.case = TRUE) ~ "commercialPersonTraffic",
+    grepl("goodsTraffic", text, ignore.case = TRUE) ~ "smallScaleGoodsTraffic",
     TRUE ~ "unknown"
   )
 }
@@ -3644,7 +4222,7 @@ read_carrier_outputs <- function(paths) {
   aggregate_dirs <- freight_dirs[!vapply(freight_dirs, is_part_analysis_dir, logical(1))]
 
   kpis <- read_carrier_kpis(aggregate_dirs, paths)
-  time_distance <- if (should_build_mixed_ltl_tables(paths)) {
+  time_distance <- if (should_build_ltl_analyses(paths)) {
     read_carrier_time_distance(aggregate_dirs, paths)
   } else {
     tibble()
@@ -3712,7 +4290,7 @@ read_carrier_time_distance <- function(freight_dirs, paths) {
   })
 }
 
-read_range_recharge_logs <- function(paths) {
+read_range_recharge_logs <- function(paths, range_log_scope = NULL) {
   if (!should_build_bev_range_feasibility(paths)) {
     return(tibble())
   }
@@ -3726,8 +4304,23 @@ read_range_recharge_logs <- function(paths) {
   if (length(log_files) == 0) {
     return(tibble())
   }
+  log_files <- filter_primary_range_recharge_log_files(log_files)
 
-  purrr::map_dfr(log_files, function(path) {
+  scope_agent_counts <- tibble(
+    component = character(),
+    agents_in_study_area_start_scope = numeric()
+  )
+  if (!is.null(range_log_scope)) {
+    scope_agent_counts <- attr(range_log_scope, "agent_counts")
+    if (is.null(scope_agent_counts)) {
+      scope_agent_counts <- tibble(
+        component = character(),
+        agents_in_study_area_start_scope = numeric()
+      )
+    }
+  }
+
+  file_summaries <- purrr::map_dfr(log_files, function(path) {
     lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character())
     if (length(lines) == 0) {
       return(tibble())
@@ -3744,12 +4337,274 @@ read_range_recharge_logs <- function(paths) {
       range_aware_summary_lines = sum(grepl("Range-aware loop check checked", lines)),
       recharge_range_evaluation_services = sum(extract_numeric_from_lines(lines, "([0-9]+) services needed Recharge-range evaluation")),
       added_high_cost_recharge_vehicles = sum(extract_numeric_from_lines(lines, "Added ([0-9]+) high-cost Recharge vehicles")),
+      services_without_feasible_recharge_fallback =
+        sum(extract_numeric_from_lines(lines, "([0-9]+) services had no feasible Recharge fallback")),
       restored_recharge_cost_capacity_lines = sum(grepl("Restored costs and capacities", lines)),
       max_required_multiplier_applications = ifelse(length(required_multiplier) == 0, NA_real_, max(required_multiplier, na.rm = TRUE)),
       max_current_range_utilization_pct = ifelse(length(current_range_util) == 0, NA_real_, max(current_range_util, na.rm = TRUE))
     ) %>%
       with_meta(paths, path)
   })
+
+  service_events <- purrr::map_dfr(log_files, function(path) {
+    lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character())
+    if (length(lines) == 0) {
+      return(tibble())
+    }
+    extract_range_recharge_service_events(lines, path, paths)
+  })
+
+  if (!is.null(range_log_scope)) {
+    if (nrow(range_log_scope) == 0) {
+      add_warning(
+        "No study-area-start carrier scope could be built for range/recharge logs in ",
+        paths$sample_dir,
+        "; no KWM service events are included."
+      )
+      service_events <- service_events[0, , drop = FALSE]
+    } else if (nrow(service_events) > 0) {
+      service_events <- filter_range_recharge_events_to_scope(service_events, range_log_scope)
+    }
+  }
+
+  summary_by_component <- file_summaries %>%
+    group_by(component) %>%
+    summarise(
+      log_file = collapse_source_values(log_file),
+      lines = safe_sum(lines),
+      added_recharge_vehicle_type_lines = safe_sum(added_recharge_vehicle_type_lines),
+      range_aware_summary_lines = safe_sum(range_aware_summary_lines),
+      raw_recharge_range_evaluation_services = safe_sum(recharge_range_evaluation_services),
+      raw_added_high_cost_recharge_vehicles = safe_sum(added_high_cost_recharge_vehicles),
+      raw_services_without_feasible_recharge_fallback =
+        safe_sum(services_without_feasible_recharge_fallback),
+      restored_recharge_cost_capacity_lines = safe_sum(restored_recharge_cost_capacity_lines),
+      max_required_multiplier_applications = safe_max(max_required_multiplier_applications),
+      max_current_range_utilization_pct = safe_max(max_current_range_utilization_pct),
+      .groups = "drop"
+    ) %>%
+    left_join(scope_agent_counts, by = "component")
+
+  if (nrow(service_events) == 0) {
+    return(summary_by_component %>%
+      mutate(
+        log_file = coalesce(range_log_source_label(component), log_file),
+        selected_recharge_fallback_services = 0,
+        range_infeasible_selected_recharge_services = 0,
+        near_limit_selected_recharge_services = 0,
+        any_recharge_evaluation_services = 0,
+        agents_in_study_area_start_scope = coalesce(agents_in_study_area_start_scope, 0),
+        services_without_feasible_recharge_fallback = 0,
+        services_without_feasible_recharge_fallback_also_later_selected = 0,
+        added_high_cost_recharge_vehicles = 0,
+        services_with_added_recharge_vehicle = 0
+      ))
+  }
+
+  event_counts <- service_events %>%
+    filter(!is.na(service_id), nzchar(service_id)) %>%
+    group_by(component) %>%
+    summarise(
+      selected_recharge_fallback_services =
+        n_distinct(service_id[event_type == "selected_recharge_fallback"]),
+      range_infeasible_selected_recharge_services =
+        n_distinct(service_id[
+          event_type == "selected_recharge_fallback" &
+            !is.na(current_range_slack_km) &
+            current_range_slack_km < 0
+        ]),
+      near_limit_selected_recharge_services = {
+        selected_ids <- unique(service_id[event_type == "selected_recharge_fallback"])
+        range_infeasible_ids <- unique(service_id[
+          event_type == "selected_recharge_fallback" &
+            !is.na(current_range_slack_km) &
+            current_range_slack_km < 0
+        ])
+        sum(!selected_ids %in% range_infeasible_ids)
+      },
+      any_recharge_evaluation_services =
+        n_distinct(service_id[event_type %in% c(
+          "selected_recharge_fallback",
+          "no_feasible_recharge_fallback",
+          "near_limit_recharge_evaluation"
+        )]),
+      services_without_feasible_recharge_fallback =
+        n_distinct(service_id[event_type == "no_feasible_recharge_fallback"]),
+      services_without_feasible_recharge_fallback_also_later_selected = {
+        selected_ids <- unique(service_id[event_type == "selected_recharge_fallback"])
+        no_fallback_ids <- unique(service_id[event_type == "no_feasible_recharge_fallback"])
+        sum(no_fallback_ids %in% selected_ids)
+      },
+      added_high_cost_recharge_vehicles =
+        n_distinct(recharge_vehicle_id[
+          event_type == "added_range_fallback_vehicle" &
+            !is.na(recharge_vehicle_id) &
+            nzchar(recharge_vehicle_id)
+        ]),
+      services_with_added_recharge_vehicle =
+        n_distinct(service_id[event_type == "added_range_fallback_vehicle"]),
+      event_log_file = collapse_source_values(log_file),
+      .groups = "drop"
+    )
+
+  summary_by_component %>%
+    full_join(event_counts, by = "component") %>%
+    mutate(
+      log_file = coalesce(range_log_source_label(component), log_file, event_log_file),
+      selected_recharge_fallback_services = coalesce(selected_recharge_fallback_services, 0),
+      range_infeasible_selected_recharge_services = coalesce(range_infeasible_selected_recharge_services, 0),
+      near_limit_selected_recharge_services = coalesce(near_limit_selected_recharge_services, 0),
+      any_recharge_evaluation_services = coalesce(any_recharge_evaluation_services, 0),
+      agents_in_study_area_start_scope = coalesce(agents_in_study_area_start_scope, 0),
+      services_without_feasible_recharge_fallback = coalesce(services_without_feasible_recharge_fallback, 0),
+      services_without_feasible_recharge_fallback_also_later_selected =
+        coalesce(services_without_feasible_recharge_fallback_also_later_selected, 0),
+      added_high_cost_recharge_vehicles = coalesce(added_high_cost_recharge_vehicles, 0),
+      services_with_added_recharge_vehicle = coalesce(services_with_added_recharge_vehicle, 0)
+    ) %>%
+    select(-event_log_file)
+}
+
+# Keeps only KWM service events belonging to carriers represented by study-area-start agents.
+filter_range_recharge_events_to_scope <- function(service_events, range_log_scope) {
+  service_events <- service_events %>%
+    mutate(log_carrier_id = range_log_carrier_id(service_id))
+
+  unmapped <- service_events %>%
+    filter(is.na(log_carrier_id), !is.na(service_id), nzchar(service_id)) %>%
+    count(component, name = "unmapped_events")
+  if (nrow(unmapped) > 0) {
+    add_warning(
+      "Could not map ", safe_sum(unmapped$unmapped_events),
+      " KWM range/recharge service events to a carrier ID; they are excluded from the study-area-start scope."
+    )
+  }
+
+  service_events %>%
+    inner_join(
+      range_log_scope %>% mutate(in_study_area_start_scope = TRUE),
+      by = c("component", "log_carrier_id" = "carrier_id")
+    ) %>%
+    select(-log_carrier_id, -in_study_area_start_scope)
+}
+
+# Extracts the carrier prefix shared by KWM service IDs and output_persons.csv.zst.
+range_log_carrier_id <- function(service_id) {
+  str_match(
+    as.character(service_id),
+    "^(Carrier_(?:Business|Goods)_[^_]+_purpose_[0-9]+(?:_vehTyp[^_]+)?)_"
+  )[, 2]
+}
+
+filter_primary_range_recharge_log_files <- function(log_files) {
+  primary <- log_files[grepl("\\.logfile\\.log$", basename(log_files))]
+  if (length(primary) > 0) {
+    return(primary)
+  }
+
+  log_files
+}
+
+range_log_source_label <- function(component) {
+  case_when(
+    component == "commercialPersonTraffic" ~
+      "smallScaleCommercial/commercialPersonTraffic/**/*.logfile.log",
+    component == "smallScaleGoodsTraffic" ~
+      "smallScaleCommercial/goodsTraffic/**/*.logfile.log",
+    TRUE ~ NA_character_
+  )
+}
+
+extract_range_recharge_service_events <- function(lines, path, paths) {
+  component <- infer_component_from_path(path)
+  log_file <- normalizePath(path, winslash = "/", mustWork = FALSE)
+
+  selected <- extract_range_recharge_service_event_rows(
+    lines,
+    "selected Recharge fallback for service '([^']+)'",
+    "selected_recharge_fallback",
+    component,
+    log_file
+  )
+  no_fallback <- extract_range_recharge_service_event_rows(
+    lines,
+    "has service '([^']+)' that is outside the current free range/time-feasible fleet and still has no feasible Recharge fallback",
+    "no_feasible_recharge_fallback",
+    component,
+    log_file
+  )
+  near_limit <- extract_range_recharge_service_event_rows(
+    lines,
+    "evaluates a Recharge fallback for service '([^']+)'",
+    "near_limit_recharge_evaluation",
+    component,
+    log_file
+  )
+
+  added_matches <- str_match(
+    lines,
+    "Added range fallback vehicle '([^']+)' of type '([^']+)' to carrier '([^']+)' for service '([^']+)'"
+  )
+  added_indices <- which(!is.na(added_matches[, 1]))
+  if (length(added_indices) == 0) {
+    added <- tibble(
+      component = character(),
+      event_type = character(),
+      service_id = character(),
+      recharge_vehicle_id = character(),
+      recharge_vehicle_type = character(),
+      current_range_slack_km = numeric(),
+      current_range_utilization_pct = numeric(),
+      required_multiplier_applications = numeric(),
+      log_file = character()
+    )
+  } else {
+  added <- tibble(
+    component = component,
+    event_type = "added_range_fallback_vehicle",
+    service_id = added_matches[added_indices, 5],
+    recharge_vehicle_id = added_matches[added_indices, 2],
+    recharge_vehicle_type = added_matches[added_indices, 3],
+    current_range_slack_km = NA_real_,
+    current_range_utilization_pct = NA_real_,
+    required_multiplier_applications = NA_real_,
+    log_file = log_file
+  )
+  }
+
+  bind_rows(selected, no_fallback, near_limit, added) %>%
+    with_meta(paths, basename(path))
+}
+
+extract_range_recharge_service_event_rows <- function(lines, service_pattern, event_type, component, log_file) {
+  matches <- str_match(lines, service_pattern)
+  indices <- which(!is.na(matches[, 1]))
+  if (length(indices) == 0) {
+    return(tibble(
+      component = character(),
+      event_type = character(),
+      service_id = character(),
+      recharge_vehicle_id = character(),
+      recharge_vehicle_type = character(),
+      current_range_slack_km = numeric(),
+      current_range_utilization_pct = numeric(),
+      required_multiplier_applications = numeric(),
+      log_file = character()
+    ))
+  }
+
+  event_lines <- lines[indices]
+  tibble(
+    component = component,
+    event_type = event_type,
+    service_id = matches[indices, 2],
+    recharge_vehicle_id = NA_character_,
+    recharge_vehicle_type = NA_character_,
+    current_range_slack_km = as_number(str_match(event_lines, "currentRangeSlack=([-0-9.]+) km")[, 2]),
+    current_range_utilization_pct = as_number(str_match(event_lines, "currentRangeUtilization=([0-9.]+)%")[, 2]),
+    required_multiplier_applications = as_number(str_match(event_lines, "requiredMultiplierApplications=([0-9]+)")[, 2]),
+    log_file = log_file
+  )
 }
 
 extract_numeric_from_lines <- function(lines, pattern) {
