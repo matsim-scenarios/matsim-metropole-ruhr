@@ -554,3 +554,294 @@ print(bev_gplot)
 #        units = "in", bg = "white")
 # ggsave("cost_per_tour_lineplot.pdf", p_per_tour, width = 10, height = 6,
 #        units = "in", bg = "white")
+
+
+# =============================================================================
+# FIGURE 3: WTW greenhouse-gas emissions
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Enter or edit WTW emission values manually here.
+# Values are emissions by energy carrier in kt CO2-eq/a.
+# -----------------------------------------------------------------------------
+w2w_emissions <- data.frame(
+  demand = rep(c("Basic", "Advanced"), each = 6),
+  year = rep(rep(c(2024, 2030, 2050), each = 2), 2),
+  vehicle = rep(c("ICEV", "BEV"), 6),
+  gasoline = c(
+    # Basic: ICEV, BEV for 2024, 2030, 2050
+    55.6, 0.0, 55.6, 0.0, 55.6, 0.0,
+    # Advanced: ICEV, BEV for 2024, 2030, 2050
+    55.9, 0.0, 55.9, 0.0, 55.9, 0.0
+  ),
+  diesel = c(
+    # Basic: ICEV, BEV for 2024, 2030, 2050
+    375.6, 0.0, 375.6, 0.0, 375.6, 0.0,
+    # Advanced: ICEV, BEV for 2024, 2030, 2050
+    522.9, 0.0, 522.9, 0.0, 522.9, 0.0
+  ),
+  electricity = c(
+    # Basic: ICEV, BEV for 2024, 2030, 2050
+    0.0, 272.6, 0.0, 139.6, 0.0, 52.3,
+    # Advanced: ICEV, BEV for 2024, 2030, 2050
+    0.0, 373.7, 0.0, 191.4, 0.0, 71.7
+  ),
+  total = c(
+    # Basic: ICEV, BEV for 2024, 2030, 2050
+    431.2, 272.6, 431.2, 139.6, 431.2, 52.3,
+    # Advanced: ICEV, BEV for 2024, 2030, 2050
+    578.8, 373.7, 578.8, 191.4, 578.8, 71.7
+  )
+)
+w2w_emissions$demand <- factor(
+  w2w_emissions$demand,
+  levels = c("Advanced", "Basic")
+)
+
+carrier_columns <- c("gasoline", "diesel", "electricity")
+carrier_sums <- rowSums(w2w_emissions[carrier_columns])
+if (any(abs(carrier_sums - w2w_emissions$total) > 0.15)) {
+  stop("The WTW carrier values do not add up to the reported total.", call. = FALSE)
+}
+
+w2w_emissions$bar_id <- rep(seq_len(6), times = 2)
+w2w_emissions$vehicle <- factor(
+  w2w_emissions$vehicle,
+  levels = c("ICEV", "BEV")
+)
+
+w2w_plot_data <- rbind(
+  data.frame(
+    w2w_emissions[c("demand", "year", "vehicle", "bar_id")],
+    carrier = "Gasoline",
+    value = w2w_emissions$gasoline
+  ),
+  data.frame(
+    w2w_emissions[c("demand", "year", "vehicle", "bar_id")],
+    carrier = "Diesel",
+    value = w2w_emissions$diesel
+  ),
+  data.frame(
+    w2w_emissions[c("demand", "year", "vehicle", "bar_id")],
+    carrier = "Electricity",
+    value = w2w_emissions$electricity
+  )
+)
+w2w_plot_data$carrier <- factor(
+  w2w_plot_data$carrier,
+  levels = c("Gasoline", "Diesel", "Electricity")
+)
+
+w2w_year_labels <- unique(w2w_emissions[c("demand", "year")])
+w2w_year_labels$bar_id <- rep(c(1.5, 3.5, 5.5), times = 2)
+
+format_w2w_total <- function(value) {
+  ifelse(
+    value < 100,
+    number(value, accuracy = 0.1, decimal.mark = "."),
+    number(value, accuracy = 1, decimal.mark = ".")
+  )
+}
+
+p_w2w <- ggplot(w2w_plot_data, aes(x = bar_id, y = value, fill = carrier)) +
+  geom_col(width = 0.64, color = NA) +
+  geom_text(
+    data = w2w_emissions,
+    aes(x = bar_id, y = total, label = format_w2w_total(total)),
+    inherit.aes = FALSE,
+    vjust = -0.45,
+    size = 3.4
+  ) +
+  geom_text(
+    data = w2w_year_labels,
+    aes(x = bar_id, y = -58, label = year),
+    inherit.aes = FALSE,
+    size = 3.2
+  ) +
+  facet_grid(
+    . ~ demand,
+    labeller = as_labeller(c(
+      Basic = "Basic demand generation",
+      Advanced = "Advanced demand generation"
+    ))
+  ) +
+  scale_fill_manual(
+    values = c(
+      Gasoline = "#E5AA32",
+      Diesel = "#6F7C88",
+      Electricity = "#2A9DAD"
+    )
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    breaks = seq_len(6),
+    labels = rep(c("ICEV", "BEV"), 3),
+    limits = c(0.45, 6.55),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    name = expression(paste("kt ", CO[2], "-eq/a")),
+    breaks = seq(0, 600, 100),
+    limits = c(-80, 600),
+    expand = expansion(mult = c(0, 0.04))
+  ) +
+  guides(fill = guide_legend(title = NULL, nrow = 1)) +
+  theme_classic(base_size = 11) +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 11),
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    panel.spacing.x = grid::unit(1.2, "cm"),
+    plot.margin = margin(6, 8, 4, 8)
+  )
+
+print(p_w2w)
+
+# Optional export (uncomment if desired)
+# ggsave("figures/w2w_emissions_main.png", p_w2w,
+#        width = 10.0, height = 5.8, units = "in", dpi = 300, bg = "white")
+
+
+# =============================================================================
+# FIGURE 4: Mixed-fleet LTL WTW greenhouse-gas emissions
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Enter or edit mixed-fleet LTL WTW emission values manually here.
+# Values are annual emissions by model component in kt CO2-eq/a.
+# -----------------------------------------------------------------------------
+mixed_ltl_w2w <- data.frame(
+  price_setting = c(2024, 2030, 2050),
+  CEP = c(14.8, 8.3, 4.0),
+  remainingLTL = c(119.8, 66.5, 26.4),
+  wasteCollection = c(21.9, 21.5, 21.4),
+  total = c(156.5, 96.2, 51.7)
+)
+
+mixed_ltl_w2w$component_sum <- rowSums(
+  mixed_ltl_w2w[c("CEP", "remainingLTL", "wasteCollection")]
+)
+if (any(abs(mixed_ltl_w2w$component_sum - mixed_ltl_w2w$total) > 0.15)) {
+  stop("The mixed-fleet LTL WTW component values do not add up to the total.", call. = FALSE)
+}
+
+mixed_ltl_w2w$bar_id <- seq_len(nrow(mixed_ltl_w2w))
+mixed_ltl_w2w_long <- rbind(
+  data.frame(
+    mixed_ltl_w2w[c("price_setting", "total", "bar_id")],
+    component = "CEP",
+    value = mixed_ltl_w2w$CEP
+  ),
+  data.frame(
+    mixed_ltl_w2w[c("price_setting", "total", "bar_id")],
+    component = "remainingLTL",
+    value = mixed_ltl_w2w$remainingLTL
+  ),
+  data.frame(
+    mixed_ltl_w2w[c("price_setting", "total", "bar_id")],
+    component = "wasteCollection",
+    value = mixed_ltl_w2w$wasteCollection
+  )
+)
+
+# The last factor level is drawn at the bottom of each stacked bar.
+mixed_ltl_w2w_long$component <- factor(
+  mixed_ltl_w2w_long$component,
+  levels = c("CEP", "wasteCollection", "remainingLTL")
+)
+mixed_ltl_w2w_long$label <- number(
+  mixed_ltl_w2w_long$value,
+  accuracy = 0.1,
+  decimal.mark = "."
+)
+
+mixed_ltl_w2w_inside <- subset(mixed_ltl_w2w_long, value >= 10)
+mixed_ltl_w2w_outside <- subset(mixed_ltl_w2w_long, value < 10)
+mixed_ltl_w2w_outside$label_x <- mixed_ltl_w2w_outside$bar_id + 0.24
+mixed_ltl_w2w_outside$label_y <- mixed_ltl_w2w_outside$total - 2
+
+p_w2w_mixed_ltl <- ggplot(
+  mixed_ltl_w2w_long,
+  aes(x = bar_id, y = value, fill = component)
+) +
+  geom_col(width = 0.64, color = NA) +
+  geom_text(
+    data = mixed_ltl_w2w_inside,
+    aes(x = bar_id, y = value, label = label),
+    position = position_stack(vjust = 0.5),
+    inherit.aes = FALSE,
+    size = 3.4,
+    color = "white"
+  ) +
+  geom_segment(
+    data = mixed_ltl_w2w_outside,
+    aes(
+      x = bar_id + 0.08,
+      xend = label_x - 0.04,
+      y = total - 0.5,
+      yend = label_y
+    ),
+    inherit.aes = FALSE,
+    color = "#34404C",
+    linewidth = 0.35
+  ) +
+  geom_text(
+    data = mixed_ltl_w2w_outside,
+    aes(x = label_x, y = label_y, label = label),
+    inherit.aes = FALSE,
+    hjust = 0,
+    size = 3.4,
+    color = "#34404C"
+  ) +
+  geom_text(
+    data = mixed_ltl_w2w,
+    aes(x = bar_id, y = total, label = number(total, accuracy = 0.1, decimal.mark = ".")),
+    inherit.aes = FALSE,
+    vjust = -0.45,
+    size = 3.6,
+    fontface = "bold",
+    color = "#34404C"
+  ) +
+  scale_fill_manual(
+    values = c(
+      CEP = "#E5AA32",
+      remainingLTL = "#2A9DAD",
+      wasteCollection = "#87929D"
+    )
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    breaks = mixed_ltl_w2w$bar_id,
+    labels = paste0(mixed_ltl_w2w$price_setting, "\nTotal"),
+    limits = c(0.45, 3.7),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    name = expression(paste("kt ", CO[2], "-eq/a")),
+    breaks = seq(0, 150, 50),
+    limits = c(0, 175),
+    expand = expansion(mult = c(0, 0.04))
+  ) +
+  guides(fill = guide_legend(title = NULL, nrow = 1)) +
+  labs(title = "Mixed LTL WTW emissions by model component") +
+  theme_classic(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, color = "#34404C"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 11, color = "#66788F"),
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    plot.margin = margin(6, 32, 4, 8)
+  ) +
+  coord_cartesian(clip = "off")
+
+print(p_w2w_mixed_ltl)
+
+# Optional export (uncomment if desired)
+# ggsave("figures/w2w_emissions_mixed_ltl.png", p_w2w_mixed_ltl,
+#        width = 10.0, height = 5.8, units = "in", dpi = 300, bg = "white")
