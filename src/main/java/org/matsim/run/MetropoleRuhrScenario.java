@@ -197,10 +197,14 @@ public class MetropoleRuhrScenario extends MATSimApplication {
 			scoringParameters.setMarginalUtilityOfMoney(1.);
 			activityTypesPerSubpopulation.forEach(activityType -> {
 				ScoringConfigGroup.ActivityParams actParams = new ScoringConfigGroup.ActivityParams(activityType).setTypicalDuration(30 * 60);
+				if (activityType.contains("start") || activityType.contains("end")) {
+					actParams.setScoringThisActivityAtAll(false);
+				}
 				scoringParameters.addActivityParams(actParams);
 			});
 			modes.forEach(mode -> {
 				ScoringConfigGroup.ModeParams thisModeParams = new ScoringConfigGroup.ModeParams(mode);
+				thisModeParams.setMarginalUtilityOfTraveling(timeCosts);
 				scoringParameters.addModeParams(thisModeParams);
 			});
 			scoringParameters.addModeParams(new ScoringConfigGroup.ModeParams("walk"));
