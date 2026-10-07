@@ -12,9 +12,9 @@ costs <- data.frame(
                     "Distance operation", "Distance energy", "Labor"), 4),
   value = c(
     # Basic - ICEV
-    1.62, 0.00, 0.29, 0.35, 7.30,
+    1.62, 0.00, 0.29, 0.35, 7.29,
     # Basic - BEV
-    1.97, 0.19, 0.23, 0.20, 7.32,
+    1.97, 0.19, 0.23, 0.20, 7.39,
     # Advanced - ICEV
     1.58, 0.00, 0.28, 0.35, 7.14,
     # Advanced - BEV
